@@ -300,6 +300,7 @@ def create_1(filename=None, overwrite=False, seed=None,
 
         # measurements
         f.create_group("meas_eqlt")
+        f["meas_eqlt"]["energy"]= np.zeros(n_sweep_meas, dtype=dtype_num)
         f["meas_eqlt"]["n_sample"] = np.array(0, dtype=np.int32)
         f["meas_eqlt"]["sign"] = np.array(0.0, dtype=dtype_num)
         f["meas_eqlt"]["density"] = np.zeros(num_i, dtype=dtype_num)

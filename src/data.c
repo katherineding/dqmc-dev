@@ -43,10 +43,12 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 	my_read(_int, "/params/meas_bond_corr", &sim->p.meas_bond_corr);
 	my_read(_int, "/params/meas_energy_corr", &sim->p.meas_energy_corr);
 	my_read(_int, "/params/meas_nematic_corr", &sim->p.meas_nematic_corr);
+	my_read(_int, "/params/n_sweep_meas", &sim->p.n_sweep_meas);
 
 	const int N = sim->p.N, L = sim->p.L;
 	const int num_i = sim->p.num_i, num_ij = sim->p.num_ij;
 	const int num_b = sim->p.num_b, num_bs = sim->p.num_bs, num_bb = sim->p.num_bb;
+	const int n_sweep_meas = sim->p.n_sweep_meas;
 
 	sim->p.map_i         = my_calloc(N        * sizeof(int));
 	sim->p.map_ij        = my_calloc(N*N      * sizeof(int));
@@ -72,6 +74,7 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 	sim->p.exp_lambda    = my_calloc(N*2      * sizeof(double));
 	sim->p.del           = my_calloc(N*2      * sizeof(double));
 	sim->s.hs            = my_calloc(N*L      * sizeof(int));
+	sim->m_eq.energy     = my_calloc(n_sweep_meas * sizeof(num));
 	sim->m_eq.density    = my_calloc(num_i    * sizeof(num));
 	sim->m_eq.double_occ = my_calloc(num_i    * sizeof(num));
 	sim->m_eq.g00        = my_calloc(num_ij   * sizeof(num));
@@ -86,6 +89,8 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 		sim->m_eq.vv = my_calloc(num_ij * sizeof(num));
 		sim->m_eq.vn = my_calloc(num_ij * sizeof(num));
 	}
+	//only allocate memory for extra correlations if period_uneqlt > 0
+	// and extra measurement flags are true
 	if (sim->p.period_uneqlt > 0) {
 		sim->m_ue.gt0     = my_calloc(num_ij*L * sizeof(num));
 		sim->m_ue.nn      = my_calloc(num_ij*L * sizeof(num));
@@ -125,7 +130,6 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 	my_read(_int,    "/params/n_matmul",      &sim->p.n_matmul);
 	my_read(_int,    "/params/n_delay",       &sim->p.n_delay);
 	my_read(_int,    "/params/n_sweep_warm",  &sim->p.n_sweep_warm);
-	my_read(_int,    "/params/n_sweep_meas",  &sim->p.n_sweep_meas);
 	my_read(_int,    "/params/period_eqlt",   &sim->p.period_eqlt);
 	my_read(_int,    "/params/degen_i",        sim->p.degen_i);
 	my_read(_int,    "/params/degen_ij",       sim->p.degen_ij);
@@ -148,6 +152,7 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 	my_read(_int,    "/state/hs",              sim->s.hs);
 	my_read(_int,    "/meas_eqlt/n_sample",   &sim->m_eq.n_sample);
 	my_read( , "/meas_eqlt/sign",        num_h5t, &sim->m_eq.sign);
+	my_read( , "/meas_eqlt/energy",      num_h5t, sim->m_eq.energy);
 	my_read( , "/meas_eqlt/density",     num_h5t, sim->m_eq.density);
 	my_read( , "/meas_eqlt/double_occ",  num_h5t, sim->m_eq.double_occ);
 	my_read( , "/meas_eqlt/g00",         num_h5t, sim->m_eq.g00);
@@ -218,6 +223,7 @@ int sim_data_save(const struct sim_data *sim, const char *file)
 	my_write("/state/hs",             H5T_NATIVE_INT,     sim->s.hs);
 	my_write("/meas_eqlt/n_sample",   H5T_NATIVE_INT,    &sim->m_eq.n_sample);
 	my_write("/meas_eqlt/sign",       num_h5t, &sim->m_eq.sign);
+	my_write("/meas_eqlt/energy",     num_h5t,  sim->m_eq.energy);
 	my_write("/meas_eqlt/density",    num_h5t,  sim->m_eq.density);
 	my_write("/meas_eqlt/double_occ", num_h5t,  sim->m_eq.double_occ);
 	my_write("/meas_eqlt/g00",        num_h5t,  sim->m_eq.g00);
@@ -268,6 +274,7 @@ int sim_data_save(const struct sim_data *sim, const char *file)
 
 void sim_data_free(const struct sim_data *sim)
 {
+	//my_free is defined in header util.h
 	if (sim->p.period_uneqlt > 0) {
 		if (sim->p.meas_nematic_corr) {
 			my_free(sim->m_ue.nem_ssss);
@@ -305,6 +312,7 @@ void sim_data_free(const struct sim_data *sim)
 	my_free(sim->m_eq.nn);
 	my_free(sim->m_eq.g00);
 	my_free(sim->m_eq.double_occ);
+	my_free(sim->m_eq.energy);
 	my_free(sim->m_eq.density);
 	my_free(sim->s.hs);
 	my_free(sim->p.del);
