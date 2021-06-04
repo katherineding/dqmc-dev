@@ -40,32 +40,44 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 	my_read(_int, "/params/num_ij", &sim->p.num_ij);
 	my_read(_int, "/params/num_b", &sim->p.num_b);
 	my_read(_int, "/params/num_b2", &sim->p.num_b2);
+	my_read(_int, "/params/num_hop2", &sim->p.num_hop2);
 	my_read(_int, "/params/num_bs", &sim->p.num_bs);
 	my_read(_int, "/params/num_bb", &sim->p.num_bb);
 	my_read(_int, "/params/num_b2b", &sim->p.num_b2b);
 	my_read(_int, "/params/num_bb2", &sim->p.num_bb2);
 	my_read(_int, "/params/num_b2b2", &sim->p.num_b2b2);
+	my_read(_int, "/params/num_hop2_b", &sim->p.num_hop2_b);
+	my_read(_int, "/params/num_b_hop2", &sim->p.num_b_hop2);
+	my_read(_int, "/params/num_hop2_hop2", &sim->p.num_hop2_hop2);
 	my_read(_int, "/params/period_uneqlt", &sim->p.period_uneqlt);
 	my_read(_int, "/params/meas_bond_corr", &sim->p.meas_bond_corr);
 	my_read(_int, "/params/meas_thermal", &sim->p.meas_thermal);
 	my_read(_int, "/params/meas_2bond_corr", &sim->p.meas_2bond_corr);
+	my_read(_int, "/params/meas_hop2_corr", &sim->p.meas_hop2_corr);
 	my_read(_int, "/params/meas_energy_corr", &sim->p.meas_energy_corr);
 	my_read(_int, "/params/meas_nematic_corr", &sim->p.meas_nematic_corr);
 
 	const int N = sim->p.N, L = sim->p.L;
 	const int num_i = sim->p.num_i, num_ij = sim->p.num_ij;
 	const int num_b = sim->p.num_b, num_bs = sim->p.num_bs, num_bb = sim->p.num_bb;
-	const int num_b2 = sim->p.num_b2, num_b2b2 = sim->p.num_b2b2, num_b2b = sim->p.num_b2b, num_bb2 = sim->p.num_bb2;
+	const int num_b2 = sim->p.num_b2, num_b2b2 = sim->p.num_b2b2, 
+	          num_b2b = sim->p.num_b2b, num_bb2 = sim->p.num_bb2;
+	const int num_hop2 = sim->p.num_hop2, num_hop2_hop2 = sim->p.num_hop2_hop2, 
+	          num_hop2_b = sim->p.num_hop2_b, num_b_hop2 = sim->p.num_b_hop2;
 
 	sim->p.map_i         = my_calloc(N        * sizeof(int));
 	sim->p.map_ij        = my_calloc(N*N      * sizeof(int));
 	sim->p.bonds         = my_calloc(num_b*2  * sizeof(int));
 	sim->p.bond2s        = my_calloc(num_b2*2  * sizeof(int));
+	sim->p.hop2s         = my_calloc(num_hop2*3  * sizeof(int));
 	sim->p.map_bs        = my_calloc(num_b*N  * sizeof(int));
 	sim->p.map_bb        = my_calloc(num_b*num_b * sizeof(int));
 	sim->p.map_b2b2      = my_calloc(num_b2*num_b2 * sizeof(int));
 	sim->p.map_b2b      = my_calloc(num_b2*num_b * sizeof(int));
 	sim->p.map_bb2      = my_calloc(num_b*num_b2 * sizeof(int));
+	sim->p.map_hop2_hop2      = my_calloc(num_hop2*num_hop2 * sizeof(int));
+	sim->p.map_hop2_b         = my_calloc(num_hop2*num_b * sizeof(int));
+	sim->p.map_b_hop2         = my_calloc(num_b*num_hop2 * sizeof(int));
 	sim->p.peierlsu      = my_calloc(N*N      * sizeof(num));
 	sim->p.peierlsd      = my_calloc(N*N      * sizeof(num));
 //	sim->p.K             = my_calloc(N*N      * sizeof(double));
@@ -77,6 +89,9 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 	sim->p.degen_b2b2    = my_calloc(num_b2b2   * sizeof(int));
 	sim->p.degen_b2b    = my_calloc(num_b2b   * sizeof(int));
 	sim->p.degen_bb2    = my_calloc(num_bb2   * sizeof(int));
+	sim->p.degen_hop2_hop2    = my_calloc(num_hop2_hop2   * sizeof(int));
+	sim->p.degen_hop2_b       = my_calloc(num_hop2_b    * sizeof(int));
+	sim->p.degen_b_hop2       = my_calloc(num_b_hop2   * sizeof(int));
 	sim->p.exp_Ku        = my_calloc(N*N      * sizeof(num));
 	sim->p.exp_Kd        = my_calloc(N*N      * sizeof(num));
 	sim->p.inv_exp_Ku    = my_calloc(N*N      * sizeof(num));
@@ -119,6 +134,8 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 			sim->m_ue.jjn = my_calloc(num_bb2*L * sizeof(num));
 			sim->m_ue.jnj = my_calloc(num_b2b*L * sizeof(num));
 			sim->m_ue.jnjn= my_calloc(num_bb*L * sizeof(num));
+			sim->m_ue.new_jnj= my_calloc(num_bb*L * sizeof(num));
+			sim->m_ue.new_jjn= my_calloc(num_bb*L * sizeof(num));
 		}
 		if (sim->p.meas_2bond_corr) {
 			sim->m_ue.pair_b2b2= my_calloc(num_b2b2*L * sizeof(num));
@@ -126,6 +143,13 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 			sim->m_ue.js2js2  = my_calloc(num_b2b2*L * sizeof(num));
 			sim->m_ue.k2k2    = my_calloc(num_b2b2*L * sizeof(num));
 			sim->m_ue.ks2ks2  = my_calloc(num_b2b2*L * sizeof(num));
+		}
+		if (sim->p.meas_hop2_corr) {
+			sim->m_ue.J2J2    = my_calloc(num_hop2_hop2*L * sizeof(num));
+			sim->m_ue.J2jn    = my_calloc(num_hop2_b*L * sizeof(num));
+			sim->m_ue.J2j     = my_calloc(num_hop2_b*L * sizeof(num));
+			sim->m_ue.jnJ2    = my_calloc(num_b_hop2*L * sizeof(num));
+			sim->m_ue.jJ2     = my_calloc(num_b_hop2*L * sizeof(num));
 		}
 		if (sim->p.meas_energy_corr) {
 			sim->m_ue.kv      = my_calloc(num_bs*L * sizeof(num));
@@ -144,11 +168,15 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 	my_read(_int,    "/params/map_ij",         sim->p.map_ij);
 	my_read(_int,    "/params/bonds",          sim->p.bonds);
 	my_read(_int,    "/params/bond2s",          sim->p.bond2s);
+	my_read(_int,    "/params/hop2s",          sim->p.hop2s);
 	my_read(_int,    "/params/map_bs",         sim->p.map_bs);
 	my_read(_int,    "/params/map_bb",         sim->p.map_bb);
 	my_read(_int,    "/params/map_bb2",         sim->p.map_bb2);
 	my_read(_int,    "/params/map_b2b",         sim->p.map_b2b);
 	my_read(_int,    "/params/map_b2b2",         sim->p.map_b2b2);
+	my_read(_int,    "/params/map_b_hop2",         sim->p.map_b_hop2);
+	my_read(_int,    "/params/map_hop2_b",         sim->p.map_hop2_b);
+	my_read(_int,    "/params/map_hop2_hop2",         sim->p.map_hop2_hop2);
 	my_read( , "/params/peierlsu", num_h5t,    sim->p.peierlsu);
 	my_read( , "/params/peierlsd", num_h5t,    sim->p.peierlsd);
 //	my_read(_double, "/params/K",              sim->p.K);
@@ -166,6 +194,9 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 	my_read(_int,    "/params/degen_b2b",       sim->p.degen_b2b);
 	my_read(_int,    "/params/degen_bb2",       sim->p.degen_bb2);
 	my_read(_int,    "/params/degen_b2b2",       sim->p.degen_b2b2);
+	my_read(_int,    "/params/degen_hop2_b",       sim->p.degen_hop2_b);
+	my_read(_int,    "/params/degen_b_hop2",       sim->p.degen_b_hop2);
+	my_read(_int,    "/params/degen_hop2_hop2",       sim->p.degen_hop2_hop2);
 	my_read( , "/params/exp_Ku",     num_h5t,   sim->p.exp_Ku);
 	my_read( , "/params/exp_Kd",     num_h5t,   sim->p.exp_Kd);
 	my_read( , "/params/inv_exp_Ku", num_h5t,   sim->p.inv_exp_Ku);
@@ -216,6 +247,8 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 			my_read( , "/meas_uneqlt/jjn",     num_h5t, sim->m_ue.jjn);
 			my_read( , "/meas_uneqlt/jnj",     num_h5t, sim->m_ue.jnj);
 			my_read( , "/meas_uneqlt/jnjn",    num_h5t, sim->m_ue.jnjn);
+			my_read( , "/meas_uneqlt/new_jnj",    num_h5t, sim->m_ue.new_jnj);
+			my_read( , "/meas_uneqlt/new_jjn",    num_h5t, sim->m_ue.new_jjn);
 		}
 		if (sim->p.meas_2bond_corr) {
 			my_read( , "/meas_uneqlt/pair_b2b2", num_h5t, sim->m_ue.pair_b2b2);
@@ -223,6 +256,13 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 			my_read( , "/meas_uneqlt/js2js2",    num_h5t, sim->m_ue.js2js2)
 			my_read( , "/meas_uneqlt/k2k2",      num_h5t, sim->m_ue.k2k2);
 			my_read( , "/meas_uneqlt/ks2ks2",    num_h5t, sim->m_ue.ks2ks2);
+		}
+		if (sim->p.meas_hop2_corr) {
+			my_read( , "/meas_uneqlt/J2J2",      num_h5t, sim->m_ue.J2J2);
+			my_read( , "/meas_uneqlt/J2jn",      num_h5t, sim->m_ue.J2jn);
+			my_read( , "/meas_uneqlt/J2j",       num_h5t, sim->m_ue.J2j);
+			my_read( , "/meas_uneqlt/jnJ2",      num_h5t, sim->m_ue.jnJ2);
+			my_read( , "/meas_uneqlt/jJ2",       num_h5t, sim->m_ue.jJ2);
 		}
 		if (sim->p.meas_energy_corr) {
 			my_read( , "/meas_uneqlt/kv", num_h5t, sim->m_ue.kv);
@@ -298,6 +338,8 @@ int sim_data_save(const struct sim_data *sim)
 			my_write("/meas_uneqlt/jjn",     num_h5t, sim->m_ue.jjn);
 			my_write("/meas_uneqlt/jnj",     num_h5t, sim->m_ue.jnj);
 			my_write("/meas_uneqlt/jnjn",    num_h5t, sim->m_ue.jnjn);
+			my_write("/meas_uneqlt/new_jnj",    num_h5t, sim->m_ue.new_jnj);
+			my_write("/meas_uneqlt/new_jjn",    num_h5t, sim->m_ue.new_jjn);
 		}
 		if (sim->p.meas_2bond_corr) {
 			my_write("/meas_uneqlt/pair_b2b2", num_h5t, sim->m_ue.pair_b2b2);
@@ -305,6 +347,13 @@ int sim_data_save(const struct sim_data *sim)
 			my_write("/meas_uneqlt/js2js2",    num_h5t, sim->m_ue.js2js2);
 			my_write("/meas_uneqlt/k2k2",      num_h5t, sim->m_ue.k2k2);
 			my_write("/meas_uneqlt/ks2ks2",    num_h5t, sim->m_ue.ks2ks2);
+		}
+		if (sim->p.meas_hop2_corr) {
+			my_write("/meas_uneqlt/J2J2",      num_h5t, sim->m_ue.J2J2);
+			my_write("/meas_uneqlt/J2jn",      num_h5t, sim->m_ue.J2jn);
+			my_write("/meas_uneqlt/J2j",       num_h5t, sim->m_ue.J2j);
+			my_write("/meas_uneqlt/jnJ2",      num_h5t, sim->m_ue.jnJ2);
+			my_write("/meas_uneqlt/jJ2",       num_h5t, sim->m_ue.jJ2);
 		}
 		if (sim->p.meas_energy_corr) {
 			my_write("/meas_uneqlt/kv", num_h5t, sim->m_ue.kv);
@@ -340,6 +389,8 @@ void sim_data_free(const struct sim_data *sim)
 		}
 		if (sim->p.meas_thermal) {
 			my_free(sim->m_ue.jnjn);
+			my_free(sim->m_ue.new_jnj);
+			my_free(sim->m_ue.new_jjn);
 			my_free(sim->m_ue.jnj);
 			my_free(sim->m_ue.jjn);
 		}
@@ -356,6 +407,13 @@ void sim_data_free(const struct sim_data *sim)
 			my_free(sim->m_ue.js2js2);
 			my_free(sim->m_ue.j2j2);
 			my_free(sim->m_ue.pair_b2b2);
+		}
+		if (sim->p.meas_hop2_corr) {
+			my_free(sim->m_ue.J2J2);
+			my_free(sim->m_ue.J2jn);
+			my_free(sim->m_ue.J2j);
+			my_free(sim->m_ue.jnJ2);
+			my_free(sim->m_ue.jJ2);
 		}
 		my_free(sim->m_ue.pair_sw);
 		my_free(sim->m_ue.zz);
@@ -392,6 +450,9 @@ void sim_data_free(const struct sim_data *sim)
 	my_free(sim->p.degen_bb);
 	my_free(sim->p.degen_bb2);
 	my_free(sim->p.degen_b2b);
+	my_free(sim->p.degen_hop2_hop2);
+	my_free(sim->p.degen_b_hop2);
+	my_free(sim->p.degen_hop2_b);
 	my_free(sim->p.degen_bs);
 	my_free(sim->p.degen_ij);
 	my_free(sim->p.degen_i);
@@ -402,9 +463,13 @@ void sim_data_free(const struct sim_data *sim)
 	my_free(sim->p.map_b2b2);
 	my_free(sim->p.map_bb2);
 	my_free(sim->p.map_b2b);
+	my_free(sim->p.map_hop2_hop2);
+	my_free(sim->p.map_b_hop2);
+	my_free(sim->p.map_hop2_b);
 	my_free(sim->p.map_bb);
 	my_free(sim->p.map_bs);
 	my_free(sim->p.bond2s);
+	my_free(sim->p.hop2s);
 	my_free(sim->p.bonds);
 	my_free(sim->p.map_ij);
 	my_free(sim->p.map_i);

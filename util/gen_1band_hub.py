@@ -59,7 +59,7 @@ def create_1(filename=None, overwrite=False, seed=None,
              n_delay=16, n_matmul=8, n_sweep_warm=200, n_sweep_meas=2000,
              period_eqlt=8, period_uneqlt=0,
              meas_bond_corr=1, meas_energy_corr=0, meas_nematic_corr=0,
-             meas_thermal=0, meas_2bond_corr=0,
+             meas_thermal=0, meas_2bond_corr=0, meas_hop2_corr = 0,
              trans_sym=1):
     assert L % n_matmul == 0 and L % period_eqlt == 0
     N = Nx * Ny
@@ -191,6 +191,179 @@ def create_1(filename=None, overwrite=False, seed=None,
                 bond2s[0, i + 11*N] = ix2 + Nx*iy   # i0 = i + 2x
                 bond2s[1, i + 11*N] = ix + Nx*iy2   # i1 = i + 2y
 
+
+    # my definition: Bonds defined by two hopping steps
+    # Keep track of intermediate point!
+    hop2ps = 6 if tp != 0.0 else 28  # 2-hop-bonds per site
+    num_hop2 = hop2ps*N  # total 2-hop-bonds in cluster
+    hop2s = np.zeros((3, num_hop2), dtype=np.int32)
+    for iy in range(Ny):
+        for ix in range(Nx):
+            i = ix + Nx*iy
+            iy1 = (iy + 1) % Ny
+            ix1 = (ix + 1) % Nx
+            iy2 = (iy + 2) % Ny
+            ix2 = (ix + 2) % Nx
+
+            #t^2 terms: NN + NN
+            hop2s[0, i] = i             # i0 = i
+            hop2s[1, i] = ix1 + Nx*iy   # i1 = i + x      --
+            hop2s[2, i] = ix2 + Nx*iy   # i2 = i + 2x
+            #-----------------
+            hop2s[0, i + N] = i            # i0 = i         
+            hop2s[1, i + N] = ix + Nx*iy1  # i1 = i + y     |
+            hop2s[2, i + N] = ix + Nx*iy2  # i2 = i + 2y    |
+            #-----------------
+            hop2s[0, i + 2*N] = i             # i0 = i                |
+            hop2s[1, i + 2*N] = ix1 + Nx*iy   # i1 = i + x           -
+            hop2s[2, i + 2*N] = ix1 + Nx*iy1  # i2 = i + x + y
+
+            hop2s[0, i + 3*N] = i            # i0 = i               _  
+            hop2s[1, i + 3*N] = ix + Nx*iy1  # i1 = i + y          |
+            hop2s[2, i + 3*N] = ix1 + Nx*iy1  # i2 = i + x + y
+            #-----------------
+            hop2s[0, i + 4*N] = ix1 + Nx*iy   # i0 = i + x            _ 
+            hop2s[1, i + 4*N] = ix1 + Nx*iy1  # i1 = i + x + y         |
+            hop2s[2, i + 4*N] = ix + Nx*iy1   # i2 = i + y
+
+            hop2s[0, i + 5*N] = ix1 + Nx*iy   # i0 = i + x           |
+            hop2s[1, i + 5*N] = i             # i1 = i                -
+            hop2s[2, i + 5*N] = ix + Nx*iy1   # i2 = i + y
+
+            if b2ps == 28:
+                # t*t' terms: NN + NNN or NNN + NN
+                hop2s[0, i + 6*N] = i             # i0 = i            
+                hop2s[1, i + 6*N] = ix1 + Nx*iy   # i1 = i + x          /
+                hop2s[2, i + 6*N] = ix2 + Nx*iy1  # i2 = i + 2x + y    -
+
+                hop2s[0, i + 7*N] = i             # i0 = i
+                hop2s[1, i + 7*N] = ix1 + Nx*iy1  # i1 = i + x + y     _
+                hop2s[2, i + 7*N] = ix2 + Nx*iy1  # i2 = i + 2x + y   /
+                #------------------
+                hop2s[0, i + 8*N] = i              # i0 = i             |
+                hop2s[1, i + 8*N] = ix1 + Nx*iy1   # i1 = i + x + y    /
+                hop2s[2, i + 8*N] = ix1 + Nx*iy2   # i2 = i + x + 2y
+
+                hop2s[0, i + 9*N] = i              # i0 = i             / 
+                hop2s[1, i + 9*N] = ix  + Nx*iy1   # i1 = i + y        |
+                hop2s[2, i + 9*N] = ix1 + Nx*iy2   # i2 = i + x + 2y
+                #------------------
+                hop2s[0, i + 10*N] = ix2 + Nx*iy    # i0 = i + 2x
+                hop2s[1, i + 10*N] = ix1 + Nx*iy1   # i1 = i + x + y    _
+                hop2s[2, i + 10*N] = ix  + Nx*iy1   # i2 = i + y         \
+
+                hop2s[0, i + 11*N] = ix2 + Nx*iy    # i0 = i + 2x     
+                hop2s[1, i + 11*N] = ix1 + Nx*iy    # i1 = i + x       \
+                hop2s[2, i + 11*N] = ix  + Nx*iy1   # i2 = i + y        -
+                #------------------
+                hop2s[0, i + 12*N] = ix1 + Nx*iy    # i0 = i + x
+                hop2s[1, i + 12*N] = ix  + Nx*iy1   # i1 = i + y       |
+                hop2s[2, i + 12*N] = ix  + Nx*iy2   # i2 = i + 2y       \
+
+                hop2s[0, i + 13*N] = ix1 + Nx*iy     # i0 = i + x
+                hop2s[1, i + 13*N] = ix1 + Nx*iy1    # i1 = i + x + y     \ 
+                hop2s[2, i + 13*N] = ix  + Nx*iy2    # i2 = i + 2y         |
+                #------------------
+                hop2s[0, i + 14*N] = i             # i0 = i         
+                hop2s[1, i + 14*N] = ix1 + Nx*iy1  # i1 = i + x + y     _
+                hop2s[2, i + 14*N] = ix  + Nx*iy1  # i2 = i + y         /
+
+                hop2s[0, i + 15*N] = i             # i0 = i         
+                hop2s[1, i + 15*N] = ix1 + Nx*iy   # i1 = i + x         \
+                hop2s[2, i + 15*N] = ix  + Nx*iy1  # i2 = i + y         -
+
+                hop2s[0, i + 16*N] = ix1 + Nx*iy    # i0 = i + x        _
+                hop2s[1, i + 16*N] = ix  + Nx*iy1   # i1 = i + y        \
+                hop2s[2, i + 16*N] = ix1 + Nx*iy1   # i2 = i + x + y    
+
+                hop2s[0, i + 17*N] = ix1 + Nx*iy   # i0 = i + x       
+                hop2s[1, i + 17*N] = ix            # i1 = i             /
+                hop2s[2, i + 17*N] = ix1 + Nx*iy1  # i2 = i + x + y     -
+                #------------------
+                hop2s[0, i + 18*N] = i             # i0 = i         
+                hop2s[1, i + 18*N] = ix1 + Nx*iy1  # i1 = i + x + y     /|
+                hop2s[2, i + 18*N] = ix1 + Nx*iy   # i2 = i + x     
+
+                hop2s[0, i + 19*N] = i             # i0 = i         
+                hop2s[1, i + 19*N] = ix  + Nx*iy1  # i1 = i + y     |\
+                hop2s[2, i + 19*N] = ix1 + Nx*iy   # i2 = i + x   
+
+                hop2s[0, i + 20*N] = ix  + Nx*iy1  # i0 = i + y       
+                hop2s[1, i + 20*N] = ix1 + Nx*iy   # i1 = i + x        \|
+                hop2s[2, i + 20*N] = ix1 + Nx*iy1  # i2 = i + x + y   
+
+                hop2s[0, i + 21*N] = ix  + Nx*iy1  # i0 = i + y   
+                hop2s[1, i + 21*N] = i             # i1 = i            |/
+                hop2s[2, i + 21*N] = ix1 + Nx*iy1  # i2 = i + x + y     
+                #(t'^2) terms: NNN + NNN
+                hop2s[0, i + 22*N] = i              # i0 = i         
+                hop2s[1, i + 22*N] = ix1 + Nx*iy1   # i1 = i + x + y    \
+                hop2s[2, i + 22*N] = ix  + Nx*iy2   # i2 = i + 2y       /
+
+                hop2s[0, i + 23*N] = ix1 + Nx*iy   # i0 = i + x        /
+                hop2s[1, i + 23*N] = ix  + Nx*iy1  # i1 = i + y        \
+                hop2s[2, i + 23*N] = ix1 + Nx*iy2  # i2 = i + x + 2y    
+                #------------------
+                hop2s[0, i + 24*N] = i             # i0 = i         
+                hop2s[1, i + 24*N] = ix1 + Nx*iy1  # i1 = i + x + y   /\
+                hop2s[2, i + 24*N] = ix2 + Nx*iy   # i2 = i + 2x        
+
+                hop2s[0, i + 25*N] = ix  + Nx*iy1  # i0 = i + y            
+                hop2s[1, i + 25*N] = ix1 + Nx*iy   # i1 = i + x        \/
+                hop2s[2, i + 25*N] = ix2 + Nx*iy2  # i2 = i + 2x + y   
+                #------------------
+                hop2s[0, i + 26*N] = i             # i0 = i              /   
+                hop2s[1, i + 26*N] = ix1 + Nx*iy1  # i1 = i + x + y     / 
+                hop2s[2, i + 26*N] = ix2 + Nx*iy2  # i2 = i + 2x + 2y    
+                #------------------
+                hop2s[0, i + 27*N] = ix2 + Nx*iy    # i0 = i + 2x       \
+                hop2s[1, i + 27*N] = ix1 + Nx*iy1   # i1 = i + x + y     \ 
+                hop2s[2, i + 27*N] = ix  + Nx*iy2   # i2 = i + 2y              
+
+
+    # 2-hop 2-hop mapping
+    num_hop2_hop2 = hop2ps*hop2ps*N if trans_sym else num_hop2*num_hop2
+    map_hop2_hop2 = np.zeros((num_hop2, num_hop2), dtype=np.int32)
+    degen_hop2_hop2 = np.zeros(num_hop2_hop2, dtype = np.int32)
+    for j in range(N):
+        for i in range(N):
+            k = map_ij[j, i]
+            for jb in range(hop2ps):
+                for ib in range(hop2ps):
+                    kk = k + num_ij*(ib + hop2ps*jb)
+                    map_hop2_hop2[j + N*jb, i + N*ib] = kk
+                    degen_hop2_hop2[kk] += 1
+    assert num_hop2_hop2 == map_hop2_hop2.max() + 1
+
+    # bond 2-hop mapping
+    num_b_hop2 = bps*hop2ps*N if trans_sym else num_b*num_hop2
+    map_b_hop2 = np.zeros((num_b, num_hop2), dtype=np.int32)
+    degen_b_hop2 = np.zeros(num_b_hop2, dtype = np.int32)
+    for j in range(N):
+        for i in range(N):
+            k = map_ij[j, i]
+            for jb in range(bps):
+                for ib in range(hop2ps):
+                    kk = k + num_ij*(ib + hop2ps*jb)
+                    map_b_hop2[j + N*jb, i + N*ib] = kk
+                    degen_b_hop2[kk] += 1
+    assert num_b_hop2 == map_b_hop2.max() + 1
+
+    # 2-hop bond mapping
+    num_hop2_b = hop2ps*bps*N if trans_sym else num_hop2*num_b
+    map_hop2_b = np.zeros((num_hop2, num_b), dtype=np.int32)
+    degen_hop2_b = np.zeros(num_hop2_b, dtype = np.int32)
+    for j in range(N):
+        for i in range(N):
+            k = map_ij[j, i]
+            for jb in range(hop2ps):
+                for ib in range(bps):
+                    kk = k + num_ij*(ib + bps*jb)
+                    map_hop2_b[j + N*jb, i + N*ib] = kk
+                    degen_hop2_b[kk] += 1
+    assert num_hop2_b == map_hop2_b.max() + 1
+
+
     # 2 2-bond mapping
     num_b2b2 = b2ps*b2ps*N if trans_sym else num_b2*num_b2
     map_b2b2 = np.zeros((num_b2, num_b2), dtype=np.int32)
@@ -219,7 +392,7 @@ def create_1(filename=None, overwrite=False, seed=None,
                     degen_bb2[kk] += 1
     assert num_bb2 == map_bb2.max() + 1
 
-    # bond 2-bond mapping
+    # 2-bond bond mapping
     num_b2b = b2ps*bps*N if trans_sym else num_b2*num_b
     map_b2b = np.zeros((num_b2, num_b), dtype=np.int32)
     degen_b2b = np.zeros(num_b2b, dtype = np.int32)
@@ -316,6 +489,7 @@ def create_1(filename=None, overwrite=False, seed=None,
         f["metadata"]["Ny"] = Ny
         f["metadata"]["bps"] = bps
         f["metadata"]["b2ps"] = b2ps
+        f["metadata"]["hop2ps"] = hop2ps
         f["metadata"]["U"] = U
         f["metadata"]["t'"] = tp
         f["metadata"]["nflux"] = nflux
@@ -331,11 +505,15 @@ def create_1(filename=None, overwrite=False, seed=None,
         f["params"]["map_ij"] = map_ij
         f["params"]["bonds"] = bonds
         f["params"]["bond2s"] = bond2s
+        f["params"]["hop2s"] = hop2s
         f["params"]["map_bs"] = map_bs
         f["params"]["map_bb"] = map_bb
         f["params"]["map_b2b"] = map_b2b
         f["params"]["map_bb2"] = map_bb2
         f["params"]["map_b2b2"] = map_b2b2
+        f["params"]["map_hop2_b"] = map_hop2_b
+        f["params"]["map_b_hop2"] = map_b_hop2
+        f["params"]["map_hop2_hop2"] = map_hop2_hop2
         f["params"]["peierlsu"] = peierls
         f["params"]["peierlsd"] = peierls
         f["params"]["Ku"] = Ku
@@ -353,6 +531,7 @@ def create_1(filename=None, overwrite=False, seed=None,
         f["params"]["meas_bond_corr"] = meas_bond_corr
         f["params"]["meas_thermal"] = meas_thermal
         f["params"]["meas_2bond_corr"] = meas_2bond_corr
+        f["params"]["meas_hop2_corr"] = meas_hop2_corr
         f["params"]["meas_energy_corr"] = meas_energy_corr
         f["params"]["meas_nematic_corr"] = meas_nematic_corr
         f["params"]["init_rng"] = init_rng  # save if need to replicate data
@@ -362,11 +541,15 @@ def create_1(filename=None, overwrite=False, seed=None,
         f["params"]["num_ij"] = num_ij
         f["params"]["num_b"] = num_b
         f["params"]["num_b2"] = num_b2
+        f["params"]["num_hop2"] = num_hop2
         f["params"]["num_bs"] = num_bs
         f["params"]["num_bb"] = num_bb
         f["params"]["num_b2b"] = num_b2b
         f["params"]["num_bb2"] = num_bb2
         f["params"]["num_b2b2"] = num_b2b2
+        f["params"]["num_hop2_b"] = num_hop2_b
+        f["params"]["num_b_hop2"] = num_b_hop2
+        f["params"]["num_hop2_hop2"] = num_hop2_hop2
         f["params"]["degen_i"] = degen_i
         f["params"]["degen_ij"] = degen_ij
         f["params"]["degen_bs"] = degen_bs
@@ -374,6 +557,9 @@ def create_1(filename=None, overwrite=False, seed=None,
         f["params"]["degen_bb2"] = degen_bb2
         f["params"]["degen_b2b"] = degen_b2b
         f["params"]["degen_b2b2"] = degen_b2b2
+        f["params"]["degen_b_hop2"] = degen_b_hop2
+        f["params"]["degen_hop2_b"] = degen_hop2_b
+        f["params"]["degen_hop2_hop2"] = degen_hop2_hop2
         f["params"]["exp_Ku"] = exp_Ku
         f["params"]["exp_Kd"] = exp_Kd
         f["params"]["inv_exp_Ku"] = inv_exp_Ku
@@ -427,16 +613,29 @@ def create_1(filename=None, overwrite=False, seed=None,
                 f["meas_uneqlt"]["jsjs"] = np.zeros(num_bb*L, dtype=dtype_num)
                 f["meas_uneqlt"]["kk"] = np.zeros(num_bb*L, dtype=dtype_num)
                 f["meas_uneqlt"]["ksks"] = np.zeros(num_bb*L, dtype=dtype_num)
+            #thermal is subset of bond-bond type measurements
             if meas_thermal:
                 f["meas_uneqlt"]["jjn"] = np.zeros(num_bb2*L, dtype=dtype_num)
                 f["meas_uneqlt"]["jnj"] = np.zeros(num_b2b*L, dtype=dtype_num)
                 f["meas_uneqlt"]["jnjn"] = np.zeros(num_bb*L, dtype=dtype_num)
+                #had to name things "new_" since wen already used jjn, jnj name for something else
+                f["meas_uneqlt"]["new_jjn"] = np.zeros(num_bb*L, dtype=dtype_num)
+                f["meas_uneqlt"]["new_jnj"] = np.zeros(num_bb*L, dtype=dtype_num)
             if meas_2bond_corr:
                 f["meas_uneqlt"]["pair_b2b2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
                 f["meas_uneqlt"]["j2j2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
                 f["meas_uneqlt"]["js2js2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
                 f["meas_uneqlt"]["k2k2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
                 f["meas_uneqlt"]["ks2ks2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
+            #currently this toggles 2hop-2hop (4 phase), bond-2hop and 2hop-bond (3 phase) type measurements
+            #may be smart to separate based on number of fermion operators 
+            #or based on number of phase factors to reduce unnecessary measurements
+            if meas_hop2_corr:
+                f["meas_uneqlt"]["J2J2"] = np.zeros(num_hop2_hop2*L, dtype=dtype_num)
+                f["meas_uneqlt"]["J2jn"] = np.zeros(num_hop2_b*L, dtype=dtype_num)
+                f["meas_uneqlt"]["J2j"] = np.zeros(num_hop2_b*L, dtype=dtype_num)
+                f["meas_uneqlt"]["jnJ2"] = np.zeros(num_b_hop2*L, dtype=dtype_num)
+                f["meas_uneqlt"]["jJ2"] = np.zeros(num_b_hop2*L, dtype=dtype_num)
             if meas_energy_corr:
                 f["meas_uneqlt"]["kv"] = np.zeros(num_bs*L, dtype=dtype_num)
                 f["meas_uneqlt"]["kn"] = np.zeros(num_bs*L, dtype=dtype_num)
