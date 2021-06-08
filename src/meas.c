@@ -400,31 +400,93 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 			 			         (2-gdi0i0-gdi1i1) * (pui0i1 * gui1i0 - pui1i0 * gui0i1);
 			const num _wick_j = - puj1j0*guj0j1 + puj0j1*guj1j0 - pdj1j0*gdj0j1 + pdj0j1*gdj1j0;
 
-			const num x = (pdi0i1 * (-gdi1i0) - pdi1i0 * (-gdi0i1) ) *
-			              ( puj0j1 * ((delta_i0j1 - guj1i0) * gui0j0 + (delta_i1j1 - guj1i1) * gui1j0)
-				           -puj1j0 * ((delta_i0j0 - guj0i0) * gui0j1 + (delta_i1j0 - guj0i1) * gui1j1) );
+			const num t1 = ( (delta_i0j1 - guj1i0) * gui0j0 + (delta_i1j1 - guj1i1) * gui1j0 ) * pdi0i1 * puj0j1 * (gdi0i1 - gdi1i0);
+			const num t2 = ( (delta_i0j0 - guj0i0) * gui0j1 + (delta_i1j0 - guj0i1) * gui1j1 ) * pdi1i0 * puj1j0 * (gdi1i0 - gdi0i1);
+			const num t3 = ( (delta_i0j1 - gdj1i0) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi1j0 ) * pui0i1 * pdj0j1 * (gui0i1 - gui1i0);
+			const num t4 = ( (delta_i0j0 - gdj0i0) * gdi0j1 + (delta_i1j0 - gdj0i1) * gdi1j1 ) * pui1i0 * pdj1j0 * (gui1i0 - gui0i1);
+			const num t5 = (2-gui0i0-gui1i1) * 
+				(+pdi0i1 * pdj0j1 * (delta_i0j1 - gdj1i0) * gdi1j0 
+				 -pdi0i1 * pdj1j0 * (delta_i0j0 - gdj0i0) * gdi1j1
+				 -pdi1i0 * pdj0j1 * (delta_i1j1 - gdj1i1) * gdi0j0
+				 +pdi1i0 * pdj1j0 * (delta_i1j0 - gdj0i1) * gdi0j1);
+			const num t6 = (2-gdi0i0-gdi1i1) *
+				(+pui0i1 * puj0j1 * (delta_i0j1 - guj1i0) * gui1j0
+				 -pui0i1 * puj1j0 * (delta_i0j0 - guj0i0) * gui1j1
+				 -pui1i0 * puj0j1 * (delta_i1j1 - guj1i1) * gui0j0
+				 +pui1i0 * puj1j0 * (delta_i1j0 - guj0i1) * gui0j1);
+
+			// const num t13 =  pdi0i1 * pdj0j1 * (2-gui0i0-gui1i1) * (delta_i0j1 - gdj1i0) * gdi1j0;
+			// const num t14 = -pdi0i1 * pdj1j0 * (2-gui0i0-gui1i1) * (delta_i0j0 - gdj0i0) * gdi1j1;
+			// const num t23 = -pdi1i0 * pdj0j1 * (2-gui0i0-gui1i1) * (delta_i1j1 - gdj1i1) * gdi0j0;
+			// const num t24 =  pdi1i0 * pdj1j0 * (2-gui0i0-gui1i1) * (delta_i1j0 - gdj0i1) * gdi0j1;
+
+			// const num t31 =  pui0i1 * puj0j1 * (2-gdi0i0-gdi1i1) * (delta_i0j1 - guj1i0) * gui1j0;
+			// const num t32 = -pui0i1 * puj1j0 * (2-gdi0i0-gdi1i1) * (delta_i0j0 - guj0i0) * gui1j1;
+			// const num t41 = -pui1i0 * puj0j1 * (2-gdi0i0-gdi1i1) * (delta_i1j1 - guj1i1) * gui0j0;
+			// const num t42 =  pui1i0 * puj1j0 * (2-gdi0i0-gdi1i1) * (delta_i1j0 - guj0i1) * gui0j1;
+
+			// const num t11 =  pdi0i1 * puj0j1 * (-gdi1i0) * ( (delta_i0j1 - guj1i0) * gui0j0 + (delta_i1j1 - guj1i1) * gui1j0 );
+			// const num t21 = -pdi1i0 * puj0j1 * (-gdi0i1) * ( (delta_i0j1 - guj1i0) * gui0j0 + (delta_i1j1 - guj1i1) * gui1j0 );
+
+			// const num t22 =  pdi1i0 * puj1j0 * (-gdi0i1) * ( (delta_i0j0 - guj0i0) * gui0j1 + (delta_i1j0 - guj0i1) * gui1j1 );
+			// const num t12 = -pdi0i1 * puj1j0 * (-gdi1i0) * ( (delta_i0j0 - guj0i0) * gui0j1 + (delta_i1j0 - guj0i1) * gui1j1 );
+
+			// const num t33 =  pui0i1 * pdj0j1 * (-gui1i0) * ( (delta_i0j1 - gdj1i0) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi1j0 );
+			// const num t43 = -pui1i0 * pdj0j1 * (-gui0i1) * ( (delta_i0j1 - gdj1i0) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi1j0 );
+
+			// const num t44 =  pui1i0 * pdj1j0 * (-gui0i1) * ( (delta_i0j0 - gdj0i0) * gdi0j1 + (delta_i1j0 - gdj0i1) * gdi1j1 );
+			// const num t34 = -pui0i1 * pdj1j0 * (-gui1i0) * ( (delta_i0j0 - gdj0i0) * gdi0j1 + (delta_i1j0 - gdj0i1) * gdi1j1 );
+
+			m->new_jnj[bb] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
+
+			_wick_jn = (2-guj0j0-guj1j1) * (pdj0j1 * gdj1j0 - pdj1j0 * gdj0j1) + 
+			 			         (2-gdj0j0-gdj1j1) * (puj0j1 * guj1j0 - puj1j0 * guj0j1);
+			_wick_j = - pui1i0*gui0i1 + pui0i1*gui1i0 - pdi1i0*gdi0i1 + pdi0i1*gdi1i0;
+
+			t5 = (2 - gdj0j0 - gdj1j1) * 
+				(+pui0i1 * puj0j1 * (delta_i0j1 - guj1i0) * gui1j0
+				 -pui0i1 * puj1j0 * (delta_i0j0 - guj0i0) * gui1j1
+				 -pui0i1 * puj0j1 * (delta_i1j1 - guj1i1) * gui0j0
+				 +pui0i1 * puj1j0 * (delta_i1j0 - guj0i1) * gui0j1);
+
+			t6 = (2 - guj0j0 - guj1j1) * 
+				(+pdi0i1 * pdj0j1 * (delta_i0j1 - gdj1i0) * gdi1j0
+			     -pdi0i1 * pdj1j0 * (delta_i0j0 - gdj0i0) * gdi1j1
+				 -pdi1i0 * pdj0j1 * (delta_i1j1 - gdj1i1) * gdi0j0
+				 +pdi1i0 * pdj1j0 * (delta_i1j0 - gdj0i1) * gdi0j1);
+
+			// const num t13 = pui0i1 * puj0j1 * (2 - gdj0j0 - gdj1j1) * (delta_i0j1 - guj1i0) * gui1j0;
+			// const num t14 =-pui0i1 * puj1j0 * (2 - gdj0j0 - gdj1j1) * (delta_i0j0 - guj0i0) * gui1j1;
+			// const num t23 =-pui0i1 * puj0j1 * (2 - gdj0j0 - gdj1j1) * (delta_i1j1 - guj1i1) * gui0j0;
+			// const num t24 = pui0i1 * puj1j0 * (2 - gdj0j0 - gdj1j1) * (delta_i1j0 - guj0i1) * gui0j1;
+			// const num t31 = pdi0i1 * pdj0j1 * (2 - guj0j0 - guj1j1) * (delta_i0j1 - gdj1i0) * gdi1j0;
+			// const num t32 =-pdi0i1 * pdj1j0 * (2 - guj0j0 - guj1j1) * (delta_i0j0 - gdj0i0) * gdi1j1;
+			// const num t41 =-pdi1i0 * pdj0j1 * (2 - guj0j0 - guj1j1) * (delta_i1j1 - gdj1i1) * gdi0j0;
+			// const num t42 = pdi1i0 * pdj1j0 * (2 - guj0j0 - guj1j1) * (delta_i1j0 - gdj0i1) * gdi0j1;
+
+			t1 = ( (delta_i0j0 - guj0i0) * gui1j0 + (delta_i0j1 - guj1i0) * gui1j1 ) * pui0i1 * pdj0j1 * (gdj0j1 - gdj1j0);
+			t2 = ( (delta_i1j0 - guj0i1) * gui0j0 * (delta_i1j1 - guj1i1) * gui0j1 ) * pui1i0 * pdj0j1 * (gdj1j0 - gdj1j0);
+			t3 = ( (delta_i0j0 - gdj0i0) * gdi1j0 + (delta_i0j1 - gdj1i0) * gdi1j1 ) * pdi0i1 * puj0j1 * (guj0j1 - guj1j0);
+			t4 = ( (delta_i1j0 - gdj0i1) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi0j1 ) * pdi1i0 * puj0j1 * (guj1j0 - guj0j1);
+
+			// const num t11 = pui0i1 * pdj0j1 * (-gdj1j0) * ( (delta_i0j0 - guj0i0) * gui1j0 + (delta_i0j1 - guj1i0) * gui1j1 );
+			// const num t12 =-pui0i1 * pdj1j0 * (-gdj0j1) * ( (delta_i0j0 - guj0i0) * gui1j0 + (delta_i0j1 - guj1i0) * gui1j1 );
+			// const num t21 =-pui1i0 * pdj0j1 * (-gdj1j0) * ( (delta_i1j0 - guj0i1) * gui0j0 * (delta_i1j1 - guj1i1) * gui0j1 );
+			// const num t22 = pui1i0 * pdj1j0 * (-gdj0j1) * ( (delta_i1j0 - guj0i1) * gui0j0 * (delta_i1j1 - guj1i1) * gui0j1 );
+			// const num t33 = pdi0i1 * puj0j1 * (-guj1j0) * ( (delta_i0j0 - gdj0i0) * gdi1j0 + (delta_i0j1 - gdj1i0) * gdi1j1 );
+			// const num t34 =-pdi0i1 * puj1j0 * (-guj0j1) * ( (delta_i0j0 - gdj0i0) * gdi1j0 + (delta_i0j1 - gdj1i0) * gdi1j1 );
+			// const num t43 =-pdi1i0 * puj0j1 * (-guj1j0) * ( (delta_i1j0 - gdj0i1) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi0j1 );
+			// const num t44 = pdi1i0 * puj1j0 * (-guj0j1) * ( (delta_i1j0 - gdj0i1) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi0j1 );
 
 
-			const num c1 =   pdi0i1 * (2 - gui0i0 - gui1i1) * ( pdj0j1 * (delta_i0j1 - gdj1i0) * gdi1j0 
-			                                                   -pdj1j0 * (delta_i0j0 - gdj0i0) * gdi1j1 );
 
-			const num c2 = - pdi1i0 * (2 - gui0i0 - gui1i1) * ( pdj0j1 * (delta_i1j1 - gdj1i1) * gdi0j0
-				                                               -pdj1j0 * (delta_i1j0 - gdj0i1) * gdi0j1);
 
-			const num c3 =   pui0i1 * (2 - gdi0i0 - gdi1i1) * ( puj0j1 * (delta_i0j1 - guj1i0) * gui1j0
-                                                               -puj1j0 * (delta_i0j0 - guj0i0) * gui1j1);
-
-			const num c4 = - pui1i0 * (2 - gdi0i0 - gdi1i1) * ( puj0j1 * (delta_i1j1 - guj1i1) * gui0j0
-                                                               -puj1j0 * (delta_i1j0 - guj0i1) * gui0j1);
-
-			const num y = (pui0i1 * (-gui1i0) - pui1i0 * (-gui0i1) ) *
-			              ( puj0j1 * ((delta_i0j1 - guj1i0) * gui0j0 + (delta_i1j1 - guj1i1) * gui1j0)
-				           -puj1j0 * ((delta_i0j0 - guj0i0) * gui0j1 + (delta_i1j0 - guj0i1) * gui1j1) );
+			m->new_jjn[bb] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
 
 
 
-			m->new_jnj[bb] += pre*(_wick_j * _wick_jn + x + c1 + c2 + c3 + c4 + y);
-			m->new_jjn[bb] += pre*(_wick_j * _wick_jn);
+
+			
 			//TODO simplify this expression for faster measurements
 			//There are 16 possible phase product combinations among pui0i1, pdi0i1, pui1i0, pdi1i0
 			//												         puj0j1, pdj0j1, puj1j0, pdj1j0
@@ -504,137 +566,6 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 		}
 	}
 	}
-
-	// // thermal: jjn, t = 0 TODO: add phase properly
-	// if (meas_thermal)
-	// for (int c = 0; c < num_b; c++) {
-	// 	const int j0 = p->bonds[c];
-	// 	const int j1 = p->bonds[c + num_b];
-	// for (int b = 0; b < num_b2; b++) {
-	// 	const int i0 = p->bond2s[b];
-	// 	const int i1 = p->bond2s[b + num_b2];
-	// 	const int bb2 = p->map_bb2[b + c*num_b2];
-	// 	const num pre = phase / p->degen_bb2[bb2];
-	// 	const int delta_i0j0 = (i0 == j0);
-	// 	const int delta_i1j0 = (i1 == j0);
-	// 	const int delta_i0j1 = (i0 == j1);
-	// 	const int delta_i1j1 = (i1 == j1);
-	// 	const num gui1i0 = Gu00[i1 + i0*N];
-	// 	const num gui0i1 = Gu00[i0 + i1*N];
-	// 	const num gui0j0 = Gu00[i0 + j0*N];
-	// 	const num gui1j0 = Gu00[i1 + j0*N];
-	// 	const num gui0j1 = Gu00[i0 + j1*N];
-	// 	const num gui1j1 = Gu00[i1 + j1*N];
-	// 	const num guj0i0 = Gu00[j0 + i0*N];
-	// 	const num guj1i0 = Gu00[j1 + i0*N];
-	// 	const num guj0i1 = Gu00[j0 + i1*N];
-	// 	const num guj1i1 = Gu00[j1 + i1*N];
-	// 	const num guj1j0 = Gu00[j1 + j0*N];
-	// 	const num guj0j1 = Gu00[j0 + j1*N];
-	// 	const num gdi1i0 = Gd00[i1 + i0*N];
-	// 	const num gdi0i1 = Gd00[i0 + i1*N];
-	// 	const num gdi0j0 = Gd00[i0 + j0*N];
-	// 	const num gdi1j0 = Gd00[i1 + j0*N];
-	// 	const num gdi0j1 = Gd00[i0 + j1*N];
-	// 	const num gdi1j1 = Gd00[i1 + j1*N];
-	// 	const num gdj0i0 = Gd00[j0 + i0*N];
-	// 	const num gdj1i0 = Gd00[j1 + i0*N];
-	// 	const num gdj0i1 = Gd00[j0 + i1*N];
-	// 	const num gdj1i1 = Gd00[j1 + i1*N];
-	// 	const num gdj1j0 = Gd00[j1 + j0*N];
-	// 	const num gdj0j1 = Gd00[j0 + j1*N];
-
-	// 	const num gui0i0 = Gu00[i0 + i0*N];
-	// 	const num gui1i1 = Gu00[i1 + i1*N];
-	// 	const num guj0j0 = Gu00[j0 + j0*N];
-	// 	const num guj1j1 = Gu00[j1 + j1*N];
-	// 	const num gdi0i0 = Gd00[i0 + i0*N];
-	// 	const num gdi1i1 = Gd00[i1 + i1*N];
-	// 	const num gdj0j0 = Gd00[j0 + j0*N];
-	// 	const num gdj1j1 = Gd00[j1 + j1*N];
-
-	// 	const num ujinj = (gui1j0*(delta_i0j0-guj0i0)-gui0j0*(delta_i1j0-guj0i1)+gui1j1*(delta_i0j1-guj1i0)-(gui0j1*(delta_i1j1-guj1i1))
- //                              +(gui0i1-gui1i0)*(2-guj0j0-guj1j1));
-	// 	const num djinj = (gdi1j0*(delta_i0j0-gdj0i0)-gdi0j0*(delta_i1j0-gdj0i1)+gdi1j1*(delta_i0j1-gdj1i0)-(gdi0j1*(delta_i1j1-gdj1i1))
- //                              +(gdi0i1-gdi1i0)*(2-gdj0j0-gdj1j1));
-	// 	const num part1u = (2-guj0j0-guj1j1)*((delta_i0j1-gdj1i0)*gdi1j0-(delta_i0j0-gdj0i0)*gdi1j1-(delta_i1j1-gdj1i1)*gdi0j0+(delta_i1j0-gdj0i1)*gdi0j1
- //                                      +(gdj1j0-gdj0j1)*(gdi1i0-gdi0i1));
-	// 	const num part2u = -(gdj1j0-gdj0j1)*ujinj;
-	// 	const num part1d = (2-gdj0j0-gdj1j1)*((delta_i0j1-guj1i0)*gui1j0-(delta_i0j0-guj0i0)*gui1j1-(delta_i1j1-guj1i1)*gui0j0+(delta_i1j0-guj0i1)*gui0j1
- //                                      +(guj1j0-guj0j1)*(gui1i0-gui0i1));
-	// 	const num part2d = -(guj1j0-guj0j1)*djinj;
-	// 	m->jjn[bb2]  += pre*(part1u+part1d+part2u+part2d);
-	// }
-	// }
-
-	// // thermal: jnj, t = 0 TODO: add phase properly
-	// if (meas_thermal)
-	// for (int c = 0; c < num_b2; c++) {
-	// 	const int j0 = p->bond2s[c];
-	// 	const int j1 = p->bond2s[c + num_b2];
-	// for (int b = 0; b < num_b; b++) {
-	// 	const int i0 = p->bonds[b];
-	// 	const int i1 = p->bonds[b + num_b];
-	// 	const int b2b = p->map_b2b[b + c*num_b];
-	// 	const num pre = phase / p->degen_b2b[b2b];
-	// 	const int delta_i0j0 = (i0 == j0);
-	// 	const int delta_i1j0 = (i1 == j0);
-	// 	const int delta_i0j1 = (i0 == j1);
-	// 	const int delta_i1j1 = (i1 == j1);
-	// 	const num gui1i0 = Gu00[i1 + i0*N];
-	// 	const num gui0i1 = Gu00[i0 + i1*N];
-	// 	const num gui0j0 = Gu00[i0 + j0*N];
-	// 	const num gui1j0 = Gu00[i1 + j0*N];
-	// 	const num gui0j1 = Gu00[i0 + j1*N];
-	// 	const num gui1j1 = Gu00[i1 + j1*N];
-	// 	const num guj0i0 = Gu00[j0 + i0*N];
-	// 	const num guj1i0 = Gu00[j1 + i0*N];
-	// 	const num guj0i1 = Gu00[j0 + i1*N];
-	// 	const num guj1i1 = Gu00[j1 + i1*N];
-	// 	const num guj1j0 = Gu00[j1 + j0*N];
-	// 	const num guj0j1 = Gu00[j0 + j1*N];
-	// 	const num gdi1i0 = Gd00[i1 + i0*N];
-	// 	const num gdi0i1 = Gd00[i0 + i1*N];
-	// 	const num gdi0j0 = Gd00[i0 + j0*N];
-	// 	const num gdi1j0 = Gd00[i1 + j0*N];
-	// 	const num gdi0j1 = Gd00[i0 + j1*N];
-	// 	const num gdi1j1 = Gd00[i1 + j1*N];
-	// 	const num gdj0i0 = Gd00[j0 + i0*N];
-	// 	const num gdj1i0 = Gd00[j1 + i0*N];
-	// 	const num gdj0i1 = Gd00[j0 + i1*N];
-	// 	const num gdj1i1 = Gd00[j1 + i1*N];
-	// 	const num gdj1j0 = Gd00[j1 + j0*N];
-	// 	const num gdj0j1 = Gd00[j0 + j1*N];
-
-	// 	const num gui0i0 = Gu00[i0 + i0*N];
-	// 	const num gui1i1 = Gu00[i1 + i1*N];
-	// 	const num guj0j0 = Gu00[j0 + j0*N];
-	// 	const num guj1j1 = Gu00[j1 + j1*N];
-	// 	const num gdi0i0 = Gd00[i0 + i0*N];
-	// 	const num gdi1i1 = Gd00[i1 + i1*N];
-	// 	const num gdj0j0 = Gd00[j0 + j0*N];
-	// 	const num gdj1j1 = Gd00[j1 + j1*N];
-
-	// 	const num ujijj = ((delta_i0j1-guj1i0)*gui1j0-(delta_i0j0-guj0i0)*gui1j1-(delta_i1j1-guj1i1)*gui0j0+(delta_i1j0-guj0i1)*gui0j1
-	// 	               +(gui1i0-gui0i1)*(guj1j0-guj0j1));
-	// 	const num djijj = ((delta_i0j1-gdj1i0)*gdi1j0-(delta_i0j0-gdj0i0)*gdi1j1-(delta_i1j1-gdj1i1)*gdi0j0+(delta_i1j0-gdj0i1)*gdi0j1
-	// 	               +(gdi1i0-gdi0i1)*(gdj1j0-gdj0j1));
-	// 	const num unijj = (gui1j0*(delta_i1j1-guj1i1)-gui0j1*(delta_i0j0-guj0i0)+gui0j0*(delta_i0j1-guj1i0)-gui1j1*(delta_i1j0-guj0i1)
-	// 	              +(guj0j1-guj1j0)*(2-gui0i0-gui1i1));
-	// 	const num dnijj = (gdi1j0*(delta_i1j1-gdj1i1)-gdi0j1*(delta_i0j0-gdj0i0)+gdi0j0*(delta_i0j1-gdj1i0)-gdi1j1*(delta_i1j0-gdj0i1)
-	// 	              +(gdj0j1-gdj1j0)*(2-gdi0i0-gdi1i1));
-
-	// 	const num part1u = (2-gui0i0-gui1i1)*djijj;
-
-	// 	const num part2u = -(gdi1i0-gdi0i1)*unijj;
-
-	// 	const num part1d = (2-gdi0i0-gdi1i1)*ujijj;
-
-	// 	const num part2d = -(gui1i0-gui0i1)*dnijj;
-
-	// 	m->jnj[b2b] += pre*(part1u+part1d+part2u+part2d);
-	// }
-	// }
 
 	// measurement of J2-J2: 4 fermion product, 4 phases, t = 0
 	if (meas_hop2_corr)
@@ -862,55 +793,6 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	}
 	}
 
-	// // 2 bond -- 2 bond correlator measurements, t = 0 TODO: add phase properly
-	// if (meas_2bond_corr)
-	// for (int c = 0; c < num_b2; c++) {
-	// 	const int j0 = p->bond2s[c];
-	// 	const int j1 = p->bond2s[c + num_b2];
-	// for (int b = 0; b < num_b2; b++) {
-	// 	const int i0 = p->bond2s[b];
-	// 	const int i1 = p->bond2s[b + num_b2];
-	// 	const int bb = p->map_b2b2[b + c*num_b2];
-	// 	const num pre = phase / p->degen_b2b2[bb];
-	// 	const int delta_i0j0 = (i0 == j0);
-	// 	const int delta_i1j0 = (i1 == j0);
-	// 	const int delta_i0j1 = (i0 == j1);
-	// 	const int delta_i1j1 = (i1 == j1);
-	// 	const double gui1i0 = Gu00[i1 + i0*N];
-	// 	const double gui0i1 = Gu00[i0 + i1*N];
-	// 	const num gui0j0 = Gu00[i0 + j0*N];
-	// 	const num gui1j0 = Gu00[i1 + j0*N];
-	// 	const num gui0j1 = Gu00[i0 + j1*N];
-	// 	const num gui1j1 = Gu00[i1 + j1*N];
-	// 	const num guj0i0 = Gu00[j0 + i0*N];
-	// 	const num guj1i0 = Gu00[j1 + i0*N];
-	// 	const num guj0i1 = Gu00[j0 + i1*N];
-	// 	const num guj1i1 = Gu00[j1 + i1*N];
-	// 	const num guj1j0 = Gu00[j1 + j0*N];
-	// 	const num guj0j1 = Gu00[j0 + j1*N];
-	// 	const num gdi1i0 = Gd00[i1 + i0*N];
-	// 	const num gdi0i1 = Gd00[i0 + i1*N];
-	// 	const num gdi0j0 = Gd00[i0 + j0*N];
-	// 	const num gdi1j0 = Gd00[i1 + j0*N];
-	// 	const num gdi0j1 = Gd00[i0 + j1*N];
-	// 	const num gdi1j1 = Gd00[i1 + j1*N];
-	// 	const num gdj0i0 = Gd00[j0 + i0*N];
-	// 	const num gdj1i0 = Gd00[j1 + i0*N];
-	// 	const num gdj0i1 = Gd00[j0 + i1*N];
-	// 	const num gdj1i1 = Gd00[j1 + i1*N];
-	// 	const num gdj1j0 = Gd00[j1 + j0*N];
-	// 	const num gdj0j1 = Gd00[j0 + j1*N];
-	// 	m->pair_b2b2[bb] += 0.5*pre*(gui0j0*gdi1j1 + gui1j0*gdi0j1 + gui0j1*gdi1j0 + gui1j1*gdi0j0);
-	// 	const num x = ((delta_i0j1 - guj1i0)*gui1j0 + (delta_i1j0 - guj0i1)*gui0j1
-	// 			+ (delta_i0j1 - gdj1i0)*gdi1j0 + (delta_i1j0 - gdj0i1)*gdi0j1);
-	// 	const num y = ((delta_i0j0 - guj0i0)*gui1j1 + (delta_i1j1 - guj1i1)*gui0j0
-	// 			+ (delta_i0j0 - gdj0i0)*gdi1j1 + (delta_i1j1 - gdj1i1)*gdi0j0);
-	// 	m->j2j2[bb]   += pre*((gui0i1 - gui1i0 + gdi0i1 - gdi1i0)*(guj0j1 - guj1j0 + gdj0j1 - gdj1j0) + x - y);
-	// 	m->js2js2[bb] += pre*((gui0i1 - gui1i0 - gdi0i1 + gdi1i0)*(guj0j1 - guj1j0 - gdj0j1 + gdj1j0) + x - y);
-	// 	m->k2k2[bb]   += pre*((gui0i1 + gui1i0 + gdi0i1 + gdi1i0)*(guj0j1 + guj1j0 + gdj0j1 + gdj1j0) + x + y);
-	// 	m->ks2ks2[bb] += pre*((gui0i1 + gui1i0 - gdi0i1 - gdi1i0)*(guj0j1 + guj1j0 - gdj0j1 - gdj1j0) + x + y);
-	// }
-	// }
 
 	// nematic correlator measurements, t = 0
 	if (meas_nematic_corr)
@@ -1192,151 +1074,6 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	}
 	}
 
-	// // thermal: jjn, t > 0 TODO: add phase properly
- //    if (meas_thermal)
-	// #pragma omp parallel for
-	// for (int t = 1; t < L; t++) {
-	// 	const num *const restrict Gu0t_t = Gu0t + N*N*t;
-	// 	const num *const restrict Gutt_t = Gutt + N*N*t;
-	// 	const num *const restrict Gut0_t = Gut0 + N*N*t;
-	// 	const num *const restrict Gd0t_t = Gd0t + N*N*t;
-	// 	const num *const restrict Gdtt_t = Gdtt + N*N*t;
-	// 	const num *const restrict Gdt0_t = Gdt0 + N*N*t;
-	// for (int c = 0; c < num_b; c++) {
-	// 	const int j0 = p->bonds[c];
-	// 	const int j1 = p->bonds[c + num_b];
-	// for (int b = 0; b < num_b2; b++) {
-	// 	const int i0 = p->bond2s[b];
-	// 	const int i1 = p->bond2s[b + num_b2];
-	// 	const int bb2 = p->map_bb2[b + c*num_b2];
-	// 	const num pre = phase / p->degen_bb2[bb2];
-	// 	const num gui0i0 = Gutt_t[i0 + i0*N];
-	// 	const num gui1i0 = Gutt_t[i1 + i0*N];
-	// 	const num gui0i1 = Gutt_t[i0 + i1*N];
-	// 	const num gui1i1 = Gutt_t[i1 + i1*N];
-	// 	const num gui0j0 = Gut0_t[i0 + j0*N];
-	// 	const num gui1j0 = Gut0_t[i1 + j0*N];
-	// 	const num gui0j1 = Gut0_t[i0 + j1*N];
-	// 	const num gui1j1 = Gut0_t[i1 + j1*N];
-	// 	const num guj0i0 = Gu0t_t[j0 + i0*N];
-	// 	const num guj1i0 = Gu0t_t[j1 + i0*N];
-	// 	const num guj0i1 = Gu0t_t[j0 + i1*N];
-	// 	const num guj1i1 = Gu0t_t[j1 + i1*N];
-	// 	const num guj0j0 = Gu00[j0 + j0*N];
-	// 	const num guj1j0 = Gu00[j1 + j0*N];
-	// 	const num guj0j1 = Gu00[j0 + j1*N];
-	// 	const num guj1j1 = Gu00[j1 + j1*N];
-	// 	const num gdi0i0 = Gdtt_t[i0 + i0*N];
-	// 	const num gdi1i0 = Gdtt_t[i1 + i0*N];
-	// 	const num gdi0i1 = Gdtt_t[i0 + i1*N];
-	// 	const num gdi1i1 = Gdtt_t[i1 + i1*N];
-	// 	const num gdi0j0 = Gdt0_t[i0 + j0*N];
-	// 	const num gdi1j0 = Gdt0_t[i1 + j0*N];
-	// 	const num gdi0j1 = Gdt0_t[i0 + j1*N];
-	// 	const num gdi1j1 = Gdt0_t[i1 + j1*N];
-	// 	const num gdj0i0 = Gd0t_t[j0 + i0*N];
-	// 	const num gdj1i0 = Gd0t_t[j1 + i0*N];
-	// 	const num gdj0i1 = Gd0t_t[j0 + i1*N];
-	// 	const num gdj1i1 = Gd0t_t[j1 + i1*N];
-	// 	const num gdj0j0 = Gd00[j0 + j0*N];
-	// 	const num gdj1j0 = Gd00[j1 + j0*N];
-	// 	const num gdj0j1 = Gd00[j0 + j1*N];
-	// 	const num gdj1j1 = Gd00[j1 + j1*N];
-
-	// 	const num ujinj = (gui1j0*(-guj0i0)-gui0j0*(-guj0i1)+gui1j1*(-guj1i0)-(gui0j1*(-guj1i1))
-	// 	              +(gui0i1-gui1i0)*(2-guj0j0-guj1j1));
-	// 	const num djinj = (gdi1j0*(-gdj0i0)-gdi0j0*(-gdj0i1)+gdi1j1*(-gdj1i0)-(gdi0j1*(-gdj1i1))
-	// 	              +(gdi0i1-gdi1i0)*(2-gdj0j0-gdj1j1));
-
-
-	// 	const num part1u = (2-guj0j0-guj1j1)*((-gdj1i0)*gdi1j0-(-gdj0i0)*gdi1j1-(-gdj1i1)*gdi0j0+(-gdj0i1)*gdi0j1
-	// 	                      +(gdj1j0-gdj0j1)*(gdi1i0-gdi0i1));
-
-	// 	const num part2u = -(gdj1j0-gdj0j1)*ujinj;
-
-	// 	const num part1d = (2-gdj0j0-gdj1j1)*((-guj1i0)*gui1j0-(-guj0i0)*gui1j1-(-guj1i1)*gui0j0+(-guj0i1)*gui0j1
- //                                      +(guj1j0-guj0j1)*(gui1i0-gui0i1));
-
-	// 	const num part2d = -(guj1j0-guj0j1)*djinj;
-
-	// 	m->jjn[bb2 + num_bb2*t]  += pre*(part1u+part1d+part2u+part2d);
-	// }
-	// }
-	// }
-
-	// // thermal: jnj, t > 0 TODO: add phase properly
-	// if (meas_thermal)
-	// #pragma omp parallel for
-	// for (int t = 1; t < L; t++) {
-	// 	const num *const restrict Gu0t_t = Gu0t + N*N*t;
-	// 	const num *const restrict Gutt_t = Gutt + N*N*t;
-	// 	const num *const restrict Gut0_t = Gut0 + N*N*t;
-	// 	const num *const restrict Gd0t_t = Gd0t + N*N*t;
-	// 	const num *const restrict Gdtt_t = Gdtt + N*N*t;
-	// 	const num *const restrict Gdt0_t = Gdt0 + N*N*t;
-	// for (int c = 0; c < num_b2; c++) {
-	// 	const int j0 = p->bond2s[c];
-	// 	const int j1 = p->bond2s[c + num_b2];
-	// for (int b = 0; b < num_b; b++) {
-	// 	const int i0 = p->bonds[b];
-	// 	const int i1 = p->bonds[b + num_b];
-	// 	const int b2b = p->map_b2b[b + c*num_b];
-	// 	const num pre = phase / p->degen_b2b[b2b];
-	// 	const num gui0i0 = Gutt_t[i0 + i0*N];
-	// 	const num gui1i0 = Gutt_t[i1 + i0*N];
-	// 	const num gui0i1 = Gutt_t[i0 + i1*N];
-	// 	const num gui1i1 = Gutt_t[i1 + i1*N];
-	// 	const num gui0j0 = Gut0_t[i0 + j0*N];
-	// 	const num gui1j0 = Gut0_t[i1 + j0*N];
-	// 	const num gui0j1 = Gut0_t[i0 + j1*N];
-	// 	const num gui1j1 = Gut0_t[i1 + j1*N];
-	// 	const num guj0i0 = Gu0t_t[j0 + i0*N];
-	// 	const num guj1i0 = Gu0t_t[j1 + i0*N];
-	// 	const num guj0i1 = Gu0t_t[j0 + i1*N];
-	// 	const num guj1i1 = Gu0t_t[j1 + i1*N];
-	// 	const num guj0j0 = Gu00[j0 + j0*N];
-	// 	const num guj1j0 = Gu00[j1 + j0*N];
-	// 	const num guj0j1 = Gu00[j0 + j1*N];
-	// 	const num guj1j1 = Gu00[j1 + j1*N];
-	// 	const num gdi0i0 = Gdtt_t[i0 + i0*N];
-	// 	const num gdi1i0 = Gdtt_t[i1 + i0*N];
-	// 	const num gdi0i1 = Gdtt_t[i0 + i1*N];
-	// 	const num gdi1i1 = Gdtt_t[i1 + i1*N];
-	// 	const num gdi0j0 = Gdt0_t[i0 + j0*N];
-	// 	const num gdi1j0 = Gdt0_t[i1 + j0*N];
-	// 	const num gdi0j1 = Gdt0_t[i0 + j1*N];
-	// 	const num gdi1j1 = Gdt0_t[i1 + j1*N];
-	// 	const num gdj0i0 = Gd0t_t[j0 + i0*N];
-	// 	const num gdj1i0 = Gd0t_t[j1 + i0*N];
-	// 	const num gdj0i1 = Gd0t_t[j0 + i1*N];
-	// 	const num gdj1i1 = Gd0t_t[j1 + i1*N];
-	// 	const num gdj0j0 = Gd00[j0 + j0*N];
-	// 	const num gdj1j0 = Gd00[j1 + j0*N];
-	// 	const num gdj0j1 = Gd00[j0 + j1*N];
-	// 	const num gdj1j1 = Gd00[j1 + j1*N];
-
-	// 	const num ujijj = ((-guj1i0)*gui1j0-(-guj0i0)*gui1j1-(-guj1i1)*gui0j0+(-guj0i1)*gui0j1
-	// 	               +(gui1i0-gui0i1)*(guj1j0-guj0j1));
-	// 	const num djijj = ((-gdj1i0)*gdi1j0-(-gdj0i0)*gdi1j1-(-gdj1i1)*gdi0j0+(-gdj0i1)*gdi0j1
-	// 	               +(gdi1i0-gdi0i1)*(gdj1j0-gdj0j1));
-	// 	const num unijj = (gui1j0*(-guj1i1)-gui0j1*(-guj0i0)+gui0j0*(-guj1i0)-gui1j1*(-guj0i1)
-	// 	              +(guj0j1-guj1j0)*(2-gui0i0-gui1i1));
-	// 	const num dnijj = (gdi1j0*(-gdj1i1)-gdi0j1*(-gdj0i0)+gdi0j0*(-gdj1i0)-gdi1j1*(-gdj0i1)
-	// 	              +(gdj0j1-gdj1j0)*(2-gdi0i0-gdi1i1));
-
-	// 	const num part1u = (2-gui0i0-gui1i1)*djijj;
-
-	// 	const num part2u = -(gdi1i0-gdi0i1)*unijj;
-
-	// 	const num part1d = (2-gdi0i0-gdi1i1)*ujijj;
-
-	// 	const num part2d = -(gui1i0-gui0i1)*dnijj;
-
-	// 	m->jnj[b2b + num_b2b*t] += pre*(part1u+part1d+part2u+part2d);
-	// }
-	// }
-	// }
-
 	// measurement of J2-J2: 4 fermion product, 4 phases, t > 0
 	if (meas_hop2_corr)
 	for (int t = 1; t < L; t++) {
@@ -1573,67 +1310,6 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	}
 	}
 	}
-
- //    // 2 bond -- 2 bond correlator measurements, t > 0 TODO: add phase properly
-	// if (meas_2bond_corr)
-	// #pragma omp parallel for
-	// for (int t = 1; t < L; t++) {
-	// 	const num *const restrict Gu0t_t = Gu0t + N*N*t;
-	// 	const num *const restrict Gutt_t = Gutt + N*N*t;
-	// 	const num *const restrict Gut0_t = Gut0 + N*N*t;
-	// 	const num *const restrict Gd0t_t = Gd0t + N*N*t;
-	// 	const num *const restrict Gdtt_t = Gdtt + N*N*t;
-	// 	const num *const restrict Gdt0_t = Gdt0 + N*N*t;
-	// for (int c = 0; c < num_b2; c++) {
-	// 	const int j0 = p->bond2s[c];
-	// 	const int j1 = p->bond2s[c + num_b2];
-	// for (int b = 0; b < num_b2; b++) {
-	// 	const int i0 = p->bond2s[b];
-	// 	const int i1 = p->bond2s[b + num_b2];
-	// 	const int bb = p->map_b2b2[b + c*num_b2];
-	// 	const num pre = phase / p->degen_b2b2[bb];
-	// 	const num gui0i0 = Gutt_t[i0 + i0*N];
-	// 	const num gui1i0 = Gutt_t[i1 + i0*N];
-	// 	const num gui0i1 = Gutt_t[i0 + i1*N];
-	// 	const num gui1i1 = Gutt_t[i1 + i1*N];
-	// 	const num gui0j0 = Gut0_t[i0 + j0*N];
-	// 	const num gui1j0 = Gut0_t[i1 + j0*N];
-	// 	const num gui0j1 = Gut0_t[i0 + j1*N];
-	// 	const num gui1j1 = Gut0_t[i1 + j1*N];
-	// 	const num guj0i0 = Gu0t_t[j0 + i0*N];
-	// 	const num guj1i0 = Gu0t_t[j1 + i0*N];
-	// 	const num guj0i1 = Gu0t_t[j0 + i1*N];
-	// 	const num guj1i1 = Gu0t_t[j1 + i1*N];
-	// 	const num guj0j0 = Gu00[j0 + j0*N];
-	// 	const num guj1j0 = Gu00[j1 + j0*N];
-	// 	const num guj0j1 = Gu00[j0 + j1*N];
-	// 	const num guj1j1 = Gu00[j1 + j1*N];
-	// 	const num gdi0i0 = Gdtt_t[i0 + i0*N];
-	// 	const num gdi1i0 = Gdtt_t[i1 + i0*N];
-	// 	const num gdi0i1 = Gdtt_t[i0 + i1*N];
-	// 	const num gdi1i1 = Gdtt_t[i1 + i1*N];
-	// 	const num gdi0j0 = Gdt0_t[i0 + j0*N];
-	// 	const num gdi1j0 = Gdt0_t[i1 + j0*N];
-	// 	const num gdi0j1 = Gdt0_t[i0 + j1*N];
-	// 	const num gdi1j1 = Gdt0_t[i1 + j1*N];
-	// 	const num gdj0i0 = Gd0t_t[j0 + i0*N];
-	// 	const num gdj1i0 = Gd0t_t[j1 + i0*N];
-	// 	const num gdj0i1 = Gd0t_t[j0 + i1*N];
-	// 	const num gdj1i1 = Gd0t_t[j1 + i1*N];
-	// 	const num gdj0j0 = Gd00[j0 + j0*N];
-	// 	const num gdj1j0 = Gd00[j1 + j0*N];
-	// 	const num gdj0j1 = Gd00[j0 + j1*N];
-	// 	const num gdj1j1 = Gd00[j1 + j1*N];
-	// 	m->pair_b2b2[bb + num_b2b2*t] += 0.5*pre*(gui0j0*gdi1j1 + gui1j0*gdi0j1 + gui0j1*gdi1j0 + gui1j1*gdi0j0);
-	// 	const num x = -guj1i0*gui1j0 - guj0i1*gui0j1 - gdj1i0*gdi1j0 - gdj0i1*gdi0j1;
-	// 	const num y = -guj0i0*gui1j1 - guj1i1*gui0j0 - gdj0i0*gdi1j1 - gdj1i1*gdi0j0;
-	// 	m->j2j2[bb + num_b2b2*t]   += pre*((gui0i1 - gui1i0 + gdi0i1 - gdi1i0)*(guj0j1 - guj1j0 + gdj0j1 - gdj1j0) + x - y);
-	// 	m->js2js2[bb + num_b2b2*t] += pre*((gui0i1 - gui1i0 - gdi0i1 + gdi1i0)*(guj0j1 - guj1j0 - gdj0j1 + gdj1j0) + x - y);
-	// 	m->k2k2[bb + num_b2b2*t]   += pre*((gui0i1 + gui1i0 + gdi0i1 + gdi1i0)*(guj0j1 + guj1j0 + gdj0j1 + gdj1j0) + x + y);
-	// 	m->ks2ks2[bb + num_b2b2*t] += pre*((gui0i1 + gui1i0 - gdi0i1 - gdi1i0)*(guj0j1 + guj1j0 - gdj0j1 - gdj1j0) + x + y);
-	// }
-	// }
-	// }
 
 	// nematic correlator measurements, t > 0
 	if (meas_nematic_corr)
