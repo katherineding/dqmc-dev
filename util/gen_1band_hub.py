@@ -194,7 +194,7 @@ def create_1(filename=None, overwrite=False, seed=None,
 
     # my definition: Bonds defined by two hopping steps
     # Keep track of intermediate point!
-    hop2ps = 6 if tp != 0.0 else 28  # 2-hop-bonds per site
+    hop2ps = 28 if tp != 0.0 else 6  # 2-hop-bonds per site
     num_hop2 = hop2ps*N  # total 2-hop-bonds in cluster
     hop2s = np.zeros((3, num_hop2), dtype=np.int32)
     for iy in range(Ny):
@@ -230,7 +230,7 @@ def create_1(filename=None, overwrite=False, seed=None,
             hop2s[1, i + 5*N] = i             # i1 = i                -
             hop2s[2, i + 5*N] = ix + Nx*iy1   # i2 = i + y
 
-            if b2ps == 28:
+            if hop2ps == 28:
                 # t*t' terms: NN + NNN or NNN + NN
                 hop2s[0, i + 6*N] = i             # i0 = i            
                 hop2s[1, i + 6*N] = ix1 + Nx*iy   # i1 = i + x          /
@@ -310,7 +310,7 @@ def create_1(filename=None, overwrite=False, seed=None,
 
                 hop2s[0, i + 25*N] = ix  + Nx*iy1  # i0 = i + y            
                 hop2s[1, i + 25*N] = ix1 + Nx*iy   # i1 = i + x        \/
-                hop2s[2, i + 25*N] = ix2 + Nx*iy2  # i2 = i + 2x + y   
+                hop2s[2, i + 25*N] = ix2 + Nx*iy1  # i2 = i + 2x + y   
                 #------------------
                 hop2s[0, i + 26*N] = i             # i0 = i              /   
                 hop2s[1, i + 26*N] = ix1 + Nx*iy1  # i1 = i + x + y     / 
@@ -318,7 +318,7 @@ def create_1(filename=None, overwrite=False, seed=None,
                 #------------------
                 hop2s[0, i + 27*N] = ix2 + Nx*iy    # i0 = i + 2x       \
                 hop2s[1, i + 27*N] = ix1 + Nx*iy1   # i1 = i + x + y     \ 
-                hop2s[2, i + 27*N] = ix  + Nx*iy2   # i2 = i + 2y              
+                hop2s[2, i + 27*N] = ix  + Nx*iy2   # i2 = i + 2y
 
 
     # 2-hop 2-hop mapping
