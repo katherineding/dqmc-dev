@@ -337,28 +337,28 @@ def create_1(filename=None, overwrite=False, seed=None,
 
     # bond 2-hop mapping
     num_b_hop2 = bps*hop2ps*N if trans_sym else num_b*num_hop2
-    map_b_hop2 = np.zeros((num_b, num_hop2), dtype=np.int32)
+    map_b_hop2 = np.zeros((num_hop2, num_b), dtype=np.int32)
     degen_b_hop2 = np.zeros(num_b_hop2, dtype = np.int32)
-    for j in range(N):
-        for i in range(N):
-            k = map_ij[j, i]
-            for jb in range(bps):
-                for ib in range(hop2ps):
-                    kk = k + num_ij*(ib + hop2ps*jb)
-                    map_b_hop2[j + N*jb, i + N*ib] = kk
-                    degen_b_hop2[kk] += 1
-    assert num_b_hop2 == map_b_hop2.max() + 1
-
-    # 2-hop bond mapping
-    num_hop2_b = hop2ps*bps*N if trans_sym else num_hop2*num_b
-    map_hop2_b = np.zeros((num_hop2, num_b), dtype=np.int32)
-    degen_hop2_b = np.zeros(num_hop2_b, dtype = np.int32)
     for j in range(N):
         for i in range(N):
             k = map_ij[j, i]
             for jb in range(hop2ps):
                 for ib in range(bps):
                     kk = k + num_ij*(ib + bps*jb)
+                    map_b_hop2[j + N*jb, i + N*ib] = kk
+                    degen_b_hop2[kk] += 1
+    assert num_b_hop2 == map_b_hop2.max() + 1
+
+    # 2-hop bond mapping
+    num_hop2_b = hop2ps*bps*N if trans_sym else num_hop2*num_b
+    map_hop2_b = np.zeros((num_b, num_hop2), dtype=np.int32)
+    degen_hop2_b = np.zeros(num_hop2_b, dtype = np.int32)
+    for j in range(N):
+        for i in range(N):
+            k = map_ij[j, i]
+            for jb in range(bps):
+                for ib in range(hop2ps):
+                    kk = k + num_ij*(ib + hop2ps*jb)
                     map_hop2_b[j + N*jb, i + N*ib] = kk
                     degen_hop2_b[kk] += 1
     assert num_hop2_b == map_hop2_b.max() + 1
