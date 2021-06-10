@@ -401,10 +401,14 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 			 			   (2 - gdi0i0 - gdi1i1) * (pui0i1 * gui1i0 - pui1i0 * gui0i1);
 			num _wick_j = - puj1j0*guj0j1 + puj0j1*guj1j0 - pdj1j0*gdj0j1 + pdj0j1*gdj1j0;
 
-			num t1 = ( (delta_i0j1 - guj1i0) * gui0j0 + (delta_i1j1 - guj1i1) * gui1j0 ) * pdi0i1 * puj0j1 * (gdi0i1 - gdi1i0);
-			num t2 = ( (delta_i0j0 - guj0i0) * gui0j1 + (delta_i1j0 - guj0i1) * gui1j1 ) * pdi1i0 * puj1j0 * (gdi1i0 - gdi0i1);
-			num t3 = ( (delta_i0j1 - gdj1i0) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi1j0 ) * pui0i1 * pdj0j1 * (gui0i1 - gui1i0);
-			num t4 = ( (delta_i0j0 - gdj0i0) * gdi0j1 + (delta_i1j0 - gdj0i1) * gdi1j1 ) * pui1i0 * pdj1j0 * (gui1i0 - gui0i1);
+			num t1 = ( (delta_i0j1 - guj1i0) * gui0j0 + (delta_i1j1 - guj1i1) * gui1j0 ) * 
+				puj0j1 * (pdi1i0 * gdi0i1 - pdi0i1 * gdi1i0);
+			num t2 = ( (delta_i0j0 - guj0i0) * gui0j1 + (delta_i1j0 - guj0i1) * gui1j1 ) * 
+				puj1j0 * (pdi0i1 * gdi1i0 - pdi1i0 * gdi0i1);
+			num t3 = ( (delta_i0j1 - gdj1i0) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi1j0 ) * 
+				pdj0j1 * (pui1i0 * gui0i1 - pui0i1 * gui1i0);
+			num t4 = ( (delta_i0j0 - gdj0i0) * gdi0j1 + (delta_i1j0 - gdj0i1) * gdi1j1 ) * 
+				pdj1j0 * (pui0i1 * gui1i0 - pui1i0 * gui0i1);
 			num t5 = (2 - gui0i0 - gui1i1) * 
 				(+pdi0i1 * pdj0j1 * (delta_i0j1 - gdj1i0) * gdi1j0 
 				 -pdi0i1 * pdj1j0 * (delta_i0j0 - gdj0i0) * gdi1j1
@@ -976,15 +980,19 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 		}
 		if (meas_thermal){
 
-			//trying to do this the clever way
+			//jn(i0i1)j(j0j1): 6 fermion product, 2 phases, t > 0
 			num _wick_jn = (2 - gui0i0 - gui1i1) * (pdi0i1 * gdi1i0 - pdi1i0 * gdi0i1) + 
 			 			   (2 - gdi0i0 - gdi1i1) * (pui0i1 * gui1i0 - pui1i0 * gui0i1);
 			num _wick_j = - puj1j0*guj0j1 + puj0j1*guj1j0 - pdj1j0*gdj0j1 + pdj0j1*gdj1j0;
 
-			num t1 = ( (delta_i0j1 - guj1i0) * gui0j0 + (delta_i1j1 - guj1i1) * gui1j0 ) * pdi0i1 * puj0j1 * (gdi0i1 - gdi1i0);
-			num t2 = ( (delta_i0j0 - guj0i0) * gui0j1 + (delta_i1j0 - guj0i1) * gui1j1 ) * pdi1i0 * puj1j0 * (gdi1i0 - gdi0i1);
-			num t3 = ( (delta_i0j1 - gdj1i0) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi1j0 ) * pui0i1 * pdj0j1 * (gui0i1 - gui1i0);
-			num t4 = ( (delta_i0j0 - gdj0i0) * gdi0j1 + (delta_i1j0 - gdj0i1) * gdi1j1 ) * pui1i0 * pdj1j0 * (gui1i0 - gui0i1);
+			num t1 = ( (delta_i0j1 - guj1i0) * gui0j0 + (delta_i1j1 - guj1i1) * gui1j0 ) * 
+				puj0j1 * (pdi1i0 * gdi0i1 - pdi0i1 * gdi1i0);
+			num t2 = ( (delta_i0j0 - guj0i0) * gui0j1 + (delta_i1j0 - guj0i1) * gui1j1 ) * 
+				puj1j0 * (pdi0i1 * gdi1i0 - pdi1i0 * gdi0i1);
+			num t3 = ( (delta_i0j1 - gdj1i0) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi1j0 ) * 
+				pdj0j1 * (pui1i0 * gui0i1 - pui0i1 * gui1i0);
+			num t4 = ( (delta_i0j0 - gdj0i0) * gdi0j1 + (delta_i1j0 - gdj0i1) * gdi1j1 ) * 
+				pdj1j0 * (pui0i1 * gui1i0 - pui1i0 * gui0i1);
 			num t5 = (2-gui0i0-gui1i1) * 
 				(+pdi0i1 * pdj0j1 * (delta_i0j1 - gdj1i0) * gdi1j0 
 				 -pdi0i1 * pdj1j0 * (delta_i0j0 - gdj0i0) * gdi1j1
@@ -1017,7 +1025,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 
 			// const num t44 =  pui1i0 * pdj1j0 * (-gui0i1) * ( (delta_i0j0 - gdj0i0) * gdi0j1 + (delta_i1j0 - gdj0i1) * gdi1j1 );
 			// const num t34 = -pui0i1 * pdj1j0 * (-gui1i0) * ( (delta_i0j0 - gdj0i0) * gdi0j1 + (delta_i1j0 - gdj0i1) * gdi1j1 );
-
+			//j(i0i1)jn(j0j1), 6 fermion product, 2 phases, t > 0
 			m->new_jnj[bb + num_bb*t] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
 
 			_wick_jn = (2 - guj0j0 - guj1j1) * (pdj0j1 * gdj1j0 - pdj1j0 * gdj0j1) + 
