@@ -194,6 +194,7 @@ def create_1(filename=None, overwrite=False, seed=None,
 
     # my definition: Bonds defined by two hopping steps
     # Keep track of intermediate point!
+    # TODO see if bonds 14 and 16 etc are not equivalent b/c start/end points changed...
     hop2ps = 28 if tp != 0.0 else 6  # 2-hop-bonds per site
     num_hop2 = hop2ps*N  # total 2-hop-bonds in cluster
     hop2s = np.zeros((3, num_hop2), dtype=np.int32)
@@ -441,7 +442,8 @@ def create_1(filename=None, overwrite=False, seed=None,
                     mx = (ix + jx)/2
                     my = (iy + jy)/2
                     phi[jjx + Nx*jjy, ix + Nx*iy] = \
-                        -alpha*my*dx + beta*mx*dy - beta*offset_x*jy + alpha*offset_y*jx - alpha*offset_x*offset_y
+                        -alpha*my*dx + beta*mx*dy - beta*offset_x*jy \
+                        + alpha*offset_y*jx - alpha*offset_x*offset_y
     peierls = np.exp(2j*np.pi*(nflux/(Ny*Nx))*phi)
 
     if dtype_num == np.complex:
@@ -618,7 +620,7 @@ def create_1(filename=None, overwrite=False, seed=None,
                 f["meas_uneqlt"]["jjn"] = np.zeros(num_bb2*L, dtype=dtype_num)
                 f["meas_uneqlt"]["jnj"] = np.zeros(num_b2b*L, dtype=dtype_num)
                 f["meas_uneqlt"]["jnjn"] = np.zeros(num_bb*L, dtype=dtype_num)
-                #had to name things "new_" since wen already used jjn, jnj name for something else
+                #had to name things "new_" since wen already used jjn, jnj name 
                 f["meas_uneqlt"]["new_jjn"] = np.zeros(num_bb*L, dtype=dtype_num)
                 f["meas_uneqlt"]["new_jnj"] = np.zeros(num_bb*L, dtype=dtype_num)
             if meas_2bond_corr:
@@ -627,9 +629,10 @@ def create_1(filename=None, overwrite=False, seed=None,
                 f["meas_uneqlt"]["js2js2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
                 f["meas_uneqlt"]["k2k2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
                 f["meas_uneqlt"]["ks2ks2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
-            #currently this toggles 2hop-2hop (4 phase), bond-2hop and 2hop-bond (3 phase) type measurements
-            #may be smart to separate based on number of fermion operators 
-            #or based on number of phase factors to reduce unnecessary measurements
+            #currently this toggles 2hop-2hop (4 phase), bond-2hop and 
+            #2hop-bond (3 phase) type measurements. May be smart to separate based on 
+            #number of fermion operators or based on number of phase factors to 
+            #reduce unnecessary measurements
             if meas_hop2_corr:
                 f["meas_uneqlt"]["J2J2"] = np.zeros(num_hop2_hop2*L, dtype=dtype_num)
                 f["meas_uneqlt"]["J2jn"] = np.zeros(num_hop2_b*L, dtype=dtype_num)

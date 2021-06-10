@@ -819,8 +819,41 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 		const num gdj1i2 = Gd00[j1 + i2*N];
 		const num gdj1j0 = Gd00[j1 + j0*N];
 		const num gdj0j1 = Gd00[j0 + j1*N];
-		//TODO: implement J2jn
-		m->J2jn[bb]   += pre*(0);
+
+		const num guj0j0 = Gu00[j0 + j0*N];
+		const num guj1j1 = Gu00[j1 + j1*N];
+		const num gdj0j0 = Gd00[j0 + j0*N];
+		const num gdj1j1 = Gd00[j1 + j1*N];
+
+		//J2(i0i1i2)-jn(j0j1): 6 fermion product, 3 phases, t = 0
+		const num _wick_j = - pui1i0*pui2i1*gui0i2 + pui0i1*pui1i2*gui2i0 
+		                    - pdi1i0*pdi2i1*gdi0i2 + pdi0i1*pdi1i2*gdi2i0;
+		const num _wick_jn = (2 - guj0j0 - guj1j1) * (pdj0j1 * gdj1j0 - pdj1j0 * gdj0j1) + 
+		 		             (2 - gdj0j0 - gdj1j1) * (puj0j1 * guj1j0 - puj1j0 * guj0j1);
+
+		const num t5 = (2 - gdj0j0 - gdj1j1) * 
+			(+pui0i1 * pui1i2 *  puj0j1 * (delta_i0j1 - guj1i0) * gui2j0
+			 -pui0i1 * pui1i2 *  puj1j0 * (delta_i0j0 - guj0i0) * gui2j1
+			 -pui1i0 * pui2i1 *  puj0j1 * (delta_i2j1 - guj1i2) * gui0j0
+			 +pui1i0 * pui2i1 *  puj1j0 * (delta_i2j0 - guj0i2) * gui0j1);
+
+		const num t6 = (2 - guj0j0 - guj1j1) * 
+			(+pdi0i1 * pdi1i2 *  pdj0j1 * (delta_i0j1 - gdj1i0) * gdi2j0
+		     -pdi0i1 * pdi1i2 *  pdj1j0 * (delta_i0j0 - gdj0i0) * gdi2j1
+			 -pdi1i0 * pdi2i1 *  pdj0j1 * (delta_i2j1 - gdj1i2) * gdi0j0
+			 +pdi1i0 * pdi2i1 *  pdj1j0 * (delta_i2j0 - gdj0i2) * gdi0j1);
+
+		const num t1 = ( (delta_i0j0 - guj0i0) * gui2j0 + (delta_i0j1 - guj1i0) * gui2j1 ) * 
+			pui0i1 * pui1i2 *  (pdj1j0 * gdj0j1 - pdj0j1 * gdj1j0);
+		const num t2 = ( (delta_i2j0 - guj0i2) * gui0j0 + (delta_i2j1 - guj1i2) * gui0j1 ) * 
+			pui1i0 * pui2i1 *  (pdj0j1 * gdj1j0 - pdj1j0 * gdj0j1);
+		const num t3 = ( (delta_i0j0 - gdj0i0) * gdi2j0 + (delta_i0j1 - gdj1i0) * gdi2j1 ) * 
+			pdi0i1 * pdi1i2 *  (puj1j0 * guj0j1 - puj0j1 * guj1j0);
+		const num t4 = ( (delta_i2j0 - gdj0i2) * gdi0j0 + (delta_i2j1 - gdj1i2) * gdi0j1 ) * 
+			pdi1i0 * pdi2i1 *  (puj0j1 * guj1j0 - puj1j0 * guj0j1);
+
+		m->J2jn[bb] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
+		//J2(i0i1i2)- j(j0j1): 4 fermion product, 3 phases, t = 0
 		const num x = pui0i1*pui1i2*puj0j1*(delta_i0j1 - guj1i0)*gui2j0 +
 					  pui1i0*pui2i1*puj1j0*(delta_i2j0 - guj0i2)*gui0j1 +
 					  pdi0i1*pdi1i2*pdj0j1*(delta_i0j1 - gdj1i0)*gdi2j0 +
@@ -1464,8 +1497,41 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 		const num gdj1i2 = Gd0t_t[j1 + i2*N];
 		const num gdj1j0 = Gd00[j1 + j0*N];
 		const num gdj0j1 = Gd00[j0 + j1*N];
-		// TODO: implement J2jn
-		m->J2jn[bb + num_hop2_b*t]   += pre*(0);
+
+		const num guj0j0 = Gu00[j0 + j0*N];
+		const num guj1j1 = Gu00[j1 + j1*N];
+		const num gdj0j0 = Gd00[j0 + j0*N];
+		const num gdj1j1 = Gd00[j1 + j1*N];
+
+		//J2(i0i1i2)-jn(j0j1): 6 fermion product, 3 phases, t > 0
+		const num _wick_j = - pui1i0*pui2i1*gui0i2 + pui0i1*pui1i2*gui2i0 
+		                    - pdi1i0*pdi2i1*gdi0i2 + pdi0i1*pdi1i2*gdi2i0;
+		const num _wick_jn = (2 - guj0j0 - guj1j1) * (pdj0j1 * gdj1j0 - pdj1j0 * gdj0j1) + 
+		 		             (2 - gdj0j0 - gdj1j1) * (puj0j1 * guj1j0 - puj1j0 * guj0j1);
+
+		const num t5 = (2 - gdj0j0 - gdj1j1) * 
+			(+pui0i1 * pui1i2 * puj0j1 * ( - guj1i0) * gui2j0
+			 -pui0i1 * pui1i2 * puj1j0 * ( - guj0i0) * gui2j1
+			 -pui1i0 * pui2i1 * puj0j1 * ( - guj1i2) * gui0j0
+			 +pui1i0 * pui2i1 * puj1j0 * ( - guj0i2) * gui0j1);
+
+		const num t6 = (2 - guj0j0 - guj1j1) * 
+			(+pdi0i1 * pdi1i2 * pdj0j1 * ( - gdj1i0) * gdi2j0
+		     -pdi0i1 * pdi1i2 * pdj1j0 * ( - gdj0i0) * gdi2j1
+			 -pdi1i0 * pdi2i1 * pdj0j1 * ( - gdj1i2) * gdi0j0
+			 +pdi1i0 * pdi2i1 * pdj1j0 * ( - gdj0i2) * gdi0j1);
+
+		const num t1 = -( guj0i0 * gui2j0 + guj1i0 * gui2j1 ) * 
+			pui0i1 * pui1i2 * (pdj1j0 * gdj0j1 - pdj0j1 * gdj1j0);
+		const num t2 = -( guj0i2 * gui0j0 + guj1i2 * gui0j1 ) * 
+			pui1i0 * pui2i1 * (pdj0j1 * gdj1j0 - pdj1j0 * gdj0j1);
+		const num t3 = -( gdj0i0 * gdi2j0 + gdj1i0 * gdi2j1 ) * 
+			pdi0i1 * pdi1i2 * (puj1j0 * guj0j1 - puj0j1 * guj1j0);
+		const num t4 = -( gdj0i2 * gdi0j0 + gdj1i2 * gdi0j1 ) * 
+			pdi1i0 * pdi2i1 * (puj0j1 * guj1j0 - puj1j0 * guj0j1);
+
+		m->J2jn[bb + num_hop2_b*t] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
+		//J2(i0i1i2)- j(j0j1): 4 fermion product, 3 phases, t > 0
 		const num x = pui0i1*pui1i2*puj0j1*(- guj1i0)*gui2j0 +
 					  pui1i0*pui2i1*puj1j0*(- guj0i2)*gui0j1 +
 					  pdi0i1*pdi1i2*pdj0j1*(- gdj1i0)*gdi2j0 +
