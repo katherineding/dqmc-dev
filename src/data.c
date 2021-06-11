@@ -65,6 +65,7 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 	const int num_hop2 = sim->p.num_hop2, num_hop2_hop2 = sim->p.num_hop2_hop2, 
 	          num_hop2_b = sim->p.num_hop2_b, num_b_hop2 = sim->p.num_b_hop2;
 
+	//allocate memory here
 	sim->p.map_i         = my_calloc(N        * sizeof(int));
 	sim->p.map_ij        = my_calloc(N*N      * sizeof(int));
 	sim->p.bonds         = my_calloc(num_b*2  * sizeof(int));
@@ -80,6 +81,10 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 	sim->p.map_b_hop2         = my_calloc(num_b*num_hop2 * sizeof(int));
 	sim->p.peierlsu      = my_calloc(N*N      * sizeof(num));
 	sim->p.peierlsd      = my_calloc(N*N      * sizeof(num));
+	sim->p.pp_u      = my_calloc(N*num_b2/N * sizeof(num));
+	sim->p.pp_d      = my_calloc(N*num_b2/N * sizeof(num));
+	sim->p.ppr_u      = my_calloc(N*num_b2/N * sizeof(num));
+	sim->p.ppr_d      = my_calloc(N*num_b2/N * sizeof(num));
 //	sim->p.K             = my_calloc(N*N      * sizeof(double));
 //	sim->p.U             = my_calloc(num_i    * sizeof(double));
 	sim->p.degen_i       = my_calloc(num_i    * sizeof(int));
@@ -179,6 +184,10 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 	my_read(_int,    "/params/map_hop2_hop2",         sim->p.map_hop2_hop2);
 	my_read( , "/params/peierlsu", num_h5t,    sim->p.peierlsu);
 	my_read( , "/params/peierlsd", num_h5t,    sim->p.peierlsd);
+	my_read( , "/params/pp_u", num_h5t,    sim->p.pp_u);
+	my_read( , "/params/pp_d", num_h5t,    sim->p.pp_d);
+	my_read( , "/params/ppr_u", num_h5t,    sim->p.ppr_u);
+	my_read( , "/params/ppr_d", num_h5t,    sim->p.ppr_d);
 //	my_read(_double, "/params/K",              sim->p.K);
 //	my_read(_double, "/params/U",              sim->p.U);
 //	my_read(_double, "/params/dt",            &sim->p.dt);
@@ -460,6 +469,10 @@ void sim_data_free(const struct sim_data *sim)
 //	my_free(sim->p.K);
 	my_free(sim->p.peierlsd);
 	my_free(sim->p.peierlsu);
+	my_free(sim->p.pp_u);
+	my_free(sim->p.pp_d);
+	my_free(sim->p.ppr_u);
+	my_free(sim->p.ppr_d);
 	my_free(sim->p.map_b2b2);
 	my_free(sim->p.map_bb2);
 	my_free(sim->p.map_b2b);

@@ -7,6 +7,7 @@ import numpy as np
 from scipy.linalg import expm
 
 np.seterr(over="ignore")
+np.set_printoptions(precision=3)
 
 
 # http://xoroshiro.di.unimi.it/splitmix64.c
@@ -152,10 +153,9 @@ def create_1(filename=None, overwrite=False, seed=None,
                     degen_bb[kk] += 1
     assert num_bb == map_bb.max() + 1
 
-    # 2-bond definitions: Combines bonds defined by one and two hopping steps
-    # seperated from bond definitions because this is a later addition.
-    # It's also not needed for some measurements
-    b2ps = 12 if tp != 0.0 else 6  # 2-bonds per site
+    # 2-bond definition is modified -- NOT consistent with Wen's!
+    # Now only bonds defined by two hopping steps.
+    b2ps = 12 if tp != 0.0 else 4  # 2-bonds per site
     num_b2 = b2ps*N  # total 2-bonds in cluster
     bond2s = np.zeros((2, num_b2), dtype=np.int32)
     for iy in range(Ny):
@@ -165,32 +165,43 @@ def create_1(filename=None, overwrite=False, seed=None,
             ix1 = (ix + 1) % Nx
             iy2 = (iy + 2) % Ny
             ix2 = (ix + 2) % Nx
-            bond2s[0, i] = i            # i0 = i
-            bond2s[1, i] = ix1 + Nx*iy  # i1 = i + x
-            bond2s[0, i + N] = i            # i0 = i
-            bond2s[1, i + N] = ix + Nx*iy1  # i1 = i + y
-            bond2s[0, i + 2*N] = i             # i0 = i
-            bond2s[1, i + 2*N] = ix1 + Nx*iy1  # i1 = i + x + y
-            bond2s[0, i + 3*N] = ix1 + Nx*iy   # i0 = i + x
-            bond2s[1, i + 3*N] = ix + Nx*iy1   # i1 = i + y
-            bond2s[0, i + 4*N] = i             # i0 = i
-            bond2s[1, i + 4*N] = ix2 + Nx*iy  # i1 = i + 2x
-            bond2s[0, i + 5*N] = i            # i0 = i
-            bond2s[1, i + 5*N] = ix + Nx*iy2  # i1 = i + 2y
+            # one t^2 path + two t'^2 paths [0,22,23]
+            bond2s[0, i + 0*N] = i             # i0 = i
+            bond2s[1, i + 0*N] = ix2 + Nx*iy   # i1 = i + 2x   -- /\ \/
+            # one t^2 path + two t'^2 paths [1,24,25]
+            bond2s[0, i + 1*N] = i            # i0 = i       |  /  \
+            bond2s[1, i + 1*N] = ix + Nx*iy2  # i1 = i + 2y  |  \  /
+            #two t^2 paths [2,3]
+            bond2s[0, i + 2*N] = i             # i0 = i          _|   _ 
+            bond2s[1, i + 2*N] = ix1 + Nx*iy1  # i1 = i + x + y      | 
+            # two t^2 paths [4,5]
+            bond2s[0, i + 3*N] = ix1 + Nx*iy   # i0 = i + x     _
+            bond2s[1, i + 3*N] = ix + Nx*iy1   # i1 = i + y      |  |_
             if b2ps == 12:
-                bond2s[0, i + 6*N] = i             # i0 = i
-                bond2s[1, i + 6*N] = ix2 + Nx*iy1  # i1 = i + 2x + y
-                bond2s[0, i + 7*N] = i              # i0 = i
-                bond2s[1, i + 7*N] = ix1 + Nx*iy2   # i1 = i + x + 2y
-                bond2s[0, i + 8*N] = i             # i0 = i
-                bond2s[1, i + 8*N] = ix2 + Nx*iy2  # i1 = i + 2x + 2y
-                bond2s[0, i + 9*N] = ix2 + Nx*iy   # i0 = i + 2x
-                bond2s[1, i + 9*N] = ix + Nx*iy1   # i1 = i + y
-                bond2s[0, i + 10*N] = ix1 + Nx*iy   # i0 = i + x
-                bond2s[1, i + 10*N] = ix + Nx*iy2   # i1 = i + 2y
-                bond2s[0, i + 11*N] = ix2 + Nx*iy   # i0 = i + 2x
-                bond2s[1, i + 11*N] = ix + Nx*iy2   # i1 = i + 2y
-
+                #two t't paths [6,7]
+                bond2s[0, i + 4*N] = i             # i0 = i              _
+                bond2s[1, i + 4*N] = ix2 + Nx*iy1  # i1 = i + 2x + y _/ /
+                #two t't paths [8,9]
+                bond2s[0, i + 5*N] = i              # i0 = i           |   /
+                bond2s[1, i + 5*N] = ix1 + Nx*iy2   # i1 = i + x + 2y /   |
+                #two t't paths [10,11]
+                bond2s[0, i + 6*N] = ix2 + Nx*iy   # i0 = i + 2x _
+                bond2s[1, i + 6*N] = ix + Nx*iy1   # i1 = i + y   \  \_
+                #two t't paths [12,13]
+                bond2s[0, i + 7*N] = ix1 + Nx*iy   # i0 = i + x   |   \
+                bond2s[1, i + 7*N] = ix + Nx*iy2   # i1 = i + 2y   \   |
+                # four t't paths [14,15,16,17]
+                bond2s[0, i + 8*N] = i            # i0 = i      _  _   \  /
+                bond2s[1, i + 8*N] = ix + Nx*iy1  # i1 = i + y  /  \   -  -
+                # four t't paths [18,19,20,21]
+                bond2s[0, i + 9*N] = i            # i0 = i      |\ /| \| |/
+                bond2s[1, i + 9*N] = ix1 + Nx*iy  # i1 = i + x
+                #one t'^2 path [26]
+                bond2s[0, i + 10*N] = i             # i0 = i             /
+                bond2s[1, i + 10*N] = ix2 + Nx*iy2  # i1 = i + 2x + 2y  /
+                #one t'^2 path [27]
+                bond2s[0, i + 11*N] = ix2 + Nx*iy   # i0 = i + 2x   \
+                bond2s[1, i + 11*N] = ix + Nx*iy2   # i1 = i + 2y    \
 
     # my definition: Bonds defined by two hopping steps
     # Keep track of intermediate point!
@@ -215,8 +226,8 @@ def create_1(filename=None, overwrite=False, seed=None,
             hop2s[1, i + N] = ix + Nx*iy1  # i1 = i + y     |
             hop2s[2, i + N] = ix + Nx*iy2  # i2 = i + 2y    |
             #-----------------
-            hop2s[0, i + 2*N] = i             # i0 = i                |
-            hop2s[1, i + 2*N] = ix1 + Nx*iy   # i1 = i + x           -
+            hop2s[0, i + 2*N] = i             # i0 = i               _|
+            hop2s[1, i + 2*N] = ix1 + Nx*iy   # i1 = i + x           
             hop2s[2, i + 2*N] = ix1 + Nx*iy1  # i2 = i + x + y
 
             hop2s[0, i + 3*N] = i            # i0 = i               _  
@@ -227,15 +238,15 @@ def create_1(filename=None, overwrite=False, seed=None,
             hop2s[1, i + 4*N] = ix1 + Nx*iy1  # i1 = i + x + y         |
             hop2s[2, i + 4*N] = ix + Nx*iy1   # i2 = i + y
 
-            hop2s[0, i + 5*N] = ix1 + Nx*iy   # i0 = i + x           |
-            hop2s[1, i + 5*N] = i             # i1 = i                -
+            hop2s[0, i + 5*N] = ix1 + Nx*iy   # i0 = i + x           |_
+            hop2s[1, i + 5*N] = i             # i1 = i                
             hop2s[2, i + 5*N] = ix + Nx*iy1   # i2 = i + y
 
             if hop2ps == 28:
                 # t*t' terms: NN + NNN or NNN + NN
                 hop2s[0, i + 6*N] = i             # i0 = i            
-                hop2s[1, i + 6*N] = ix1 + Nx*iy   # i1 = i + x          /
-                hop2s[2, i + 6*N] = ix2 + Nx*iy1  # i2 = i + 2x + y    -
+                hop2s[1, i + 6*N] = ix1 + Nx*iy   # i1 = i + x         _/
+                hop2s[2, i + 6*N] = ix2 + Nx*iy1  # i2 = i + 2x + y    
 
                 hop2s[0, i + 7*N] = i             # i0 = i
                 hop2s[1, i + 7*N] = ix1 + Nx*iy1  # i1 = i + x + y     _
@@ -254,8 +265,8 @@ def create_1(filename=None, overwrite=False, seed=None,
                 hop2s[2, i + 10*N] = ix  + Nx*iy1   # i2 = i + y         \
 
                 hop2s[0, i + 11*N] = ix2 + Nx*iy    # i0 = i + 2x     
-                hop2s[1, i + 11*N] = ix1 + Nx*iy    # i1 = i + x       \
-                hop2s[2, i + 11*N] = ix  + Nx*iy1   # i2 = i + y        -
+                hop2s[1, i + 11*N] = ix1 + Nx*iy    # i1 = i + x       \_
+                hop2s[2, i + 11*N] = ix  + Nx*iy1   # i2 = i + y        
                 #------------------
                 hop2s[0, i + 12*N] = ix1 + Nx*iy    # i0 = i + x
                 hop2s[1, i + 12*N] = ix  + Nx*iy1   # i1 = i + y       |
@@ -297,21 +308,21 @@ def create_1(filename=None, overwrite=False, seed=None,
                 hop2s[1, i + 21*N] = i             # i1 = i            |/
                 hop2s[2, i + 21*N] = ix1 + Nx*iy1  # i2 = i + x + y     
                 #(t'^2) terms: NNN + NNN
-                hop2s[0, i + 22*N] = i              # i0 = i         
-                hop2s[1, i + 22*N] = ix1 + Nx*iy1   # i1 = i + x + y    \
-                hop2s[2, i + 22*N] = ix  + Nx*iy2   # i2 = i + 2y       /
+                hop2s[0, i + 22*N] = i             # i0 = i         
+                hop2s[1, i + 22*N] = ix1 + Nx*iy1  # i1 = i + x + y   /\
+                hop2s[2, i + 22*N] = ix2 + Nx*iy   # i2 = i + 2x        
 
-                hop2s[0, i + 23*N] = ix1 + Nx*iy   # i0 = i + x        /
-                hop2s[1, i + 23*N] = ix  + Nx*iy1  # i1 = i + y        \
-                hop2s[2, i + 23*N] = ix1 + Nx*iy2  # i2 = i + x + 2y    
+                hop2s[0, i + 23*N] = ix  + Nx*iy1  # i0 = i + y            
+                hop2s[1, i + 23*N] = ix1 + Nx*iy   # i1 = i + x        \/
+                hop2s[2, i + 23*N] = ix2 + Nx*iy1  # i2 = i + 2x + y   
                 #------------------
-                hop2s[0, i + 24*N] = i             # i0 = i         
-                hop2s[1, i + 24*N] = ix1 + Nx*iy1  # i1 = i + x + y   /\
-                hop2s[2, i + 24*N] = ix2 + Nx*iy   # i2 = i + 2x        
+                hop2s[0, i + 24*N] = i              # i0 = i         
+                hop2s[1, i + 24*N] = ix1 + Nx*iy1   # i1 = i + x + y    \
+                hop2s[2, i + 24*N] = ix  + Nx*iy2   # i2 = i + 2y       /
 
-                hop2s[0, i + 25*N] = ix  + Nx*iy1  # i0 = i + y            
-                hop2s[1, i + 25*N] = ix1 + Nx*iy   # i1 = i + x        \/
-                hop2s[2, i + 25*N] = ix2 + Nx*iy1  # i2 = i + 2x + y   
+                hop2s[0, i + 25*N] = ix1 + Nx*iy   # i0 = i + x        /
+                hop2s[1, i + 25*N] = ix  + Nx*iy1  # i1 = i + y        \
+                hop2s[2, i + 25*N] = ix1 + Nx*iy2  # i2 = i + x + 2y    
                 #------------------
                 hop2s[0, i + 26*N] = i             # i0 = i              /   
                 hop2s[1, i + 26*N] = ix1 + Nx*iy1  # i1 = i + x + y     / 
@@ -321,6 +332,22 @@ def create_1(filename=None, overwrite=False, seed=None,
                 hop2s[1, i + 27*N] = ix1 + Nx*iy1   # i1 = i + x + y     \ 
                 hop2s[2, i + 27*N] = ix  + Nx*iy2   # i2 = i + 2y
 
+    #how bond2s and hop2s are related
+    bond_hop_dict = {}
+    if b2ps == 4:
+        bond_hop_dict[0] = [0]
+        bond_hop_dict[1] = [1]
+        bond_hop_dict[2] = [2,3]
+        bond_hop_dict[3] = [4,5]
+    else:
+        bond_hop_dict[0] = [0,22,23];
+        bond_hop_dict[1] = [1,24,25];
+        for i in range(2,8):
+            bond_hop_dict[i] = [2*i-2,2*i-1];
+        bond_hop_dict[8] = [14,15,16,17]
+        bond_hop_dict[9] = [18,19,20,21]
+        bond_hop_dict[10] = [26]
+        bond_hop_dict[11] = [27]
 
     # 2-hop 2-hop mapping
     num_hop2_hop2 = hop2ps*hop2ps*N if trans_sym else num_hop2*num_hop2
@@ -446,6 +473,31 @@ def create_1(filename=None, overwrite=False, seed=None,
                         + alpha*offset_y*jx - alpha*offset_x*offset_y
     peierls = np.exp(2j*np.pi*(nflux/(Ny*Nx))*phi)
 
+    thermal_phases = np.ones((N, b2ps),dtype=np.complex)
+    for i in range(N):
+        for btype in range(b2ps):
+            i0 = bond2s[0, i + btype*N]
+            i2 = bond2s[1, i + btype*N]
+            pp = 0; 
+            #list of paths corresponding to this bond
+            i1_list = bond_hop_dict[btype]
+            #two bonds need manual weighting when when t' != 0: 
+            if b2ps == 12 and (btype == 0 or btype == 1):
+                i1 = hop2s[1, i + i1_list[0]*N]
+                #print(f"i = {i}, btype = {btype}, path ({i0},{i1},{i2})")
+                pp += peierls[i0,i1] * peierls[i1,i2]
+                for i1type in i1_list[1:]:
+                    i1 = hop2s[1, i + i1type*N]
+                    pp += tp*tp*peierls[i0,i1] * peierls[i1,i2]
+                # print(pp)
+            #general case
+            else:
+                for i1type in i1_list:
+                    i1 = hop2s[1, i + i1type*N]
+                    pp += peierls[i0,i1] * peierls[i1,i2]
+            thermal_phases[i,btype] = pp
+                
+
     if dtype_num == np.complex:
         Ku = -tij * peierls
         Kd = -tij * peierls
@@ -455,6 +507,9 @@ def create_1(filename=None, overwrite=False, seed=None,
         Kd = -tij.real
         assert np.max(np.abs(peierls.imag)) < 1e-10
         peierls = peierls.real
+
+        assert np.max(np.abs(thermal_phases.imag)) < 1e-10
+        thermal_phases = thermal_phases.real
 
     for i in range(Ny*Nx):
         Ku[i, i] -= mu
@@ -518,6 +573,10 @@ def create_1(filename=None, overwrite=False, seed=None,
         f["params"]["map_hop2_hop2"] = map_hop2_hop2
         f["params"]["peierlsu"] = peierls
         f["params"]["peierlsd"] = peierls
+        f["params"]["pp_u"] = thermal_phases
+        f["params"]["pp_d"] = thermal_phases
+        f["params"]["ppr_u"] = thermal_phases.conj()
+        f["params"]["ppr_d"] = thermal_phases.conj()
         f["params"]["Ku"] = Ku
         f["params"]["Kd"] = Kd
         f["params"]["U"] = U_i

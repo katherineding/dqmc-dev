@@ -9,6 +9,7 @@ struct params {
 	int *bonds, *bond2s, *map_bs, *map_bb, *map_b2b, *map_bb2, *map_b2b2;
 	int *hop2s, *map_hop2_b, *map_b_hop2, *map_hop2_hop2;
 	num *peierlsu, *peierlsd;
+	num *pp_u, *pp_d, *ppr_u, *ppr_d;
 //	double *K, *U;
 //	double dt;
 
