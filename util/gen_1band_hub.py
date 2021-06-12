@@ -473,7 +473,7 @@ def create_1(filename=None, overwrite=False, seed=None,
                         + alpha*offset_y*jx - alpha*offset_x*offset_y
     peierls = np.exp(2j*np.pi*(nflux/(Ny*Nx))*phi)
 
-    thermal_phases = np.ones((N, b2ps),dtype=np.complex)
+    thermal_phases = np.ones((b2ps, N),dtype=np.complex)
     for i in range(N):
         for btype in range(b2ps):
             i0 = bond2s[0, i + btype*N]
@@ -495,7 +495,7 @@ def create_1(filename=None, overwrite=False, seed=None,
                 for i1type in i1_list:
                     i1 = hop2s[1, i + i1type*N]
                     pp += peierls[i0,i1] * peierls[i1,i2]
-            thermal_phases[i,btype] = pp
+            thermal_phases[btype,i] = pp
                 
 
     if dtype_num == np.complex:
@@ -676,15 +676,20 @@ def create_1(filename=None, overwrite=False, seed=None,
                 f["meas_uneqlt"]["ksks"] = np.zeros(num_bb*L, dtype=dtype_num)
             #thermal is subset of bond-bond type measurements
             if meas_thermal:
-                f["meas_uneqlt"]["jjn"] = np.zeros(num_bb2*L, dtype=dtype_num)
-                f["meas_uneqlt"]["jnj"] = np.zeros(num_b2b*L, dtype=dtype_num)
+                f["meas_uneqlt"]["j2jn"] = np.zeros(num_b2b*L, dtype=dtype_num) #new
+                f["meas_uneqlt"]["jnj2"] = np.zeros(num_bb2*L, dtype=dtype_num) #new
                 f["meas_uneqlt"]["jnjn"] = np.zeros(num_bb*L, dtype=dtype_num)
                 #had to name things "new_" since wen already used jjn, jnj name 
                 f["meas_uneqlt"]["new_jjn"] = np.zeros(num_bb*L, dtype=dtype_num)
                 f["meas_uneqlt"]["new_jnj"] = np.zeros(num_bb*L, dtype=dtype_num)
             if meas_2bond_corr:
                 f["meas_uneqlt"]["pair_b2b2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
+                #use j2j2 should correspond to J2J2 results after summation
                 f["meas_uneqlt"]["j2j2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
+                #use j2j should correspond to J2j results after summation
+                f["meas_uneqlt"]["j2j"] = np.zeros(num_b2b*L, dtype=dtype_num) #new
+                #use jj2 should correspond to jJ2 results after summation
+                f["meas_uneqlt"]["jj2"] = np.zeros(num_bb2*L, dtype=dtype_num) #new
                 f["meas_uneqlt"]["js2js2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
                 f["meas_uneqlt"]["k2k2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
                 f["meas_uneqlt"]["ks2ks2"] = np.zeros(num_b2b2*L, dtype=dtype_num)

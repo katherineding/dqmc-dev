@@ -575,6 +575,81 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	}
 	}
 
+	// measurement of j2-j2: 4 fermion product, 4 phases, t = 0
+	// this is the ``clever'' way to do it
+	const int b2ps = num_b2/N;
+	if (meas_2bond_corr)
+	for (int c = 0; c < num_b2; c++) {
+		const int jtype = c / N;
+		const int j = c % N;
+		const num ppuj0j2 = p->pp_u[ j + N*jtype];
+		const num ppuj2j0 = p->ppr_u[j + N*jtype];
+		const num ppdj0j2 = p->pp_d[ j + N*jtype];
+		const num ppdj2j0 = p->ppr_d[j + N*jtype];
+		// printf("c = %d, jtype = %d,j = %d, ", c, jtype,j );
+		// printf("pj0j1*pj1j2 = %f \n", (double) ppuj0j2);
+		// fflush(stdout); 
+		const int j0 = p->bond2s[c];
+		const int j2 = p->bond2s[c + num_b2];
+	for (int b = 0; b < num_b2; b++) {
+		const int itype = b / N;
+		const int i = b % N;
+		const num ppui0i2 = p->pp_u[ i + N*itype];
+		const num ppui2i0 = p->ppr_u[i + N*itype];
+		const num ppdi0i2 = p->pp_d[ i + N*itype];
+		const num ppdi2i0 = p->ppr_d[i + N*itype];
+		const int i0 = p->bond2s[b];
+		const int i2 = p->bond2s[b + num_b2];
+
+		const int bb = p->map_b2b2[b + c*num_b2];
+		const num pre = phase / p->degen_b2b2[bb];
+
+		const int delta_i0j0 = (i0 == j0);
+		const int delta_i2j0 = (i2 == j0);
+		const int delta_i0j2 = (i0 == j2);
+		const int delta_i2j2 = (i2 == j2);
+		// const int delta_i0i1 = 0;
+		// const int delta_j0j1 = 0;
+		const num gui2i0 = Gu00[i2 + i0*N];
+		const num gui0i2 = Gu00[i0 + i2*N];
+		const num gui0j0 = Gu00[i0 + j0*N];
+		const num gui2j0 = Gu00[i2 + j0*N];
+		const num gui0j2 = Gu00[i0 + j2*N];
+		const num gui2j2 = Gu00[i2 + j2*N];
+		const num guj0i0 = Gu00[j0 + i0*N];
+		const num guj2i0 = Gu00[j2 + i0*N];
+		const num guj0i2 = Gu00[j0 + i2*N];
+		const num guj2i2 = Gu00[j2 + i2*N];
+		const num guj2j0 = Gu00[j2 + j0*N];
+		const num guj0j2 = Gu00[j0 + j2*N];
+		const num gdi2i0 = Gd00[i2 + i0*N];
+		const num gdi0i2 = Gd00[i0 + i2*N];
+		const num gdi0j0 = Gd00[i0 + j0*N];
+		const num gdi2j0 = Gd00[i2 + j0*N];
+		const num gdi0j2 = Gd00[i0 + j2*N];
+		const num gdi2j2 = Gd00[i2 + j2*N];
+		const num gdj0i0 = Gd00[j0 + i0*N];
+		const num gdj2i0 = Gd00[j2 + i0*N];
+		const num gdj0i2 = Gd00[j0 + i2*N];
+		const num gdj2i2 = Gd00[j2 + i2*N];
+		const num gdj2j0 = Gd00[j2 + j0*N];
+		const num gdj0j2 = Gd00[j0 + j2*N];
+
+		const num x = ppui0i2*ppuj0j2*(delta_i0j2 - guj2i0)*gui2j0 +
+					  ppui2i0*ppuj2j0*(delta_i2j0 - guj0i2)*gui0j2 +
+					  ppdi0i2*ppdj0j2*(delta_i0j2 - gdj2i0)*gdi2j0 +
+					  ppdi2i0*ppdj2j0*(delta_i2j0 - gdj0i2)*gdi0j2;
+		const num y = ppui0i2*ppuj2j0*(delta_i0j0 - guj0i0)*gui2j2 +
+		              ppui2i0*ppuj0j2*(delta_i2j2 - guj2i2)*gui0j0 +
+		              ppdi0i2*ppdj2j0*(delta_i0j0 - gdj0i0)*gdi2j2 +
+		              ppdi2i0*ppdj0j2*(delta_i2j2 - gdj2i2)*gdi0j0;
+		m->j2j2[bb] += pre*((ppui2i0*gui0i2 - ppui0i2*gui2i0 + ppdi2i0*gdi0i2 - ppdi0i2*gdi2i0)
+		                   *(ppuj2j0*guj0j2 - ppuj0j2*guj2j0 + ppdj2j0*gdj0j2 - ppdj0j2*gdj2j0) 
+		                   + x - y);
+
+	}
+	}
+
 	// measurement of J2-J2: 4 fermion product, 4 phases, t = 0
 	if (meas_hop2_corr)
 	for (int c = 0; c < num_hop2; c++) {
@@ -1234,6 +1309,89 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 								+tCA+tCB+tCC+tCD
 								+tDA+tDB+tDC+tDD);
 		}
+
+	}
+	}
+	}
+
+	// measurement of j2-j2: 4 fermion product, 4 phases, t = 0
+	// this is the ``clever'' way to do it
+	if (meas_2bond_corr)
+	for (int t = 1; t < L; t++) {
+		const num *const restrict Gu0t_t = Gu0t + N*N*t;
+		const num *const restrict Gutt_t = Gutt + N*N*t;
+		const num *const restrict Gut0_t = Gut0 + N*N*t;
+		const num *const restrict Gd0t_t = Gd0t + N*N*t;
+		const num *const restrict Gdtt_t = Gdtt + N*N*t;
+		const num *const restrict Gdt0_t = Gdt0 + N*N*t;
+	for (int c = 0; c < num_b2; c++) {
+		const int jtype = c / N;
+		const int j = c % N;
+		const num ppuj0j2 = p->pp_u[ j + N*jtype];
+		const num ppuj2j0 = p->ppr_u[j + N*jtype];
+		const num ppdj0j2 = p->pp_d[ j + N*jtype];
+		const num ppdj2j0 = p->ppr_d[j + N*jtype];
+		// printf("c = %d, jtype = %d,j = %d, ", c, jtype,j );
+		// printf("pj0j1*pj1j2 = %f \n", (double) ppuj0j2);
+		// fflush(stdout); 
+		const int j0 = p->bond2s[c];
+		const int j2 = p->bond2s[c + num_b2];
+	for (int b = 0; b < num_b2; b++) {
+		const int itype = b / N;
+		const int i = b % N;
+		const num ppui0i2 = p->pp_u[ i + N*itype];
+		const num ppui2i0 = p->ppr_u[i + N*itype];
+		const num ppdi0i2 = p->pp_d[ i + N*itype];
+		const num ppdi2i0 = p->ppr_d[i + N*itype];
+		const int i0 = p->bond2s[b];
+		const int i2 = p->bond2s[b + num_b2];
+
+		const int bb = p->map_b2b2[b + c*num_b2];
+		const num pre = phase / p->degen_b2b2[bb];
+
+		const int delta_i0j0 = 0;
+		const int delta_i2j0 = 0;
+		const int delta_i0j2 = 0;
+		const int delta_i2j2 = 0;
+		// const int delta_i0i1 = 0;
+		// const int delta_j0j1 = 0;
+		const num gui2i0 = Gutt_t[i2 + i0*N];
+		const num gui0i2 = Gutt_t[i0 + i2*N];
+		const num gui0j0 = Gut0_t[i0 + j0*N];
+		const num gui2j0 = Gut0_t[i2 + j0*N];
+		const num gui0j2 = Gut0_t[i0 + j2*N];
+		const num gui2j2 = Gut0_t[i2 + j2*N];
+		const num guj0i0 = Gu0t_t[j0 + i0*N];
+		const num guj2i0 = Gu0t_t[j2 + i0*N];
+		const num guj0i2 = Gu0t_t[j0 + i2*N];
+		const num guj2i2 = Gu0t_t[j2 + i2*N];
+		const num guj2j0 = Gu00[j2 + j0*N];
+		const num guj0j2 = Gu00[j0 + j2*N];
+		const num gdi2i0 = Gdtt_t[i2 + i0*N];
+		const num gdi0i2 = Gdtt_t[i0 + i2*N];
+		const num gdi0j0 = Gdt0_t[i0 + j0*N];
+		const num gdi2j0 = Gdt0_t[i2 + j0*N];
+		const num gdi0j2 = Gdt0_t[i0 + j2*N];
+		const num gdi2j2 = Gdt0_t[i2 + j2*N];
+		const num gdj0i0 = Gd0t_t[j0 + i0*N];
+		const num gdj2i0 = Gd0t_t[j2 + i0*N];
+		const num gdj0i2 = Gd0t_t[j0 + i2*N];
+		const num gdj2i2 = Gd0t_t[j2 + i2*N];
+		const num gdj2j0 = Gd00[j2 + j0*N];
+		const num gdj0j2 = Gd00[j0 + j2*N];
+
+		const num x = ppui0i2*ppuj0j2*(delta_i0j2 - guj2i0)*gui2j0 +
+					  ppui2i0*ppuj2j0*(delta_i2j0 - guj0i2)*gui0j2 +
+					  ppdi0i2*ppdj0j2*(delta_i0j2 - gdj2i0)*gdi2j0 +
+					  ppdi2i0*ppdj2j0*(delta_i2j0 - gdj0i2)*gdi0j2;
+		const num y = ppui0i2*ppuj2j0*(delta_i0j0 - guj0i0)*gui2j2 +
+		              ppui2i0*ppuj0j2*(delta_i2j2 - guj2i2)*gui0j0 +
+		              ppdi0i2*ppdj2j0*(delta_i0j0 - gdj0i0)*gdi2j2 +
+		              ppdi2i0*ppdj0j2*(delta_i2j2 - gdj2i2)*gdi0j0;
+		m->j2j2[bb + num_b2b2*t] += 
+			pre*((ppui2i0*gui0i2 - ppui0i2*gui2i0 + ppdi2i0*gdi0i2 - ppdi0i2*gdi2i0)
+		        *(ppuj2j0*guj0j2 - ppuj0j2*guj2j0 + ppdj2j0*gdj0j2 - ppdj0j2*gdj2j0) 
+		        + x - y);
 
 	}
 	}
