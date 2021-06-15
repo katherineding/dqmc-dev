@@ -510,6 +510,7 @@ def create_1(filename=None, overwrite=False, seed=None,
 
         assert np.max(np.abs(thermal_phases.imag)) < 1e-10
         thermal_phases = thermal_phases.real
+    print(thermal_phases.dtype,thermal_phases.shape)
 
     for i in range(Ny*Nx):
         Ku[i, i] -= mu
@@ -573,10 +574,10 @@ def create_1(filename=None, overwrite=False, seed=None,
         f["params"]["map_hop2_hop2"] = map_hop2_hop2
         f["params"]["peierlsu"] = peierls
         f["params"]["peierlsd"] = peierls
-        f["params"]["pp_u"] = thermal_phases
-        f["params"]["pp_d"] = thermal_phases
-        f["params"]["ppr_u"] = thermal_phases.conj()
-        f["params"]["ppr_d"] = thermal_phases.conj()
+        f["params"]["pp_u"] = thermal_phases.conj()
+        f["params"]["pp_d"] = thermal_phases.conj()
+        f["params"]["ppr_u"] = thermal_phases
+        f["params"]["ppr_d"] = thermal_phases
         f["params"]["Ku"] = Ku
         f["params"]["Kd"] = Kd
         f["params"]["U"] = U_i
