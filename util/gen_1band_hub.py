@@ -217,6 +217,9 @@ def create_1(filename=None, overwrite=False, seed=None,
             iy2 = (iy + 2) % Ny
             ix2 = (ix + 2) % Nx
 
+            iym1 = (iy - 1) % Ny
+            ixm1 = (ix - 1) % Nx
+
             #t^2 terms: NN + NN
             hop2s[0, i] = i             # i0 = i
             hop2s[1, i] = ix1 + Nx*iy   # i1 = i + x      --
@@ -270,11 +273,11 @@ def create_1(filename=None, overwrite=False, seed=None,
                 #------------------
                 hop2s[0, i + 12*N] = ix1 + Nx*iy    # i0 = i + x
                 hop2s[1, i + 12*N] = ix  + Nx*iy1   # i1 = i + y       |
-                hop2s[2, i + 12*N] = ix  + Nx*iy2   # i2 = i + 2y       \
+                hop2s[2, i + 12*N] = ix + Nx*iy2    # i2 = i + 2y       \
 
                 hop2s[0, i + 13*N] = ix1 + Nx*iy     # i0 = i + x
                 hop2s[1, i + 13*N] = ix1 + Nx*iy1    # i1 = i + x + y     \ 
-                hop2s[2, i + 13*N] = ix  + Nx*iy2    # i2 = i + 2y         |
+                hop2s[2, i + 13*N] = ix + Nx*iy2     # i2 = i + 2y         |
                 #------------------
                 hop2s[0, i + 14*N] = i             # i0 = i         
                 hop2s[1, i + 14*N] = ix1 + Nx*iy1  # i1 = i + x + y     _
@@ -284,13 +287,13 @@ def create_1(filename=None, overwrite=False, seed=None,
                 hop2s[1, i + 15*N] = ix1 + Nx*iy   # i1 = i + x         \
                 hop2s[2, i + 15*N] = ix  + Nx*iy1  # i2 = i + y         -
 
-                hop2s[0, i + 16*N] = ix1 + Nx*iy    # i0 = i + x        _
-                hop2s[1, i + 16*N] = ix  + Nx*iy1   # i1 = i + y        \
-                hop2s[2, i + 16*N] = ix1 + Nx*iy1   # i2 = i + x + y    
+                hop2s[0, i + 16*N] = i               # i0 = i           _
+                hop2s[1, i + 16*N] = ixm1 + Nx*iy1   # i1 = i - x + y   \
+                hop2s[2, i + 16*N] = ix  + Nx*iy1    # i2 = i + y    
 
-                hop2s[0, i + 17*N] = ix1 + Nx*iy   # i0 = i + x       
-                hop2s[1, i + 17*N] = ix            # i1 = i             /
-                hop2s[2, i + 17*N] = ix1 + Nx*iy1  # i2 = i + x + y     -
+                hop2s[0, i + 17*N] = i             # i0 = i       
+                hop2s[1, i + 17*N] = ixm1 + Nx*iy  # i1 = i - x         /
+                hop2s[2, i + 17*N] = ix  + Nx*iy1  # i2 = i + y         -
                 #------------------
                 hop2s[0, i + 18*N] = i             # i0 = i         
                 hop2s[1, i + 18*N] = ix1 + Nx*iy1  # i1 = i + x + y     /|
@@ -300,29 +303,29 @@ def create_1(filename=None, overwrite=False, seed=None,
                 hop2s[1, i + 19*N] = ix  + Nx*iy1  # i1 = i + y     |\
                 hop2s[2, i + 19*N] = ix1 + Nx*iy   # i2 = i + x   
 
-                hop2s[0, i + 20*N] = ix  + Nx*iy1  # i0 = i + y       
-                hop2s[1, i + 20*N] = ix1 + Nx*iy   # i1 = i + x        \|
-                hop2s[2, i + 20*N] = ix1 + Nx*iy1  # i2 = i + x + y   
+                hop2s[0, i + 20*N] = i             # i0 = i       
+                hop2s[1, i + 20*N] = ix1 + Nx*iym1 # i1 = i + x - y     \|
+                hop2s[2, i + 20*N] = ix1 + Nx*iy   # i2 = i + x   
 
-                hop2s[0, i + 21*N] = ix  + Nx*iy1  # i0 = i + y   
-                hop2s[1, i + 21*N] = i             # i1 = i            |/
-                hop2s[2, i + 21*N] = ix1 + Nx*iy1  # i2 = i + x + y     
+                hop2s[0, i + 21*N] = i             # i0 = i   
+                hop2s[1, i + 21*N] = ix  + Nx*iym1 # i1 = i - y      |/
+                hop2s[2, i + 21*N] = ix1 + Nx*iy   # i2 = i + x     
                 #(t'^2) terms: NNN + NNN
                 hop2s[0, i + 22*N] = i             # i0 = i         
                 hop2s[1, i + 22*N] = ix1 + Nx*iy1  # i1 = i + x + y   /\
                 hop2s[2, i + 22*N] = ix2 + Nx*iy   # i2 = i + 2x        
 
-                hop2s[0, i + 23*N] = ix  + Nx*iy1  # i0 = i + y            
-                hop2s[1, i + 23*N] = ix1 + Nx*iy   # i1 = i + x        \/
-                hop2s[2, i + 23*N] = ix2 + Nx*iy1  # i2 = i + 2x + y   
+                hop2s[0, i + 23*N] = i             # i0 = i            
+                hop2s[1, i + 23*N] = ix1 + Nx*iym1 # i1 = i + x - y   \/
+                hop2s[2, i + 23*N] = ix2 + Nx*iy   # i2 = i + 2x    
                 #------------------
                 hop2s[0, i + 24*N] = i              # i0 = i         
                 hop2s[1, i + 24*N] = ix1 + Nx*iy1   # i1 = i + x + y    \
-                hop2s[2, i + 24*N] = ix  + Nx*iy2   # i2 = i + 2y       /
+                hop2s[2, i + 24*N] = ix + Nx*iy2    # i2 = i + 2y       /
 
-                hop2s[0, i + 25*N] = ix1 + Nx*iy   # i0 = i + x        /
-                hop2s[1, i + 25*N] = ix  + Nx*iy1  # i1 = i + y        \
-                hop2s[2, i + 25*N] = ix1 + Nx*iy2  # i2 = i + x + 2y    
+                hop2s[0, i + 25*N] = i             # i0 = i            /
+                hop2s[1, i + 25*N] = ixm1 + Nx*iy1 # i1 = i - x + y    \
+                hop2s[2, i + 25*N] = ix + Nx*iy2   # i2 = i + 2y    
                 #------------------
                 hop2s[0, i + 26*N] = i             # i0 = i              /   
                 hop2s[1, i + 26*N] = ix1 + Nx*iy1  # i1 = i + x + y     / 
@@ -330,7 +333,7 @@ def create_1(filename=None, overwrite=False, seed=None,
                 #------------------
                 hop2s[0, i + 27*N] = ix2 + Nx*iy    # i0 = i + 2x       \
                 hop2s[1, i + 27*N] = ix1 + Nx*iy1   # i1 = i + x + y     \ 
-                hop2s[2, i + 27*N] = ix  + Nx*iy2   # i2 = i + 2y
+                hop2s[2, i + 27*N] = ix + Nx*iy2    # i2 = i + 2y
 
     #how bond2s and hop2s are related
     bond_hop_dict = {}
@@ -510,7 +513,7 @@ def create_1(filename=None, overwrite=False, seed=None,
 
         assert np.max(np.abs(thermal_phases.imag)) < 1e-10
         thermal_phases = thermal_phases.real
-    print(thermal_phases.dtype,thermal_phases.shape)
+    #print(thermal_phases.dtype,thermal_phases.shape)
 
     for i in range(Ny*Nx):
         Ku[i, i] -= mu
