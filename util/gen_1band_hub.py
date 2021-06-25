@@ -1,6 +1,6 @@
+import os
 import shutil
 import sys
-import time
 
 import h5py
 import numpy as np
@@ -10,8 +10,13 @@ np.seterr(over="ignore")
 np.set_printoptions(precision=3)
 
 
+def rand_seed_urandom():
+    rng = np.zeros(17, dtype=np.uint64)
+    rng[:16] = np.frombuffer(os.urandom(16*8), dtype=np.uint64)
+    return rng
+
 # http://xoroshiro.di.unimi.it/splitmix64.c
-def rand_seed(x):
+def rand_seed_splitmix64(x):
     x = np.uint64(x)
     rng = np.zeros(17, dtype=np.uint64)
     for i in range(16):
@@ -54,7 +59,7 @@ def rand_jump(rng):
         rng[(np.uint64(j) + rng[16]) & np.uint64(15)] = t[j]
 
 
-def create_1(filename=None, overwrite=False, seed=None,
+def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
              Nx=16, Ny=4, mu=0.0, tp=0.0, U=6.0, dt=0.115, L=40,
              nflux=0,
              n_delay=16, n_matmul=8, n_sweep_warm=200, n_sweep_meas=2000,
@@ -66,18 +71,25 @@ def create_1(filename=None, overwrite=False, seed=None,
     N = Nx * Ny
 
     if nflux != 0:
-        dtype_num = np.complex
+        dtype_num = np.complex128
     else:
         dtype_num = np.float64
 
-    if seed is None:
-        seed = int(time.time())
-    init_rng = rand_seed(seed)
+    if init_rng is None:
+        init_rng = rand_seed_urandom()
+    rng = init_rng.copy()
     init_hs = np.zeros((L, N), dtype=np.int32)
+
+    if file_sim is None:
+        file_sim = "sim.h5"
+    if file_params is None:
+        file_params = file_sim
+    
+    one_file = (os.path.abspath(file_sim) == os.path.abspath(file_params))
 
     for l in range(L):
         for i in range(N):
-            init_hs[l, i] = rand_uint(init_rng) >> np.uint64(63)
+            init_hs[l, i] = rand_uint(rng) >> np.uint64(63)
 
     # 1 site mapping
     if trans_sym:
@@ -438,7 +450,7 @@ def create_1(filename=None, overwrite=False, seed=None,
     assert num_b2b == map_b2b.max() + 1
 
     # hopping (assuming periodic boundaries and no field)
-    tij = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex)
+    tij = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex128)
     for iy in range(Ny):
         for ix in range(Nx):
             iy1 = (iy + 1) % Ny
@@ -476,7 +488,7 @@ def create_1(filename=None, overwrite=False, seed=None,
                         + alpha*offset_y*jx - alpha*offset_x*offset_y
     peierls = np.exp(2j*np.pi*(nflux/(Ny*Nx))*phi)
 
-    thermal_phases = np.ones((b2ps, N),dtype=np.complex)
+    thermal_phases = np.ones((b2ps, N),dtype=np.complex128)
     for i in range(N):
         for btype in range(b2ps):
             i0 = bond2s[0, i + btype*N]
@@ -500,33 +512,24 @@ def create_1(filename=None, overwrite=False, seed=None,
                     pp += peierls[i0,i1] * peierls[i1,i2]
             thermal_phases[btype,i] = pp
                 
-
-    if dtype_num == np.complex:
+    if dtype_num == np.complex128:
         Ku = -tij * peierls
-        Kd = -tij * peierls
         assert np.max(np.abs(Ku - Ku.T.conj())) < 1e-10
     else:
         Ku = -tij.real
-        Kd = -tij.real
         assert np.max(np.abs(peierls.imag)) < 1e-10
         peierls = peierls.real
-
         assert np.max(np.abs(thermal_phases.imag)) < 1e-10
         thermal_phases = thermal_phases.real
     #print(thermal_phases.dtype,thermal_phases.shape)
 
     for i in range(Ny*Nx):
         Ku[i, i] -= mu
-        Kd[i, i] -= mu
 
     exp_Ku = expm(-dt * Ku)
-    exp_Kd = expm(-dt * Kd)
     inv_exp_Ku = expm(dt * Ku)
-    inv_exp_Kd = expm(dt * Kd)
     exp_halfKu = expm(-dt/2 * Ku)
-    exp_halfKd = expm(-dt/2 * Kd)
     inv_exp_halfKu = expm(dt/2 * Ku)
-    inv_exp_halfKd = expm(dt/2 * Kd)
 #   exp_K = np.array(mpm.expm(mpm.matrix(-dt * K)).tolist(), dtype=np.float64)
 
     U_i = U*np.ones_like(degen_i, dtype=np.float64)
@@ -535,17 +538,15 @@ def create_1(filename=None, overwrite=False, seed=None,
     exp_lmbd = np.exp(0.5*U_i*dt) + np.sqrt(np.expm1(U_i*dt))
 #    exp_lmbd = np.exp(np.arccosh(np.exp(0.5*U_i*dt)))
 #    exp_lmbd = float(mpm.exp(mpm.acosh(mpm.exp(0.5*float(U*dt)))))
-    exp_lambda = np.array((1.0/exp_lmbd[map_i], exp_lmbd[map_i]))
+    exp_lambda = np.array((exp_lmbd[map_i]**-1, exp_lmbd[map_i]))
     delll = np.array((exp_lmbd[map_i]**2 - 1, exp_lmbd[map_i]**-2 - 1))
 
-    if filename is None:
-        filename = "{}.h5".format(seed)
-    with h5py.File(filename, "w" if overwrite else "x") as f:
+    with h5py.File(file_params, "w" if overwrite else "x") as f:
         # parameters not used by dqmc code, but useful for analysis
         f.create_group("metadata")
-        f["metadata"]["version"] = 0.0
+        f["metadata"]["version"] = 0.1
         f["metadata"]["model"] = \
-            "Hubbard (complex)" if dtype_num == np.complex else "Hubbard"
+            "Hubbard (complex)" if dtype_num == np.complex128 else "Hubbard"
         f["metadata"]["Nx"] = Nx
         f["metadata"]["Ny"] = Ny
         f["metadata"]["bps"] = bps
@@ -576,13 +577,13 @@ def create_1(filename=None, overwrite=False, seed=None,
         # f["params"]["map_b_hop2"] = map_b_hop2
         # f["params"]["map_hop2_hop2"] = map_hop2_hop2
         f["params"]["peierlsu"] = peierls
-        f["params"]["peierlsd"] = peierls
+        f["params"]["peierlsd"] = f["params"]["peierlsu"]
         f["params"]["pp_u"] = thermal_phases.conj()
         f["params"]["pp_d"] = thermal_phases.conj()
         f["params"]["ppr_u"] = thermal_phases
         f["params"]["ppr_d"] = thermal_phases
         f["params"]["Ku"] = Ku
-        f["params"]["Kd"] = Kd
+        f["params"]["Kd"] = f["params"]["Ku"]
         f["params"]["U"] = U_i
         f["params"]["dt"] = np.array(dt, dtype=np.float64)
 
@@ -599,7 +600,6 @@ def create_1(filename=None, overwrite=False, seed=None,
         # f["params"]["meas_hop2_corr"] = meas_hop2_corr
         f["params"]["meas_energy_corr"] = meas_energy_corr
         f["params"]["meas_nematic_corr"] = meas_nematic_corr
-        f["params"]["init_rng"] = init_rng  # save if need to replicate data
 
         # precalculated stuff
         f["params"]["num_i"] = num_i
@@ -626,23 +626,31 @@ def create_1(filename=None, overwrite=False, seed=None,
         # f["params"]["degen_hop2_b"] = degen_hop2_b
         # f["params"]["degen_hop2_hop2"] = degen_hop2_hop2
         f["params"]["exp_Ku"] = exp_Ku
-        f["params"]["exp_Kd"] = exp_Kd
+        f["params"]["exp_Kd"] = f["params"]["exp_Ku"]
         f["params"]["inv_exp_Ku"] = inv_exp_Ku
-        f["params"]["inv_exp_Kd"] = inv_exp_Kd
+        f["params"]["inv_exp_Kd"] = f["params"]["inv_exp_Ku"]
         f["params"]["exp_halfKu"] = exp_halfKu
-        f["params"]["exp_halfKd"] = exp_halfKd
+        f["params"]["exp_halfKd"] = f["params"]["exp_halfKu"]
         f["params"]["inv_exp_halfKu"] = inv_exp_halfKu
-        f["params"]["inv_exp_halfKd"] = inv_exp_halfKd
+        f["params"]["inv_exp_halfKd"] = f["params"]["inv_exp_halfKu"]
         f["params"]["exp_lambda"] = exp_lambda
         f["params"]["del"] = delll
         f["params"]["F"] = np.array(L//n_matmul, dtype=np.int32)
         f["params"]["n_sweep"] = np.array(n_sweep_warm + n_sweep_meas,
                                           dtype=np.int32)
 
+    with h5py.File(file_sim, "a" if one_file else "w" if overwrite else "x") as f:
         # simulation state
+        params_relpath = os.path.relpath(file_params, os.path.dirname(file_sim))
+        f["params_file"] = params_relpath
+        if not one_file:
+            f["metadata"] = h5py.ExternalLink(params_relpath, "metadata")
+            f["params"] = h5py.ExternalLink(params_relpath, "params")
+
         f.create_group("state")
         f["state"]["sweep"] = np.array(0, dtype=np.int32)
-        f["state"]["rng"] = init_rng
+        f["state"]["init_rng"] = init_rng  # save if need to replicate data
+        f["state"]["rng"] = rng
         f["state"]["hs"] = init_hs
 
         # measurements
@@ -715,39 +723,44 @@ def create_1(filename=None, overwrite=False, seed=None,
             if meas_nematic_corr:
                 f["meas_uneqlt"]["nem_nnnn"] = np.zeros(num_bb*L, dtype=dtype_num)
                 f["meas_uneqlt"]["nem_ssss"] = np.zeros(num_bb*L, dtype=dtype_num)
-    return filename
 
 
 def create_batch(Nfiles=1, prefix=None, seed=None, **kwargs):
     if seed is None:
-        seed = int(time.time())
+        init_rng = rand_seed_urandom()
+    else:
+        init_rng = rand_seed_splitmix64(seed)
+
     if prefix is None:
-        prefix = str(seed)
-    rng = rand_seed(seed)
+        prefix = "sim"
 
     file_0 = "{}_{}.h5".format(prefix, 0)
+    file_p = "{}.h5.params".format(prefix)
 
-    create_1(filename=file_0, seed=seed, **kwargs)
-    with h5py.File(file_0, "r") as f:
+    create_1(file_sim=file_0, file_params=file_p, init_rng=init_rng, **kwargs)
+
+    with h5py.File(file_p, "r") as f:
         N = f["params"]["N"][...]
         L = f["params"]["L"][...]
 
     for i in range(1, Nfiles):
-        rand_jump(rng)
-        init_rng = rng.copy()
+        rand_jump(init_rng)
+        rng = init_rng.copy()
         init_hs = np.zeros((L, N), dtype=np.int32)
 
         for l in range(L):
             for r in range(N):
-                init_hs[l, r] = rand_uint(init_rng) >> np.uint64(63)
+                init_hs[l, r] = rand_uint(rng) >> np.uint64(63)
 
         file_i = "{}_{}.h5".format(prefix, i)
         shutil.copy2(file_0, file_i)
         with h5py.File(file_i, "r+") as f:
-            f["params"]["init_rng"][...] = init_rng
-            f["state"]["rng"][...] = init_rng
+            f["state"]["init_rng"][...] = init_rng
+            f["state"]["rng"][...] = rng
             f["state"]["hs"][...] = init_hs
-    return file_0 if Nfiles == 1 else "{} ... {}".format(file_0, file_i)
+    print("created simulation files:",
+          file_0 if Nfiles == 1 else "{} ... {}".format(file_0, file_i))
+    print("parameter file:", file_p)
 
 
 def main(argv):
@@ -767,7 +780,7 @@ def main(argv):
             except:
                 pass
         kwargs[key] = val
-    print("created simulation files:", create_batch(**kwargs))
+    create_batch(**kwargs)
 
 if __name__ == "__main__":
     main(sys.argv)
