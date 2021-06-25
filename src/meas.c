@@ -16,7 +16,6 @@
 // if not, these are equal to 1 anyway. multiplying by the variables costs a
 // little performance, so #define them away at compile time
 // TODO: exception: if using twisted boundaries, these are not always 1
-// TODO: extra defines from ppu, ppu_r, ppd, ppd_r
 #define pui0i1 1
 #define pui1i0 1
 #define pdi0i1 1
@@ -25,14 +24,22 @@
 #define puj1j0 1
 #define pdj0j1 1
 #define pdj1j0 1
-#define pui1i2 1
-#define pui2i1 1
-#define pdi1i2 1
-#define pdi2i1 1
-#define puj1j2 1
-#define puj2j1 1
-#define pdj1j2 1
-#define pdj2j1 1
+// #define pui1i2 1
+// #define pui2i1 1
+// #define pdi1i2 1
+// #define pdi2i1 1
+// #define puj1j2 1
+// #define puj2j1 1
+// #define pdj1j2 1
+// #define pdj2j1 1
+#define ppui0i2 1
+#define ppui2i0 1
+#define ppdi0i2 1
+#define ppdi2i0 1
+#define ppuj0j2 1
+#define ppuj2j0 1
+#define ppdj0j2 1
+#define ppdj2j0 1
 #endif
 
 // int approx_equal(num a, num b) {
@@ -583,15 +590,18 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 
 	// measurement of j2-j2: 4 fermion product, 4 phases, t = 0
 	// this is the ``clever'' way to do it
+	// TODO: implement pair_b2b2,js2js2,k2k2,ks2ks2
 	const int b2ps = num_b2/N;
 	if (meas_2bond_corr)
 	for (int c = 0; c < num_b2; c++) {
 		const int jtype = c / N;
 		const int j = c % N;
+#ifdef USE_PEIERLS
 		const num ppuj0j2 = p->pp_u[ j + N*jtype];
 		const num ppuj2j0 = p->ppr_u[j + N*jtype];
 		const num ppdj0j2 = p->pp_d[ j + N*jtype];
 		const num ppdj2j0 = p->ppr_d[j + N*jtype];
+#endif
 		// printf("c = %d, jtype = %d,j = %d, ", c, jtype,j );
 		// printf("pj0j1*pj1j2 = %f \n", (double) ppuj0j2);
 		// fflush(stdout); 
@@ -600,10 +610,12 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	for (int b = 0; b < num_b2; b++) {
 		const int itype = b / N;
 		const int i = b % N;
+#ifdef USE_PEIERLS
 		const num ppui0i2 = p->pp_u[ i + N*itype];
 		const num ppui2i0 = p->ppr_u[i + N*itype];
 		const num ppdi0i2 = p->pp_d[ i + N*itype];
 		const num ppdi2i0 = p->ppr_d[i + N*itype];
+#endif
 		const int i0 = p->bond2s[b];
 		const int i2 = p->bond2s[b + num_b2];
 
@@ -746,10 +758,12 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	for (int c = 0; c < num_b2; c++) {
 		const int jtype = c / N;
 		const int j = c % N;
+#ifdef USE_PEIERLS
 		const num ppuj0j2 = p->pp_u[ j + N*jtype];
 		const num ppuj2j0 = p->ppr_u[j + N*jtype];
 		const num ppdj0j2 = p->pp_d[ j + N*jtype];
 		const num ppdj2j0 = p->ppr_d[j + N*jtype];
+#endif
 		const int j0 = p->bond2s[c];
 		const int j2 = p->bond2s[c + num_b2];
 	for (int b = 0; b < num_b; b++) {
@@ -967,10 +981,12 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	for (int b = 0; b < num_b2; b++) {
 		const int itype = b / N;
 		const int i = b % N;
+#ifdef USE_PEIERLS
 		const num ppui0i2 = p->pp_u[ i + N*itype];
 		const num ppui2i0 = p->ppr_u[i + N*itype];
 		const num ppdi0i2 = p->pp_d[ i + N*itype];
 		const num ppdi2i0 = p->ppr_d[i + N*itype];
+#endif
 		const int i0 = p->bond2s[b];
 		const int i2 = p->bond2s[b + num_b2];
 
@@ -1549,10 +1565,12 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	for (int c = 0; c < num_b2; c++) {
 		const int jtype = c / N;
 		const int j = c % N;
+#ifdef USE_PEIERLS
 		const num ppuj0j2 = p->pp_u[ j + N*jtype];
 		const num ppuj2j0 = p->ppr_u[j + N*jtype];
 		const num ppdj0j2 = p->pp_d[ j + N*jtype];
 		const num ppdj2j0 = p->ppr_d[j + N*jtype];
+#endif
 		// printf("c = %d, jtype = %d,j = %d, ", c, jtype,j );
 		// printf("pj0j1*pj1j2 = %f \n", (double) ppuj0j2);
 		// fflush(stdout); 
@@ -1561,10 +1579,12 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	for (int b = 0; b < num_b2; b++) {
 		const int itype = b / N;
 		const int i = b % N;
+#ifdef USE_PEIERLS
 		const num ppui0i2 = p->pp_u[ i + N*itype];
 		const num ppui2i0 = p->ppr_u[i + N*itype];
 		const num ppdi0i2 = p->pp_d[ i + N*itype];
 		const num ppdi2i0 = p->ppr_d[i + N*itype];
+#endif
 		const int i0 = p->bond2s[b];
 		const int i2 = p->bond2s[b + num_b2];
 
@@ -1720,10 +1740,12 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	for (int c = 0; c < num_b2; c++) {
 		const int jtype = c / N;
 		const int j = c % N;
+#ifdef USE_PEIERLS
 		const num ppuj0j2 = p->pp_u[ j + N*jtype];
 		const num ppuj2j0 = p->ppr_u[j + N*jtype];
 		const num ppdj0j2 = p->pp_d[ j + N*jtype];
 		const num ppdj2j0 = p->ppr_d[j + N*jtype];
+#endif
 		const int j0 = p->bond2s[c];
 		const int j2 = p->bond2s[c + num_b2];
 	for (int b = 0; b < num_b; b++) {
@@ -1957,10 +1979,12 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	for (int b = 0; b < num_b2; b++) {
 		const int itype = b / N;
 		const int i = b % N;
+#ifdef USE_PEIERLS
 		const num ppui0i2 = p->pp_u[ i + N*itype];
 		const num ppui2i0 = p->ppr_u[i + N*itype];
 		const num ppdi0i2 = p->pp_d[ i + N*itype];
 		const num ppdi2i0 = p->ppr_d[i + N*itype];
+#endif
 		const int i0 = p->bond2s[b];
 		const int i2 = p->bond2s[b + num_b2];
 
