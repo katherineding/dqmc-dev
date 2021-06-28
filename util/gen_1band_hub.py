@@ -695,16 +695,17 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                 f["meas_uneqlt"]["new_jjn"] = np.zeros(num_bb*L, dtype=dtype_num)
                 f["meas_uneqlt"]["new_jnj"] = np.zeros(num_bb*L, dtype=dtype_num)
             if meas_2bond_corr:
-                f["meas_uneqlt"]["pair_b2b2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
                 #use j2j2 should correspond to J2J2 results after summation
                 f["meas_uneqlt"]["j2j2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
                 #use j2j should correspond to J2j results after summation
                 f["meas_uneqlt"]["j2j"] = np.zeros(num_b2b*L, dtype=dtype_num) #new
                 #use jj2 should correspond to jJ2 results after summation
                 f["meas_uneqlt"]["jj2"] = np.zeros(num_bb2*L, dtype=dtype_num) #new
-                f["meas_uneqlt"]["js2js2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
-                f["meas_uneqlt"]["k2k2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
-                f["meas_uneqlt"]["ks2ks2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
+                #these below are not implemented with phases currently
+                # f["meas_uneqlt"]["pair_b2b2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
+                # f["meas_uneqlt"]["js2js2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
+                # f["meas_uneqlt"]["k2k2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
+                # f["meas_uneqlt"]["ks2ks2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
             #currently this toggles 2hop-2hop (4 phase), bond-2hop and 
             #2hop-bond (3 phase) type measurements. May be smart to separate based on 
             #number of fermion operators or based on number of phase factors to 

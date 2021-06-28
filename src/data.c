@@ -143,13 +143,13 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 			sim->m_ue.new_jjn= my_calloc(num_bb*L * sizeof(num));
 		}
 		if (sim->p.meas_2bond_corr) {
-			sim->m_ue.pair_b2b2= my_calloc(num_b2b2*L * sizeof(num));
+			// sim->m_ue.pair_b2b2= my_calloc(num_b2b2*L * sizeof(num));
 			sim->m_ue.j2j2    = my_calloc(num_b2b2*L * sizeof(num));
 			sim->m_ue.j2j     = my_calloc(num_b2b*L * sizeof(num));
 			sim->m_ue.jj2     = my_calloc(num_bb2*L * sizeof(num));
-			sim->m_ue.js2js2  = my_calloc(num_b2b2*L * sizeof(num));
-			sim->m_ue.k2k2    = my_calloc(num_b2b2*L * sizeof(num));
-			sim->m_ue.ks2ks2  = my_calloc(num_b2b2*L * sizeof(num));
+			// sim->m_ue.js2js2  = my_calloc(num_b2b2*L * sizeof(num));
+			// sim->m_ue.k2k2    = my_calloc(num_b2b2*L * sizeof(num));
+			// sim->m_ue.ks2ks2  = my_calloc(num_b2b2*L * sizeof(num));
 		}
 		// if (sim->p.meas_hop2_corr) {
 		// 	sim->m_ue.J2J2    = my_calloc(num_hop2_hop2*L * sizeof(num));
@@ -262,13 +262,13 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 			my_read( , "/meas_uneqlt/new_jjn",    num_h5t, sim->m_ue.new_jjn);
 		}
 		if (sim->p.meas_2bond_corr) {
-			my_read( , "/meas_uneqlt/pair_b2b2", num_h5t, sim->m_ue.pair_b2b2);
+			// my_read( , "/meas_uneqlt/pair_b2b2", num_h5t, sim->m_ue.pair_b2b2);
 			my_read( , "/meas_uneqlt/j2j2",      num_h5t, sim->m_ue.j2j2);
 			my_read( , "/meas_uneqlt/j2j",       num_h5t, sim->m_ue.j2j);
 			my_read( , "/meas_uneqlt/jj2",       num_h5t, sim->m_ue.jj2);
-			my_read( , "/meas_uneqlt/js2js2",    num_h5t, sim->m_ue.js2js2);
-			my_read( , "/meas_uneqlt/k2k2",      num_h5t, sim->m_ue.k2k2);
-			my_read( , "/meas_uneqlt/ks2ks2",    num_h5t, sim->m_ue.ks2ks2);
+			// my_read( , "/meas_uneqlt/js2js2",    num_h5t, sim->m_ue.js2js2);
+			// my_read( , "/meas_uneqlt/k2k2",      num_h5t, sim->m_ue.k2k2);
+			// my_read( , "/meas_uneqlt/ks2ks2",    num_h5t, sim->m_ue.ks2ks2);
 		}
 		// if (sim->p.meas_hop2_corr) {
 		// 	my_read( , "/meas_uneqlt/J2J2",      num_h5t, sim->m_ue.J2J2);
@@ -355,13 +355,13 @@ int sim_data_save(const struct sim_data *sim)
 			my_write("/meas_uneqlt/new_jjn",    num_h5t, sim->m_ue.new_jjn);
 		}
 		if (sim->p.meas_2bond_corr) {
-			my_write("/meas_uneqlt/pair_b2b2", num_h5t, sim->m_ue.pair_b2b2);
+			// my_write("/meas_uneqlt/pair_b2b2", num_h5t, sim->m_ue.pair_b2b2);
 			my_write("/meas_uneqlt/j2j2",      num_h5t, sim->m_ue.j2j2);
 			my_write("/meas_uneqlt/j2j",       num_h5t, sim->m_ue.j2j);
 			my_write("/meas_uneqlt/jj2",       num_h5t, sim->m_ue.jj2);
-			my_write("/meas_uneqlt/js2js2",    num_h5t, sim->m_ue.js2js2);
-			my_write("/meas_uneqlt/k2k2",      num_h5t, sim->m_ue.k2k2);
-			my_write("/meas_uneqlt/ks2ks2",    num_h5t, sim->m_ue.ks2ks2);
+			// my_write("/meas_uneqlt/js2js2",    num_h5t, sim->m_ue.js2js2);
+			// my_write("/meas_uneqlt/k2k2",      num_h5t, sim->m_ue.k2k2);
+			// my_write("/meas_uneqlt/ks2ks2",    num_h5t, sim->m_ue.ks2ks2);
 		}
 		// if (sim->p.meas_hop2_corr) {
 		// 	my_write("/meas_uneqlt/J2J2",      num_h5t, sim->m_ue.J2J2);
@@ -417,13 +417,13 @@ void sim_data_free(const struct sim_data *sim)
 			my_free(sim->m_ue.pair_bb);
 		}
 		if (sim->p.meas_2bond_corr) {
-			my_free(sim->m_ue.ks2ks2);
-			my_free(sim->m_ue.k2k2);
-			my_free(sim->m_ue.js2js2);
+			// my_free(sim->m_ue.ks2ks2);
+			// my_free(sim->m_ue.k2k2);
+			// my_free(sim->m_ue.js2js2);
 			my_free(sim->m_ue.j2j2);
 			my_free(sim->m_ue.j2j);
 			my_free(sim->m_ue.jj2);
-			my_free(sim->m_ue.pair_b2b2);
+			// my_free(sim->m_ue.pair_b2b2);
 		}
 		// if (sim->p.meas_hop2_corr) {
 		// 	my_free(sim->m_ue.J2J2);
