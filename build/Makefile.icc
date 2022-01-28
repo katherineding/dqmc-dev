@@ -3,14 +3,14 @@ CC = icc
 CFLAGS = -std=gnu11 -Wall -Wextra -Ofast -xHost 
 CFLAGS += -DMKL_DIRECT_CALL_SEQ -qmkl=sequential
 CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
-CFLAGS += -DPROFILE_ENABLE
+# CFLAGS += -DPROFILE_ENABLE
 # CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 CFLAGS += -qopenmp  # to disable openmp, use -qopenmp-stubs
 CFLAGS += -I/usr/include/hdf5/serial -I${MKLROOT}/include
 LDFLAGS += -L/usr/lib/x86_64-linux-gnu/hdf5/serial -L${MKLROOT}/lib/intel64
 LDFLAGS += -lhdf5 -lhdf5_hl -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
 
-SRCFILES = data.o dqmc.o greens.o meas.o prof.o sig.o updates.o
+SRCFILES = data.o dqmc.o greens.o meas.o updates.o
 
 all: one stack
 

@@ -6,8 +6,6 @@
 #include "linalg.h"
 #include "meas.h"
 #include "rand.h"
-#include "sig.h"
-#include "time_.h"
 #include "updates.h"
 #include "util.h"
 
@@ -209,14 +207,6 @@ static int dqmc(struct sim_data *sim)
 	}
 
 	for (; sim->s.sweep < sim->p.n_sweep; sim->s.sweep++) {
-		const int sig = sig_check_state(sim->s.sweep, sim->p.n_sweep_warm, sim->p.n_sweep);
-		if (sig == 1) // stop flag
-			break;
-		else if (sig == 2) { // progress flag
-			const int status = sim_data_save(sim);
-			if (status < 0)
-				fprintf(stderr, "save_file() failed: %d\n", status);
-		}
 
 		for (int l = 0; l < L; l++) {
 			shuffle(rng, N, site_order);
@@ -470,7 +460,6 @@ static int dqmc(struct sim_data *sim)
 int dqmc_wrapper(const char *sim_file, const char *log_file,
 		const tick_t max_time, const int bench)
 {
-	const tick_t wall_start = time_wall();
 
 	int status = 0;
 
@@ -483,9 +472,6 @@ int dqmc_wrapper(const char *sim_file, const char *log_file,
 
 	fprintf(log, "commit id %s\n", GIT_ID);
 	fprintf(log, "compiled on %s %s\n", __DATE__, __TIME__);
-
-	// initialize signal handling
-	sig_init(log, wall_start, max_time);
 
 	// open and read simulation file
 	struct sim_data *sim = my_calloc(sizeof(struct sim_data));
@@ -532,9 +518,6 @@ int dqmc_wrapper(const char *sim_file, const char *log_file,
 cleanup:
 	sim_data_free(sim);
 	my_free(sim);
-
-	const tick_t wall_time = time_wall() - wall_start;
-	fprintf(log, "wall time: %.3f\n", wall_time * SEC_PER_TICK);
 
 	if (log != stdout)
 		fclose(log);
