@@ -1,0 +1,29 @@
+CC = cc
+
+CFLAGS = -std=gnu11 -Wall -Wextra -fast -mp=gpu -gpu=cc80 -Minfo -#
+CFLAGS += -cuda #tell nvc that .c files might contain GPU device code
+CFLAGS += -cudalib=cublas,cusolver #link to libraries
+CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
+CFLAGS += -DPROFILE_ENABLE
+CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
+
+LDFLAGS += -lhdf5 -lhdf5_hl 
+
+SRCFILES = data.o dqmc.o greens.o meas.o prof.o sig.o updates.o
+
+all: one stack
+
+one: ${SRCFILES} main_1.o
+	@echo linking dqmc_1
+	@${CC} ${CFLAGS} -o dqmc_1 $? ${LDFLAGS}
+
+stack: ${SRCFILES} main_stack.o
+	@echo linking dqmc_stack
+	@${CC} ${CFLAGS} -o dqmc_stack $? ${LDFLAGS}
+
+%.o: ../src/%.c
+	@echo compiling $<
+	@${CC} -c ${CFLAGS} $<
+
+clean:
+	rm -f *.o *.optrpt *.seq *.par

@@ -11,7 +11,7 @@
 	#define ccast(p) (p)
 #endif
 
-
+// general matrix-matrix multiplication: Level 3 BLAS
 static inline void xgemm(const char *transa, const char *transb,
 		const int m, const int n, const int k,
 		const num alpha, const num *a, const int lda,
@@ -28,6 +28,7 @@ static inline void xgemm(const char *transa, const char *transb,
 	ccast(&beta), cast(c), &ldc);
 }
 
+// general matrix-vector product, Level 2 BLAS
 static inline void xgemv(const char *trans, const int m, const int n,
 		const num alpha, const num *a, const int lda,
 		const num *x, const int incx,
@@ -43,6 +44,7 @@ static inline void xgemv(const char *trans, const int m, const int n,
 	ccast(&beta), cast(y), &incy);
 }
 
+// triangular matrix - general matrix product, level 3 BLAS
 static inline void xtrmm(const char *side, const char *uplo, const char *transa, const char *diag,
 		const int m, const int n,
 		const num alpha, const num *a, const int lda,
@@ -57,6 +59,8 @@ static inline void xtrmm(const char *side, const char *uplo, const char *transa,
 	ccast(&alpha), ccast(a), &lda, cast(b), &ldb);
 }
 
+// LAPACK
+// Compute LU factorization of general matrix using partial pivoting with row interchanges
 static inline void xgetrf(const int m, const int n, num* a,
 		const int lda, int* ipiv, int* info)
 {
@@ -68,7 +72,8 @@ static inline void xgetrf(const int m, const int n, num* a,
 	&m, &n, cast(a), &lda, ipiv, info);
 }
 
-
+// LAPACK
+// Compute inverse of general matrix using LU factorization provided by xgetrf
 static inline void xgetri(const int n, num* a, const int lda, const int* ipiv,
 		num* work, const int lwork, int* info)
 {
@@ -80,6 +85,8 @@ static inline void xgetri(const int n, num* a, const int lda, const int* ipiv,
 	&n, cast(a), &lda, ipiv, cast(work), &lwork, info);
 }
 
+// LAPACK
+// Solve linear equation with general matrix using LU factorization provided by zgetrf
 static inline void xgetrs(const char* trans, const int n, const int nrhs,
 		const num* a, const int lda, const int* ipiv,
 		num* b, const int ldb, int* info)
@@ -92,6 +99,8 @@ static inline void xgetrs(const char* trans, const int n, const int nrhs,
 	trans, &n, &nrhs, ccast(a), &lda, ipiv, cast(b), &ldb, info);
 }
 
+// LAPACK
+// QR factorization of general matrix using column pivoting
 static inline void xgeqp3(const int m, const int n, num* a, const int lda, int* jpvt, num* tau,
 		num* work, const int lwork, double* rwork, int* info)
 {
@@ -104,6 +113,9 @@ static inline void xgeqp3(const int m, const int n, num* a, const int lda, int* 
 #endif
 }
 
+
+// LAPACK
+// QR factorization of general matrix without pivoting
 static inline void xgeqrf(const int m, const int n, num* a, const int lda, num* tau,
 		num* work, const int lwork, int* info)
 {
@@ -115,6 +127,9 @@ static inline void xgeqrf(const int m, const int n, num* a, const int lda, num* 
 	&m, &n, cast(a), &lda, cast(tau), cast(work), &lwork, info);
 }
 
+// LAPACK
+// Multiplies a real/complex matrix by the orthogonal/unitary matrix Q 
+// of the QR factorization formed by xgeqrf or xgeqp3
 static inline void xunmqr(const char* side, const char* trans,
 		const int m, const int n, const int k, const num* a,
 		const int lda, const num* tau, num* c,
@@ -129,6 +144,8 @@ static inline void xunmqr(const char* side, const char* trans,
 	cast(c), &ldc, cast(work), &lwork, info);
 }
 
+// LAPACK
+// Compute inverse of triangular matrix
 static inline void xtrtri(const char* uplo, const char* diag, const int n,
 		num* a, const int lda, int* info)
 {
