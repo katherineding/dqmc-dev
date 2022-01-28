@@ -5,7 +5,6 @@
 #include "greens.h"
 #include "linalg.h"
 #include "meas.h"
-#include "prof.h"
 #include "rand.h"
 #include "sig.h"
 #include "time_.h"
@@ -220,13 +219,11 @@ static int dqmc(struct sim_data *sim)
 		}
 
 		for (int l = 0; l < L; l++) {
-			profile_begin(updates);
 			shuffle(rng, N, site_order);
 			update_delayed(N, n_delay, del, site_order,
 			               rng, hs + N*l, gu, gd, &phase,
 			               tmpNN1u, tmpNN2u, tmpN1u,
 			               tmpNN1d, tmpNN2d, tmpN1d);
-			profile_end(updates);
 
 			const int f = l / n_matmul;
 			const int recalc = ((l + 1) % n_matmul == 0);
@@ -238,17 +235,12 @@ static int dqmc(struct sim_data *sim)
 			num *const restrict Bul = Bu + N*N*l;
 			num *const restrict iBul = iBu + N*N*l;
 			num *const restrict Cuf = Cu + N*N*f;
-			profile_begin(calcb);
 			calcBu(Bul, l);
 			if (!recalc || sim->p.period_uneqlt > 0)
 				calciBu(iBul, l);
-			profile_end(calcb);
 			if (recalc) {
-				profile_begin(multb);
 				mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L,
 				        1.0, Bu, Cuf, N, tmpNN1u);
-				profile_end(multb);
-				profile_begin(recalc);
 				#ifdef CHECK_G_WRP
 				if (sim->p.period_uneqlt == 0)
 					calciBu(iBu + N*N*l, l);
@@ -263,12 +255,9 @@ static int dqmc(struct sim_data *sim)
 				phaseu = calc_eq_g((f + 1) % F, N, F, N_MUL, Cu, gu,
 				                  tmpNN1u, tmpNN2u, tmpN1u, tmpN2u,
 				                  tmpN3u, pvtu, worku, lwork);
-				profile_end(recalc);
 			} else {
-				profile_begin(wrap);
 				matmul(tmpNN1u, gu, iBul);
 				matmul(gu, Bul, tmpNN1u);
-				profile_end(wrap);
 			}
 			}
 			#pragma omp section
@@ -276,17 +265,12 @@ static int dqmc(struct sim_data *sim)
 			num *const restrict Bdl = Bd + N*N*l;
 			num *const restrict iBdl = iBd + N*N*l;
 			num *const restrict Cdf = Cd + N*N*f;
-			profile_begin(calcb);
 			calcBd(Bdl, l);
 			if (!recalc || sim->p.period_uneqlt > 0)
 				calciBd(iBdl, l);
-			profile_end(calcb);
 			if (recalc) {
-				profile_begin(multb);
 				mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L,
 				        1.0, Bd, Cdf, N, tmpNN1d);
-				profile_end(multb);
-				profile_begin(recalc);
 				#ifdef CHECK_G_WRP
 				if (sim->p.period_uneqlt == 0)
 					calciBd(iBd + N*N*l, l);
@@ -301,12 +285,9 @@ static int dqmc(struct sim_data *sim)
 				phased = calc_eq_g((f + 1) % F, N, F, N_MUL, Cd, gd,
 				                  tmpNN1d, tmpNN2d, tmpN1d, tmpN2d,
 				                  tmpN3d, pvtd, workd, lwork);
-				profile_end(recalc);
 			} else {
-				profile_begin(wrap);
 				matmul(tmpNN1d, gd, iBdl);
 				matmul(gd, Bdl, tmpNN1d);
-				profile_end(wrap);
 			}
 			}
 			}
@@ -339,23 +320,17 @@ static int dqmc(struct sim_data *sim)
 				{
 				#pragma omp section
 				{
-				profile_begin(half_wrap);
 				matmul(tmpNN1u, gu, exp_halfKu);
 				matmul(tmpNN2u, inv_exp_halfKu, tmpNN1u);
-				profile_end(half_wrap);
 				}
 				#pragma omp section
 				{
-				profile_begin(half_wrap);
 				matmul(tmpNN1d, gd, exp_halfKd);
 				matmul(tmpNN2d, inv_exp_halfKd, tmpNN1d);
-				profile_end(half_wrap);
 				}
 				}
 
-				profile_begin(meas_eq);
 				measure_eqlt(&sim->p, phase, tmpNN2u, tmpNN2d, &sim->m_eq);
-				profile_end(meas_eq);
 			}
 		}
 
@@ -384,7 +359,6 @@ static int dqmc(struct sim_data *sim)
 			{
 			#pragma omp section
 			{
-			profile_begin(half_wrap);
 			for (int l = 0; l < L; l++) {
 				matmul(tmpNN1u, Gu0t + N*N*l, exp_halfKu);
 				matmul(Gu0t + N*N*l, inv_exp_halfKu, tmpNN1u);
@@ -397,11 +371,9 @@ static int dqmc(struct sim_data *sim)
 				matmul(tmpNN1u, Gut0 + N*N*l, exp_halfKu);
 				matmul(Gut0 + N*N*l, inv_exp_halfKu, tmpNN1u);
 			}
-			profile_end(half_wrap);
 			}
 			#pragma omp section
 			{
-			profile_begin(half_wrap);
 			for (int l = 0; l < L; l++) {
 				matmul(tmpNN1d, Gd0t + N*N*l, exp_halfKd);
 				matmul(Gd0t + N*N*l, inv_exp_halfKd, tmpNN1d);
@@ -414,15 +386,12 @@ static int dqmc(struct sim_data *sim)
 				matmul(tmpNN1d, Gdt0 + N*N*l, exp_halfKd);
 				matmul(Gdt0 + N*N*l, inv_exp_halfKd, tmpNN1d);
 			}
-			profile_end(half_wrap);
 			}
 			}
 
-			profile_begin(meas_uneq);
 			measure_uneqlt(&sim->p, phase,
 			               Gu0t, Gutt, Gut0, Gd0t, Gdtt, Gdt0,
 			               &sim->m_ue);
-			profile_end(meas_uneq);
 			// #pragma omp parallel sections
 			// {
 			// #pragma omp section
@@ -442,9 +411,7 @@ static int dqmc(struct sim_data *sim)
 			// matdiff(N, N, ueGd, N, gdacc, N);
 			// #endif
 
-			// profile_begin(meas_uneq);
 			// measure_uneqlt(&sim->p, sign, ueGu, ueGd, &sim->m_ue);
-			// profile_end(meas_uneq);
 		}
 	}
 
@@ -504,7 +471,6 @@ int dqmc_wrapper(const char *sim_file, const char *log_file,
 		const tick_t max_time, const int bench)
 {
 	const tick_t wall_start = time_wall();
-	profile_clear();
 
 	int status = 0;
 
@@ -569,7 +535,6 @@ cleanup:
 
 	const tick_t wall_time = time_wall() - wall_start;
 	fprintf(log, "wall time: %.3f\n", wall_time * SEC_PER_TICK);
-	profile_print(log, wall_time);
 
 	if (log != stdout)
 		fclose(log);

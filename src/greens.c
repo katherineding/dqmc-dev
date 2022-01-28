@@ -2,7 +2,6 @@
 #include <complex.h>
 #include <tgmath.h>
 #include "linalg.h"
-#include "prof.h"
 #include "util.h"
 
 void mul_seq(const int N, const int L,
@@ -470,18 +469,9 @@ void calc_ue_g(const int N, const int L, const int F, const int n_mul,
 		num *const restrict work, const int lwork)
 {
 	const int E = 1 + (F - 1) / n_mul;
-
-	profile_begin(calc_o);
 	calc_o(N, F, n_mul, C, Gred, work);
-	profile_end(calc_o);
-
-	profile_begin(bsofi);
 	bsofi(N, E, Gred, tau, Q, work, lwork);
-	profile_end(bsofi);
-
-	profile_begin(expand_g);
 	expand_g(N, L, E, (L/F) * n_mul, B, iB, Gred, G0t, Gtt, Gt0);
-	profile_end(expand_g);
 }
 
 /*
@@ -590,17 +580,8 @@ void calc_ue_g_full(const int N, const int L, const int F, const int n_mul,
 		double *const restrict work, const int lwork)
 {
 	const int E = 1 + (F - 1) / n_mul;
-
-	profile_begin(calc_o);
 	calc_o(N, F, n_mul, C, Gred, work);
-	profile_end(calc_o);
-
-	profile_begin(bsofi);
 	bsofi(N, E, Gred, tau, Q, work, lwork);
-	profile_end(bsofi);
-
-	profile_begin(expand_g);
 	expand_g_full(N, L, E, (L/F) * n_mul, B, iB, Gred, G);
-	profile_end(expand_g);
 }
 */
