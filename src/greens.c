@@ -11,6 +11,9 @@ void mul_seq(const int N, const int L,
 		num *const restrict work)
 {
 	const int n_mul = (min == maxp1) ? L : (L + maxp1 - min) % L;
+        cublasHandle_t handle;
+        cublasStatus_t stat;
+        cudaError_t cudaStat;
 	if (n_mul == 1) {
 		for (int j = 0; j < N; j++)
 		for (int i = 0; i < N; i++)

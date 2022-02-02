@@ -1,7 +1,10 @@
 #pragma once
 
-#include <mkl.h>
+//#include <mkl.h>
 #include "util.h"
+
+#include <cublas_v2.h>
+#include <cuda_runtime.h>
 
 #ifdef USE_CPLX
 	#define cast(p) (MKL_Complex16 *)(p)
@@ -12,24 +15,24 @@
 #endif
 
 // general matrix-matrix multiplication: Level 3 BLAS
-static inline void xgemm(const char *transa, const char *transb,
+static inline void xgemm(cublasHandle_t handle, const char *transa, const char *transb,
 		const int m, const int n, const int k,
 		const num alpha, const num *a, const int lda,
 		const num *b, const int ldb,
 		const num beta, num *c, const int ldc)
 {
 #ifdef USE_CPLX
-	zgemm(
+	cublasZgemm(
 #else
-	dgemm(
+	cublasDgemm(
 #endif
-	transa, transb, &m, &n, &k,
+	handle, transa, transb, &m, &n, &k,
 	ccast(&alpha), ccast(a), &lda, ccast(b), &ldb,
 	ccast(&beta), cast(c), &ldc);
 }
 
 // general matrix-vector product, Level 2 BLAS
-static inline void xgemv(const char *trans, const int m, const int n,
+static inline void xgemv(cublasHandle_t handle, const char *trans, const int m, const int n,
 		const num alpha, const num *a, const int lda,
 		const num *x, const int incx,
 		const num beta, num *y, const int incy)
@@ -39,13 +42,13 @@ static inline void xgemv(const char *trans, const int m, const int n,
 #else
 	dgemv(
 #endif
-	trans, &m, &n,
+	handle, trans, &m, &n,
 	ccast(&alpha), ccast(a), &lda, ccast(x), &incx,
 	ccast(&beta), cast(y), &incy);
 }
 
 // triangular matrix - general matrix product, level 3 BLAS
-static inline void xtrmm(const char *side, const char *uplo, const char *transa, const char *diag,
+static inline void xtrmm(cublasHandle_t handle, const char *side, const char *uplo, const char *transa, const char *diag,
 		const int m, const int n,
 		const num alpha, const num *a, const int lda,
 		num *b, const int ldb)
@@ -55,7 +58,7 @@ static inline void xtrmm(const char *side, const char *uplo, const char *transa,
 #else
 	dtrmm(
 #endif
-	side, uplo, transa, diag, &m, &n,
+	handle, side, uplo, transa, diag, &m, &n,
 	ccast(&alpha), ccast(a), &lda, cast(b), &ldb);
 }
 
