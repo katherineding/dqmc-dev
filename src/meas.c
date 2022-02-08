@@ -318,8 +318,9 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	// * 1 bond <-> 1 bond correlators: pair_bb, jj, jsjs, kk, ksks (4 fermion, 2 phases)
 	// * (1 site)1 bond <-> (1 site)1 bond correlator: jnjn (8 fermion, 2 phases)
 	// * (1 site)1 bond <-> 1 bond correlators: jjn, jnj (6 fermion, 2 phases)
-	// * 2 hop bond <-> 1 bond correlators: J2jn, jnJ2 (6 fermion, 3 phases) & J2j, jJ2 (4 fermion, 3 phases)
-	// * 2 hop bond <-> 2 hop bond correlators: J2J2 (4 fermion, 4 phases)
+	// * 2 hop bond <-> (1 site)1 bond correlators: j2jn, jnj2 (6 fermion, 3 phases) 
+	// * 2 hop bond <-> 1 bond correlators: j2j, jj2 (4 fermion, 3 phases) 
+	// * 2 hop bond <-> 2 hop bond correlators: j2j2 (4 fermion, 4 phases)
 	// * nematic correlators: nem_nnnn, nem_ssss (? fermions?)
 
 	// minor optimization: handle t = 0 separately, since there are no delta
