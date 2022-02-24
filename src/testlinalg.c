@@ -1,4 +1,4 @@
-//#include "linalg.h"
+#include "linalg.h"
 #include <stdio.h>
 #include <stdexcept>
 
@@ -19,8 +19,8 @@
 // 		num *y, 
 // 		const int incy);
 
-#define m 2
-#define n 2
+// #define m 2
+// #define n 2
 
 // CUDA API error checking
 #define CUDA_CHECK(err)                                                                            \
@@ -52,26 +52,35 @@ int main(){
     cublasHandle_t cublasH = NULL;
     cudaStream_t stream = NULL;
 
-    // const int m = 2;
-    // const int n = 2;
+    const int m = 2;
+    const int n = 2;
+    const int k = 2;
     const int lda = m;
+    const int ldb = k;
+    const int ldc = m;
 
-    const double A[m*n] = {1,3,2,4};
-    const double x[n] = {5,6};
-    const double alpha = 1.0;
-    const double beta = 0.0;
-    double y[m] = {0,0};
+    const data_type A[m*k] = {1,2,3,4};
+    const data_type B[k*n] = {5,6,7,8};
+    const data_type x[n] = {5,6};
+
+    const data_type alpha = 1.0;
+    const data_type beta = 0.0;
+    data_type C[m*n] = {0};
+    data_type y[m] = {0};
     const int incx =1;
     const int incy =1;
 
     data_type *d_A = NULL;
     data_type *d_x = NULL;
     data_type *d_y = NULL;
+    data_type *d_B = NULL;
+    data_type *d_C = NULL;
 
     cublasOperation_t transa = CUBLAS_OP_N;
-    
+    cublasOperation_t transb = CUBLAS_OP_N;
 
     printf("size of A: %d\n",sizeof(A));
+    printf("size of B: %d\n",sizeof(B));
     printf("size of alpha: %d\n",sizeof(alpha));
 
     /* step 1: create cublas handle, bind a stream */
@@ -83,30 +92,55 @@ int main(){
 
     /* step 2: copy data to device */
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_A), sizeof(A)));
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_B), sizeof(B)));
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_C), sizeof(C)));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_x), sizeof(x)));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_y), sizeof(y)));
 
     CUDA_CHECK(cudaMemcpyAsync(d_A, &A, sizeof(A), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK(cudaMemcpyAsync(d_B, &B, sizeof(B), cudaMemcpyHostToDevice, stream));
     CUDA_CHECK(cudaMemcpyAsync(d_x, &x, sizeof(x), cudaMemcpyHostToDevice, stream));
 
     /* step 3: compute */
     CUBLAS_CHECK(
-        cublasDgemv(cublasH, transa, m, n, &alpha, d_A, lda, d_x, incx, &beta, d_y, incy));
+        xgemv(cublasH, transa, m, n, &alpha, d_A, lda, d_x, incx, &beta, d_y, incy));
+    CUBLAS_CHECK(
+        xgemm(cublasH, transa, transb, m, n, k, 
+            &alpha, d_A, lda, d_B, ldb, &beta, d_C, ldc));
 
     /* step 4: copy data to host */
     CUDA_CHECK(cudaMemcpyAsync(&y, d_y, sizeof(y), cudaMemcpyDeviceToHost, stream));
+    CUDA_CHECK(cudaMemcpyAsync(&C, d_C, sizeof(C), cudaMemcpyDeviceToHost, stream));
+
 
     CUDA_CHECK(cudaStreamSynchronize(stream));
 
     /* free resources */
+
+    CUDA_CHECK(cudaFree(d_A));
+    CUDA_CHECK(cudaFree(d_x));
+    CUDA_CHECK(cudaFree(d_y));
+    CUDA_CHECK(cudaFree(d_B));
+    CUDA_CHECK(cudaFree(d_C));
+
     CUBLAS_CHECK(cublasDestroy(cublasH));
     CUDA_CHECK(cudaStreamDestroy(stream));
     CUDA_CHECK(cudaDeviceReset());
+
+    /* check results */
 
     printf("y result:\n");
 
     for (int i = 0;i < m; i++){
         printf("y[%d] = %f\n",i,y[i]);
+    }
+
+    printf("C result:\n"); //
+
+    for (int i = 0;i < m; i++){
+        for (int j = 0;j < n;j++) {
+            printf("C[%d][%d] = %f\n",i,j,C[i + j*m]);
+        }
     }
 
 }

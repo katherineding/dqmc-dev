@@ -2,44 +2,60 @@
 
 /**	
  * Interface of DQMC code with CUBLAS and CUSOLVER library code.
- * Define away d
+ * Define away d (double) and z (double complex) prefixes into x
 */
 #include "util.h"
 
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
 
+// #ifdef USE_CPLX
+// 	#define cast(p) (cuDoubleComplex *)(p)
+// 	#define ccast(p) (const cuDoubleComplex *)(p)
+// #else
+// 	#define cast(p) (p)
+// 	#define ccast(p) (p)
+// #endif
+// #define USE_CPLX
+
+// TODO: handle proper casting to cuDoubleComplex type
+// want to use C "double complex" or C++ complex<double> on host side
+// and cuDoubleComplex on device side.
+// Some stackoverflow posts claim that a simple reinterpret_cast
+// between these produces the desired behavior as per C++0x standard,
+// but need to check this.
+
 #ifdef USE_CPLX
-	#define cast(p) (cuDoubleComplex *)(p)
-	#define ccast(p) (const cuDoubleComplex *)(p)
+	#include <complex.h>
+	typedef double complex num;
 #else
-	#define cast(p) (p)
-	#define ccast(p) (p)
+	typedef double num;
 #endif
 
-// // general matrix-matrix multiplication: Level 3 BLAS
-// static inline cublasStatus_t xgemm(
-// 		cublasHandle_t handle, 
-// 		cublasOperation_t transa, 
-// 		cublasOperation_t transb,
-// 		const int m, const int n, const int k,
-// 		const num *alpha, /* host or device pointer */
-// 		const num *a, 
-// 		const int lda,
-// 		const num *b, 
-// 		const int ldb,
-// 		const num *beta, /* host or device pointer */
-// 		num *c, 
-// 		const int ldc)
-// {
-// #ifdef USE_CPLX
-// 	cublasZgemm(
-// #else
-// 	cublasDgemm(
-// #endif
-// 	handle, transa, transb, m, n, k,
-// 	alpha, a, lda, b, ldb, beta, c, ldc);
-// }
+// general matrix-matrix multiplication: Level 3 BLAS
+// C <- alpha * A * B + beta * C when transa = transb = 'N' or 'n'
+static inline cublasStatus_t xgemm(
+		cublasHandle_t handle, 
+		cublasOperation_t transa, 
+		cublasOperation_t transb,
+		const int m, const int n, const int k,
+		const num *alpha, /* host or device pointer */
+		const num *A, /* device */
+		const int lda,
+		const num *B, /* device */
+		const int ldb, 
+		const num *beta, /* host or device pointer */
+		num *C,  /* device */
+		const int ldc)
+{
+#ifdef USE_CPLX
+	cublasZgemm(
+#else
+	cublasDgemm(
+#endif
+	handle, transa, transb, m, n, k,
+	alpha, A, lda, B, ldb, beta, C, ldc);
+}
 
 // general matrix-vector product, Level 2 BLAS
 // y <- alpha * A * x + beta * y when trans = 'N' or 'n'
@@ -65,22 +81,38 @@ static inline cublasStatus_t xgemv(cublasHandle_t handle,
 	beta, y, incy);
 }
 
-// // triangular matrix - general matrix product, level 3 BLAS
-// static inline void xtrmm(cublasHandle_t handle, 
-// 		cublasSideMode_t side, cublasFillMode_t uplo, 
-// 		const char *transa, const char *diag,
-// 		const int m, const int n,
-// 		const num alpha, const num *a, const int lda,
-// 		num *b, const int ldb)
-// {
-// #ifdef USE_CPLX
-// 	ztrmm(
-// #else
-// 	dtrmm(
-// #endif
-// 	handle, side, uplo, transa, diag, &m, &n,
-// 	ccast(&alpha), ccast(a), &lda, cast(b), &ldb);
-// }
+
+// TODO: should cublasHandle_t be const?
+// triangular matrix - general matrix product, level 3 BLAS
+// Assume uplo = "U" or 'u' so A is a upper triangular matrix.
+// Assume diag = 'N' or 'n' so A does not have unit diagonal
+// Assume transa = "N" or 'n'
+// If side = "L" or 'l' perform C <- A*B
+// If side = "R" or 'r' perform C <- B*A
+// Ass
+static inline cublasStatus_t xtrmm(cublasHandle_t handle, 
+		const cublasSideMode_t side, 
+		const cublasFillMode_t uplo, 
+		const cublasOperation_t transa, 
+		const cublasDiagType_t diag,
+		const int m, 
+		const int n,
+		const num *alpha, /* host or device */
+		const num *a, /* device */
+		const int lda,
+		const num *b, /* device */
+		const int ldb,
+		num *c,       /* device */
+		const int ldc)
+{
+#ifdef USE_CPLX
+	cublasDtrmm(
+#else
+	cublasDtrmm(
+#endif
+	handle, side, uplo, transa, diag, m, n,
+	alpha, a, lda, b, ldb, c, ldc);
+}
 
 // // LAPACK
 // // Compute LU factorization of general matrix using partial pivoting with row interchanges
