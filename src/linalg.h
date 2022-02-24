@@ -6,7 +6,8 @@
 */
 #include "util.h"
 
-#include <cublas_v2.h>
+#include <cusolverDn.h>
+//#include <cublas_v2.h>
 #include <cuda_runtime.h>
 
 // #ifdef USE_CPLX
@@ -84,12 +85,14 @@ static inline cublasStatus_t xgemv(cublasHandle_t handle,
 
 // TODO: should cublasHandle_t be const?
 // triangular matrix - general matrix product, level 3 BLAS
-// Assume uplo = "U" or 'u' so A is a upper triangular matrix.
+// Assume uplo = "U" or 'u' so A is a upper triangular matrix. The entries in 
+// 	the strictly lower triangular part of A is ignored
 // Assume diag = 'N' or 'n' so A does not have unit diagonal
 // Assume transa = "N" or 'n'
 // If side = "L" or 'l' perform C <- A*B
 // If side = "R" or 'r' perform C <- B*A
-// Ass
+// Note deviation from BLAS API, result is written to new matrix C
+//  instead of input matrix B
 static inline cublasStatus_t xtrmm(cublasHandle_t handle, 
 		const cublasSideMode_t side, 
 		const cublasFillMode_t uplo, 
@@ -98,11 +101,11 @@ static inline cublasStatus_t xtrmm(cublasHandle_t handle,
 		const int m, 
 		const int n,
 		const num *alpha, /* host or device */
-		const num *a, /* device */
+		const num *A, /* device */
 		const int lda,
-		const num *b, /* device */
+		const num *B, /* device */
 		const int ldb,
-		num *c,       /* device */
+		num *C,       /* device */
 		const int ldc)
 {
 #ifdef USE_CPLX
@@ -111,21 +114,30 @@ static inline cublasStatus_t xtrmm(cublasHandle_t handle,
 	cublasDtrmm(
 #endif
 	handle, side, uplo, transa, diag, m, n,
-	alpha, a, lda, b, ldb, c, ldc);
+	alpha, A, lda, B, ldb, C, ldc);
 }
 
-// // LAPACK
-// // Compute LU factorization of general matrix using partial pivoting with row interchanges
-// static inline void xgetrf(const int m, const int n, num* a,
-// 		const int lda, int* ipiv, int* info)
-// {
-// #ifdef USE_CPLX
-// 	zgetrf(
-// #else
-// 	dgetrf(
-// #endif
-// 	&m, &n, cast(a), &lda, ipiv, info);
-// }
+// LAPACK
+// Compute LU factorization of general matrix A using partial pivoting 
+// with row interchanges
+// A = P*L*U
+// A is overwritten by L (unit diagonal) and U
+static inline cusolverStatus_t xgetrf(cusolverDnHandle_t handle, 
+	const int m, 
+	const int n, 
+	num *a,
+	const int lda, 
+	num *work,
+	int* ipiv, 
+	int* info)
+{
+#ifdef USE_CPLX
+	cusolverDnZgetrf(
+#else
+	cusolverDnDgetrf(
+#endif
+	handle, m, n, a, lda, work, ipiv, info);
+}
 
 // // LAPACK
 // // Compute inverse of general matrix using LU factorization provided by xgetrf
@@ -140,20 +152,31 @@ static inline cublasStatus_t xtrmm(cublasHandle_t handle,
 // 	&n, cast(a), &lda, ipiv, cast(work), &lwork, info);
 // }
 
-// // LAPACK
-// // Solve linear equation with general matrix using LU factorization provided by zgetrf
-// static inline void xgetrs(const char* trans, const int n, const int nrhs,
-// 		const num* a, const int lda, const int* ipiv,
-// 		num* b, const int ldb, int* info)
-// {
-// #ifdef USE_CPLX
-// 	zgetrs(
-// #else
-// 	dgetrs(
-// #endif
-// 	trans, &n, &nrhs, ccast(a), &lda, ipiv, cast(b), &ldb, info);
-// }
 
+// LAPACK
+// Solve linear equations A * x = b, using LU factorization of A 
+// 	provided by xgetrf, with multiple right hand sides
+static inline cusolverStatus_t xgetrs(cusolverDnHandle_t handle, 
+	cublasOperation_t trans, 
+	const int n, 
+	const int nrhs,
+	const num* a, 
+	const int lda, 
+	const int* ipiv,
+	num* b, 
+	const int ldb, 
+	int* info)
+{
+#ifdef USE_CPLX
+	cusolverDnZgetrs(
+#else
+	cusolverDnDgetrs(
+#endif
+	handle, trans, n, nrhs, a, lda, ipiv, b, ldb, info);
+}
+
+// TODO: problem! No pivoted QR in CUSOLVER
+// Is there some way to replace this functionality?
 // // LAPACK
 // // QR factorization of general matrix using column pivoting
 // static inline void xgeqp3(const int m, const int n, num* a, const int lda, int* jpvt, num* tau,
@@ -168,37 +191,60 @@ static inline cublasStatus_t xtrmm(cublasHandle_t handle,
 // #endif
 // }
 
+// LAPACK
+// QR factorization of general matrix without column pivoting
+// A = Q*R
+// upper triangular part of A is R, Q represented implicitly
+static inline cusolverStatus_t xgeqrf(cusolverDnHandle_t handle, 
+	const int m, 
+	const int n, 
+	num* a, 
+	const int lda, 
+	num* tau,
+	num* work, 
+	const int lwork, 
+	int* info)
+{
+#ifdef USE_CPLX
+	cusolverDnZgeqrf(
+#else
+	cusolverDnDgeqrf(
+#endif
+	handle, m, n, a, lda, tau, work, lwork, info);
+}
 
-// // LAPACK
-// // QR factorization of general matrix without pivoting
-// static inline void xgeqrf(const int m, const int n, num* a, const int lda, num* tau,
-// 		num* work, const int lwork, int* info)
-// {
-// #ifdef USE_CPLX
-// 	zgeqrf(
-// #else
-// 	dgeqrf(
-// #endif
-// 	&m, &n, cast(a), &lda, cast(tau), cast(work), &lwork, info);
-// }
 
-// // LAPACK
-// // Multiplies a real/complex matrix by the orthogonal/unitary matrix Q 
-// // of the QR factorization formed by xgeqrf or xgeqp3
-// static inline void xunmqr(const char* side, const char* trans,
-// 		const int m, const int n, const int k, const num* a,
-// 		const int lda, const num* tau, num* c,
-// 		const int ldc, num* work, const int lwork, int* info)
-// {
-// #ifdef USE_CPLX
-// 	zunmqr(side, trans,
-// #else
-// 	dormqr(side, trans[0] == 'C' ? "T" : trans,
-// #endif
-// 	&m, &n, &k, ccast(a), &lda, ccast(tau),
-// 	cast(c), &ldc, cast(work), &lwork, info);
-// }
+// LAPACK
+// Multiplies a real/complex matrix C by the orthogonal/unitary matrix Q 
+// [stored in A] of the QR factorization formed by xgeqrf
+// If trans = 'C', use Q^T/Q^H
+// If side = "L", C <- Q^T * C; if side = "R", C <- C * Q^T
+static inline cusolverStatus_t xunmqr(cusolverDnHandle_t handle,
+    const cublasSideMode_t side,
+    const cublasOperation_t trans,
+	const int m, 
+	const int n, 
+	const int k, 
+	const num* a,
+	const int lda,
+	const num* tau, 
+	num* c,
+	const int ldc, 
+	num* work, 
+	const int lwork, 
+	int* info)
+{
+#ifdef USE_CPLX
+	cusolverDnZunmqr(handle, side, trans,
+#else
+	cusolverDnDormqr(handle, side, trans == CUBLAS_OP_C ? CUBLAS_OP_T : trans,
+#endif
+	m, n, k, a, lda, tau,
+	c, ldc, work, lwork, info);
+}
 
+// TODO: problem! No pivoted QR in CUSOLVER
+// Is there some way to replace this functionality?
 // // LAPACK
 // // Compute inverse of triangular matrix
 // static inline void xtrtri(const char* uplo, const char* diag, const int n,
