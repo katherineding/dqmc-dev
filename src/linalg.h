@@ -125,11 +125,12 @@ static inline cublasStatus_t xtrmm(cublasHandle_t handle,
 static inline cusolverStatus_t xgetrf(cusolverDnHandle_t handle, 
 	const int m, 
 	const int n, 
-	num *a,
+	num *a, /*device in/out*/
 	const int lda, 
-	num *work,
-	int* ipiv, 
-	int* info)
+	num *work, /*device in/out*/
+	int *ipiv, /*device out*/
+	int *info  /*device out*/
+	)
 {
 #ifdef USE_CPLX
 	cusolverDnZgetrf(
@@ -243,8 +244,7 @@ static inline cusolverStatus_t xunmqr(cusolverDnHandle_t handle,
 	c, ldc, work, lwork, info);
 }
 
-// TODO: problem! No pivoted QR in CUSOLVER
-// Is there some way to replace this functionality?
+// TODO: problem! only cusolverDnXtrtri interface in CUBLAS
 // // LAPACK
 // // Compute inverse of triangular matrix
 // static inline void xtrtri(const char* uplo, const char* diag, const int n,
