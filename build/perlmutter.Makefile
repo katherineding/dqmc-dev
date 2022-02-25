@@ -13,7 +13,7 @@ CFLAGS += -I/opt/cray/pe/hdf5/1.12.0.7/nvidia/20.7/include/
 LDFLAGS += -lhdf5 -lhdf5_hl
 LDFLAGS += -L/opt/cray/pe/hdf5/default/nvidia/20.7/lib #might cause problem b/c this is old
 LDFLAGS += -L/opt/nvidia/hpc_sdk/Linux_x86_64/21.9/math_libs/11.4/lib64 #cuda library locations
-SRCFILES = data.o dqmc.o greens.o meas.o sig.o
+SRCFILES = data.o dqmc.o greens.o meas.o updates.o
 
 all: one stack
 
