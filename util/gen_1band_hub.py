@@ -9,6 +9,10 @@ from scipy.linalg import expm
 np.seterr(over="ignore")
 np.set_printoptions(precision=3)
 
+import git #relies on gitpython module
+path = os.path.dirname(os.path.abspath(__file__))
+repo = git.Repo(path,search_parent_directories=True)
+hash_long = repo.git.rev_parse(repo.head, short=False)
 
 def rand_seed_urandom():
     rng = np.zeros(17, dtype=np.uint64)
@@ -544,6 +548,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     with h5py.File(file_params, "w" if overwrite else "x") as f:
         # parameters not used by dqmc code, but useful for analysis
         f.create_group("metadata")
+        f["metadata"]["commit"] = hash_long
         f["metadata"]["version"] = 0.1
         f["metadata"]["model"] = \
             "Hubbard (complex)" if dtype_num == np.complex128 else "Hubbard"
