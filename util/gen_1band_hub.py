@@ -507,7 +507,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
             pp = 0; 
             #list of intermediate pointscorresponding to this bond
             i1_type_list = bond_hop_dict[btype]
-            print("btype = ",btype,"i1_type_list = ",i1_type_list)
+            #print("btype = ",btype,"i1_type_list = ",i1_type_list)
             #two bonds need manual weighting when when t' != 0: 
             if b2ps == 12 and (btype == 0 or btype == 1):
                 i1 = hop2s[1, i + i1_type_list[0]*N]
