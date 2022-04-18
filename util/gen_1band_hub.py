@@ -470,6 +470,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
             tij[ix1 + Nx*iy, ix + Nx*iy1] += tp
             tij[ix + Nx*iy1, ix1 + Nx*iy] += tp
 
+    # phases accumulated by single-hop processes
     alpha = 0.5  # gauge choice. 0.5 for symmetric gauge.
     beta = 1 - alpha
     phi = np.zeros((Ny*Nx, Ny*Nx))
@@ -492,26 +493,33 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                         + alpha*offset_y*jx - alpha*offset_x*offset_y
     peierls = np.exp(2j*np.pi*(nflux/(Ny*Nx))*phi)
 
+    #phases accumulated by two-hop processes
+    #Here: types 0,1 include t' factors
+    #   Types 2-7: sum of two paths
+    #   Types 8,9: sum of four paths
+    #   Types 10,11: one path each
+    #   ZF case: 1+2*tp, 1+2*tp, 2, 2, 2, 2, 2, 2, 4, 4, 1, 1
     thermal_phases = np.ones((b2ps, N),dtype=np.complex128)
     for i in range(N):
         for btype in range(b2ps):
-            i0 = bond2s[0, i + btype*N]
-            i2 = bond2s[1, i + btype*N]
+            i0 = bond2s[0, i + btype*N] #start
+            i2 = bond2s[1, i + btype*N] #end
             pp = 0; 
-            #list of paths corresponding to this bond
-            i1_list = bond_hop_dict[btype]
+            #list of intermediate pointscorresponding to this bond
+            i1_type_list = bond_hop_dict[btype]
+            print("btype = ",btype,"i1_type_list = ",i1_type_list)
             #two bonds need manual weighting when when t' != 0: 
             if b2ps == 12 and (btype == 0 or btype == 1):
-                i1 = hop2s[1, i + i1_list[0]*N]
+                i1 = hop2s[1, i + i1_type_list[0]*N]
                 #print(f"i = {i}, btype = {btype}, path ({i0},{i1},{i2})")
                 pp += peierls[i0,i1] * peierls[i1,i2]
-                for i1type in i1_list[1:]:
+                for i1type in i1_type_list[1:]:
                     i1 = hop2s[1, i + i1type*N]
                     pp += tp*tp*peierls[i0,i1] * peierls[i1,i2]
                 # print(pp)
             #general case
             else:
-                for i1type in i1_list:
+                for i1type in i1_type_list:
                     i1 = hop2s[1, i + i1type*N]
                     pp += peierls[i0,i1] * peierls[i1,i2]
             thermal_phases[btype,i] = pp
