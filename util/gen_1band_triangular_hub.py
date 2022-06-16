@@ -1,7 +1,7 @@
 import os
 import shutil
 import sys
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 import h5py
 import numpy as np
@@ -125,7 +125,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     assert num_ij == map_ij.max() + 1
 
     # bond definitions: defined by one hopping step
-    bps = 3 if tp != 0.0 else 6  # bonds per site
+    bps = 6 if tp != 0.0 else 3  # bonds per site
     num_b = bps*N  # total bonds in cluster
     bonds = np.zeros((2, num_b), dtype=np.int32)
     # for iy in range(Ny):
@@ -172,6 +172,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
 
     # 2-bond definition is modified -- NOT consistent with Wen's!
     # Now only bonds defined by two hopping steps.
+    # TODO
     b2ps = 12 if tp != 0.0 else 4  # 2-bonds per site
     num_b2 = b2ps*N  # total 2-bonds in cluster
     bond2s = np.zeros((2, num_b2), dtype=np.int32)
@@ -454,7 +455,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     #                 degen_b2b[kk] += 1
     # assert num_b2b == map_b2b.max() + 1
 
-    # hopping (assuming periodic boundaries and no field)
+    # First: hopping (assuming periodic boundaries and no field)
     kij = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex128)
     for iy in range(Ny):
         for ix in range(Nx):
@@ -470,15 +471,20 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
             kij[ix1+Nx*iy , ix +Nx*iy1] += -1
             kij[ix +Nx*iy1, ix1+Nx*iy ] += -1
 
-    # phases accumulated by single-hop processes
+    # Next: phases accumulated by single-hop processes
+    # "a1" primitive vector: (1/2, sqrt(3)/2)
+    # "a2" primitive vector: (-1/2, sqrt(3)/2)
     # phi[i,j] = path integral det by (j-i) * A(mid) = 
     # hopping phase in j -> i hop
     alpha = 0.5  # gauge choice. 0.5 for symmetric gauge.
     beta = 1 - alpha
     phi = np.zeros((Ny*Nx, Ny*Nx))
+
+    phi2 = np.zeros((Ny*Nx, Ny*Nx))
     # path is straight line
     # if Ny is even, prefer dy - -Ny/2 over Ny/2. likewise for even Nx
     const = np.sqrt(3)
+    prefactor = 2*np.pi*2*nflux/(const*Nx*Ny)
     #displacement vector: d
     for dy in range((1-Ny)//2, (1+Ny)//2):
         for dx in range((1-Nx)//2, (1+Nx)//2):
@@ -490,10 +496,10 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                     jx = ix + dx
                     jjx = jx % Nx
 
-                    #boundary phase offset = \pm Nx, \pm Ny
-                    offset_x = jx - jjx
-                    offset_y = jy - jjy
-                    
+                    #index offset = \pm Nx, \pm Ny
+                    offset_a1 = jx - jjx
+                    offset_a2 = jy - jjy
+
                     #true spatial location R_i
                     irx = (ix - iy)/2
                     iry = const * (ix + iy)/2
@@ -518,12 +524,53 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                     # results should be equivalent, 
                     # since phi_ij sign also flipped?
                     # NOTE This is important: How to get this boundary phase?
+                    # 
+                    #True spatial offset: wrap along a1 direction
+                    offset_a1_rx = offset_a1 / 2
+                    offset_a1_ry = offset_a1 * const / 2
+
+                    #True spatial offset: wrap along a2 direction
+                    offset_a2_rx = - offset_a2 / 2
+                    offset_a2_ry = offset_a2 * const / 2
+
+                    xwrap_phase = (+alpha) * offset_a1_ry * jjrx \
+                                    - beta * offset_a1_rx * jjry
+                    ywrap_phase = (+alpha) * offset_a2_ry * jjrx \
+                                    - beta * offset_a2_rx * jjry
+
+                    #either choice of xywrap or yxwrap phase should lead to \
+                    #the correct Hamiltonian
+                    xywrap_phase = alpha * offset_a2_ry * offset_a1_rx \
+                                   -beta * offset_a2_rx * offset_a1_ry
+
+
+                    yxwrap_phase = alpha * offset_a1_ry * offset_a2_rx \
+                                   -beta * offset_a1_rx * offset_a2_ry
+
+                    # if not np.isclose(0,xywrap_phase):
+                    #     print(prefactor*xywrap_phase, prefactor*yxwrap_phase)
+
+                    # Field quantization condition due to finite lattice
+                    corner_diff = prefactor*(xywrap_phase - yxwrap_phase)/(2*np.pi)
+                    #assert np.isclose(corner_diff,0) or np.isclose(np.abs(corner_diff),nflux)
+                    #print("nflux",nflux,corner_diff)
+                    
+                    phi2[jjx + Nx*jjy,ix + Nx*iy] = - alpha*mry*drx + beta*mrx*dry \
+                        + xwrap_phase + ywrap_phase + xywrap_phase
+
                     phi[jjx + Nx*jjy,ix + Nx*iy] = \
                         - alpha*mry*drx + beta*mrx*dry + \
-                        - ((-alpha*offset_x*jrx*const/2+beta*offset_x*jry/2) + \
-                        (-alpha*offset_y*jrx*const/2-beta*offset_y*jry/2) - \
-                        alpha*offset_x*offset_y*const/2 )
-    peierls = np.exp(2j*np.pi*(nflux/(Nx*Ny*const/2))*phi)
+                        - ((-alpha*offset_a1*jrx*const/2+beta*offset_a1*jry/2) + \
+                        (-alpha*offset_a2*jrx*const/2-beta*offset_a2*jry/2) - \
+                        alpha*offset_a1*offset_a2*const/2 )
+
+    #Lattice total area = Nx * Ny * sqrt(3) * a^2 / 2
+    #prefactor = 2*np.pi*2*nflux/(const*Nx*Ny)
+    peierls = np.exp(1j*prefactor*phi)
+
+    peierls2 = np.exp(1j*prefactor*phi2)
+
+    print(np.allclose(peierls,peierls2))
 
     #phases accumulated by two-hop processes
     #Here: types 0,1 include t' factors
@@ -559,7 +606,20 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                 
     if dtype_num == np.complex128:
         Ku = kij * peierls
-        assert np.max(np.abs(Ku - Ku.T.conj())) < 1e-10
+        Ku2 = kij * peierls2
+
+
+        plt.figure()
+        plt.matshow(Ku.real)
+        plt.colorbar()
+
+        plt.figure()
+        plt.matshow(Ku2.real)
+        plt.colorbar()
+
+        print(np.linalg.norm(Ku-Ku2))
+
+        assert np.linalg.norm(Ku - Ku.T.conj()) < 1e-10, f"max diff {np.linalg.norm(Ku - Ku.T.conj())}"
     else:
         Ku = kij.real
         assert np.max(np.abs(peierls.imag)) < 1e-10
@@ -568,13 +628,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         thermal_phases = thermal_phases.real
     #print(thermal_phases.dtype,thermal_phases.shape)
     #
-    # plt.figure()
-    # plt.matshow((peierls).real)
-    # plt.colorbar()
-
-    # plt.figure()
-    # plt.matshow((peierls).imag)
-    # plt.colorbar()
+    
 
     for i in range(Ny*Nx):
         Ku[i, i] -= mu
