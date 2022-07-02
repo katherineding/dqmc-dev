@@ -168,7 +168,8 @@ static int dqmc(struct sim_data *sim)
 	// lapack work arrays
 	int lwork = get_lwork_eq_g(N);
 	if (sim->p.period_uneqlt > 0) {
-		const int lwork_ue = get_lwork_ue_g(N, F);
+		const int E = 1 + (F - 1) / N_MUL;
+		const int lwork_ue = get_lwork_ue_g(N, E);
 		if (lwork_ue > lwork) lwork = lwork_ue;
 	}
 	num *const restrict worku = my_calloc(lwork * sizeof(num));
@@ -209,8 +210,14 @@ static int dqmc(struct sim_data *sim)
 	}
 
 	for (; sim->s.sweep < sim->p.n_sweep; sim->s.sweep++) {
-		if (sig_check_state(sim->s.sweep, sim->p.n_sweep_warm, sim->p.n_sweep) != 0)
+		const int sig = sig_check_state(sim->s.sweep, sim->p.n_sweep_warm, sim->p.n_sweep);
+		if (sig == 1) // stop flag
 			break;
+		else if (sig == 2) { // progress flag
+			const int status = sim_data_save(sim);
+			if (status < 0)
+				fprintf(stderr, "save_file() failed: %d\n", status);
+		}
 
 		for (int l = 0; l < L; l++) {
 			profile_begin(updates);
@@ -544,7 +551,7 @@ int dqmc_wrapper(const char *sim_file, const char *log_file,
 	// save to simulation file (if not in benchmarking mode)
 	if (!bench) {
 		fprintf(log, "saving data\n");
-		status = sim_data_save(sim, sim_file);
+		status = sim_data_save(sim);
 		if (status < 0) {
 			fprintf(stderr, "save_file() failed: %d\n", status);
 			status = -1;

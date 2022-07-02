@@ -226,11 +226,11 @@ static void push_stack(const char *file, const char *line)
 		backup = my_calloc(len_file + 32);
 		snprintf(backup, len_file + 32, "%s_%.20s_%d", file, hostname, pid);
 
-		const int bfd = open(backup, O_CREAT | O_WRONLY | O_APPEND);
+		const int bfd = open(backup, O_CREAT | O_WRONLY | O_APPEND, 0644);
 		if (bfd == -1)
 			status |= 1;
 		else {
-			if (write(bfd, line_nl, len_line + 1) != len_line + 1)
+			if (write(bfd, line_nl, len_line + 1) != (ssize_t)len_line + 1)
 				status |= 2;
 			if (close(bfd) == -1)
 				status |= 4;
@@ -244,7 +244,7 @@ static void push_stack(const char *file, const char *line)
 	if (fd == -1)
 		status |= 1;
 	else {
-		if (write(fd, line_nl, len_line + 1) != len_line + 1)
+		if (write(fd, line_nl, len_line + 1) != (ssize_t)len_line + 1)
 			status |= 2;
 		if (close(fd) == -1)
 			status |= 4;
