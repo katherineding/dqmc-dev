@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <hdf5.h>
 #include <hdf5_hl.h>
-#include "util.h"
 
 #define return_if(cond, val, ...) \
 	do {if (cond) {fprintf(stderr, __VA_ARGS__); return (val);}} while (0)

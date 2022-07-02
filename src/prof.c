@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <omp.h>
-#include "time_.h"
 
 tick_t profile_time[n_profile] = {0};
 int profile_count[n_profile] = {0};

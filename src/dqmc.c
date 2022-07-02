@@ -8,7 +8,6 @@
 #include "prof.h"
 #include "rand.h"
 #include "sig.h"
-#include "time_.h"
 #include "updates.h"
 #include "util.h"
 

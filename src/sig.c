@@ -1,7 +1,6 @@
 #include "sig.h"
 #include <signal.h>
 #include <stdio.h>
-#include "time_.h"
 
 static volatile sig_atomic_t progress_flag = 0;
 static void progress(int signum) { progress_flag = signum; }

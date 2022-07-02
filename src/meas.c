@@ -1,6 +1,5 @@
 #include "meas.h"
 #include "data.h"
-#include "util.h"
 
 // number of types of bonds kept for 4-particle nematic correlators.
 // 2 by default since these are slow measurerments
