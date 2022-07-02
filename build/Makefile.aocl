@@ -1,0 +1,39 @@
+CC = clang 
+
+# modify march to znver3 for Perlmutter
+CFLAGS = -std=gnu17 -O0 -march=native 
+CFLAGS += -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter
+CFLAGS += -Wno-incompatible-pointer-types-discards-qualifiers
+CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
+CFLAGS += -DPROFILE_ENABLE
+#CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
+CFLAGS += -fopenmp -g -H -v
+
+# HDF5
+CFLAGS += -I/home/jxding/miniconda3/include 
+LDFLAGS += -L/home/jxding/miniconda3/lib
+
+# AOCL
+CFLAGS  += -I${AOCL_ROOT}/include
+LDFLAGS += -L${AOCL_ROOT}/lib 
+
+LDFLAGS += -lhdf5 -lhdf5_hl -lm -lblis-mt -lflame
+
+SRCFILES = data.o dqmc.o greens.o meas.o prof.o sig.o updates.o
+
+all: one stack
+
+one: ${SRCFILES} main_1.o
+	@echo linking dqmc_1
+	@${CC} ${CFLAGS} -o dqmc_1 $? ${LDFLAGS}
+
+stack: ${SRCFILES} main_stack.o
+	@echo linking dqmc_stack
+	@${CC} ${CFLAGS} -o dqmc_stack $? ${LDFLAGS}
+
+%.o: ../src/%.c
+	@echo compiling $<
+	@${CC} -c ${CFLAGS} $<
+
+clean:
+	rm -f *.o *.optrpt *.seq *.par

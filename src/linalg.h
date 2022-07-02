@@ -1,11 +1,12 @@
 #pragma once
 
-#include <mkl.h>
+//#include <blis.h>
+#include <FLAME.h>
 #include "util.h"
 
 #ifdef USE_CPLX
-	#define cast(p) (MKL_Complex16 *)(p)
-	#define ccast(p) (const MKL_Complex16 *)(p)
+	#define cast(p) (dcomplex *)(p)
+	#define ccast(p) (const dcomplex *)(p)
 #else
 	#define cast(p) (p)
 	#define ccast(p) (p)
@@ -24,9 +25,9 @@ static inline void xgemm(const char *transa, const char *transb,
 		const num beta, num *c, const int ldc)
 {
 #ifdef USE_CPLX
-	zgemm(
+	zgemm_(
 #else
-	dgemm(
+	dgemm_(
 #endif
 	transa, transb, &m, &n, &k,
 	ccast(&alpha), ccast(a), &lda, ccast(b), &ldb,
@@ -41,9 +42,9 @@ static inline void xgemv(const char *trans, const int m, const int n,
 		const num beta, num *y, const int incy)
 {
 #ifdef USE_CPLX
-	zgemv(
+	zgemv_(
 #else
-	dgemv(
+	dgemv_(
 #endif
 	trans, &m, &n,
 	ccast(&alpha), ccast(a), &lda, ccast(x), &incx,
@@ -63,9 +64,9 @@ static inline void xtrmm(const char *side, const char *uplo, const char *transa,
 		num *b, const int ldb)
 {
 #ifdef USE_CPLX
-	ztrmm(
+	ztrmm_(
 #else
-	dtrmm(
+	dtrmm_(
 #endif
 	side, uplo, transa, diag, &m, &n,
 	ccast(&alpha), ccast(a), &lda, cast(b), &ldb);
@@ -84,9 +85,9 @@ static inline void xgetrf(const int m, const int n, num* a,
 		const int lda, int* ipiv, int* info)
 {
 #ifdef USE_CPLX
-	zgetrf(
+	zgetrf_(
 #else
-	dgetrf(
+	dgetrf_(
 #endif
 	&m, &n, cast(a), &lda, ipiv, info);
 }
@@ -98,9 +99,9 @@ static inline void xgetri(const int n, num* a, const int lda, const int* ipiv,
 		num* work, const int lwork, int* info)
 {
 #ifdef USE_CPLX
-	zgetri(
+	zgetri_(
 #else
-	dgetri(
+	dgetri_(
 #endif
 	&n, cast(a), &lda, ipiv, cast(work), &lwork, info);
 }
@@ -113,9 +114,9 @@ static inline void xgetrs(const char* trans, const int n, const int nrhs,
 		num* b, const int ldb, int* info)
 {
 #ifdef USE_CPLX
-	zgetrs(
+	zgetrs_(
 #else
-	dgetrs(
+	dgetrs_(
 #endif
 	trans, &n, &nrhs, ccast(a), &lda, ipiv, cast(b), &ldb, info);
 }
@@ -126,14 +127,13 @@ static inline void xgeqp3(const int m, const int n, num* a, const int lda, int* 
 		num* work, const int lwork, double* rwork, int* info)
 {
 #ifdef USE_CPLX
-	zgeqp3(&m, &n, cast(a), &lda, jpvt, cast(tau),
+	zgeqp3_(&m, &n, cast(a), &lda, jpvt, cast(tau),
 	cast(work), &lwork, rwork, info);
 #else
-	dgeqp3(&m, &n, cast(a), &lda, jpvt, cast(tau),
+	dgeqp3_(&m, &n, cast(a), &lda, jpvt, cast(tau),
 	cast(work), &lwork, info); // rwork not used
 #endif
 }
-
 
 // LAPACK
 // QR factorization of general matrix without column pivoting
@@ -143,9 +143,9 @@ static inline void xgeqrf(const int m, const int n, num* a, const int lda, num* 
 		num* work, const int lwork, int* info)
 {
 #ifdef USE_CPLX
-	zgeqrf(
+	zgeqrf_(
 #else
-	dgeqrf(
+	dgeqrf_(
 #endif
 	&m, &n, cast(a), &lda, cast(tau), cast(work), &lwork, info);
 }
@@ -161,9 +161,9 @@ static inline void xunmqr(const char* side, const char* trans,
 		const int ldc, num* work, const int lwork, int* info)
 {
 #ifdef USE_CPLX
-	zunmqr(side, trans,
+	zunmqr_(side, trans,
 #else
-	dormqr(side, trans[0] == 'C' ? "T" : trans,
+	dormqr_(side, trans[0] == 'C' ? "T" : trans,
 #endif
 	&m, &n, &k, ccast(a), &lda, ccast(tau),
 	cast(c), &ldc, cast(work), &lwork, info);
@@ -175,9 +175,9 @@ static inline void xtrtri(const char* uplo, const char* diag, const int n,
 		num* a, const int lda, int* info)
 {
 #ifdef USE_CPLX
-	ztrtri(
+	ztrtri_(
 #else
-	dtrtri(
+	dtrtri_(
 #endif
 	uplo, diag, &n, cast(a), &lda, info);
 }
