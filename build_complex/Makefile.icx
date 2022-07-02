@@ -5,7 +5,7 @@ CFLAGS += -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter
 CFLAGS += -DMKL_DIRECT_CALL_SEQ -Wno-ignored-pragmas
 CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
 CFLAGS += -DPROFILE_ENABLE
-# CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
+CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 CFLAGS += -fiopenmp  # to disable openmp, use -qopenmp-stubs
 
 # HDF5
