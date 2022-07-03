@@ -4,13 +4,13 @@
 #include <FLAME.h>
 #include "util.h"
 
-#ifdef USE_CPLX
-	#define cast(p) (dcomplex *)(p)
-	#define ccast(p) (const dcomplex *)(p)
-#else
-	#define cast(p) (p)
-	#define ccast(p) (p)
-#endif
+// #ifdef USE_CPLX
+// 	#define cast(p) (dcomplex *)(p)
+// 	#define ccast(p) (const dcomplex *)(p)
+// #else
+// 	#define cast(p) (p)
+// 	#define ccast(p) (p)
+// #endif
 
 /*=============================================
 =            BLAS routine wrappers            =
@@ -19,19 +19,19 @@
 // general matrix-matrix multiplication: Level 3 BLAS
 // C <- alpha * A * B + beta * C when transa = transb = 'N' or 'n'
 static inline void xgemm(
-	const char *transa, 
-	const char *transb,
-	const int m, 
-	const int n, 
-	const int k,
-	const num alpha, 
-	const num *a, 
-	const int lda,
-	const num *b, 
-	const int ldb,
-	const num beta, 
+	char *transa, 
+	char *transb,
+	int m, 
+	int n, 
+	int k,
+	num alpha, 
+	num *a, 
+	int lda,
+	num *b, 
+	int ldb,
+	num beta, 
 	num *c, 
-	const int ldc)
+	int ldc)
 {
 #ifdef USE_CPLX
 	zgemm_(
@@ -39,23 +39,23 @@ static inline void xgemm(
 	dgemm_(
 #endif
 	transa, transb, &m, &n, &k,
-	ccast(&alpha), ccast(a), &lda, ccast(b), &ldb,
-	ccast(&beta), cast(c), &ldc);
+	&alpha, a, &lda, b, &ldb,
+	&beta, c, &ldc);
 }
 
 // general matrix-vector product, Level 2 BLAS
 // y <- alpha * A * x + beta * y when trans = 'N' or 'n'
-static inline void xgemv(const char *trans, 
-	const int m, 
-	const int n,
-	const num alpha, 
-	const num *a, 
-	const int lda,
-	const num *x, 
-	const int incx,
-	const num beta,
+static inline void xgemv(char *trans, 
+	int m, 
+	int n,
+	num alpha, 
+	num *a, 
+	int lda,
+	num *x, 
+	int incx,
+	num beta,
 	num *y, 
-	const int incy)
+	int incy)
 {
 #ifdef USE_CPLX
 	zgemv_(
@@ -63,8 +63,8 @@ static inline void xgemv(const char *trans,
 	dgemv_(
 #endif
 	trans, &m, &n,
-	ccast(&alpha), ccast(a), &lda, ccast(x), &incx,
-	ccast(&beta), cast(y), &incy);
+	&alpha, a, &lda, x, &incx,
+	&beta, y, &incy);
 }
 
 // triangular matrix - general matrix product, level 3 BLAS
@@ -75,17 +75,17 @@ static inline void xgemv(const char *trans,
 // If side = "L" or 'l' perform C <- A*B
 // If side = "R" or 'r' perform C <- B*A
 static inline void xtrmm(
-	const char *side, 
-	const char *uplo, 
-	const char *transa, 
-	const char *diag,
-	const int m, 
-	const int n,
-	const num alpha,
-	const num *a, 
-	const int lda,
+	char *side, 
+	char *uplo, 
+	char *transa, 
+	char *diag,
+	int m, 
+	int n,
+	num alpha,
+	num *a, 
+	int lda,
 	num *b, 
-	const int ldb)
+	int ldb)
 {
 #ifdef USE_CPLX
 	ztrmm_(
@@ -93,7 +93,7 @@ static inline void xtrmm(
 	dtrmm_(
 #endif
 	side, uplo, transa, diag, &m, &n,
-	ccast(&alpha), ccast(a), &lda, cast(b), &ldb);
+	&alpha, a, &lda, b, &ldb);
 }
 
 /*=============================================
@@ -106,10 +106,10 @@ static inline void xtrmm(
 // A = P*L*U
 // A is overwritten by L (unit diagonal) and U
 static inline void xgetrf(
-	const int m, 
-	const int n, 
+	int m, 
+	int n, 
 	num* a,
-	const int lda, 
+	int lda, 
 	int* ipiv, 
 	int* info)
 {
@@ -118,18 +118,18 @@ static inline void xgetrf(
 #else
 	dgetrf_(
 #endif
-	&m, &n, cast(a), &lda, ipiv, info);
+	&m, &n, a, &lda, ipiv, info);
 }
 
 
 // LAPACK
 // Compute inverse of general matrix using LU factorization provided by xgetrf
 static inline void xgetri(
-	const int n, num* a, 
-	const int lda, 
-	const int* ipiv,
+	int n, num* a, 
+	int lda, 
+	int* ipiv,
 	num* work, 
-	const int lwork, 
+	int lwork, 
 	int* info)
 {
 #ifdef USE_CPLX
@@ -137,21 +137,21 @@ static inline void xgetri(
 #else
 	dgetri_(
 #endif
-	&n, cast(a), &lda, ipiv, cast(work), &lwork, info);
+	&n, a, &lda, ipiv, work, &lwork, info);
 }
 
 // LAPACK
 // Solve linear equations A * x = b, using LU factorization of A 
 // 	provided by xgetrf, with multiple right hand sides
 static inline void xgetrs(
-	const char* trans, 
-	const int n, 
-	const int nrhs,
-	const num* a, 
-	const int lda, 
-	const int* ipiv,
+	char* trans, 
+	int n, 
+	int nrhs,
+	num* a, 
+	int lda, 
+	int* ipiv,
 	num* b, 
-	const int ldb, 
+	int ldb, 
 	int* info)
 {
 #ifdef USE_CPLX
@@ -159,28 +159,28 @@ static inline void xgetrs(
 #else
 	dgetrs_(
 #endif
-	trans, &n, &nrhs, ccast(a), &lda, ipiv, cast(b), &ldb, info);
+	trans, &n, &nrhs, a, &lda, ipiv, b, &ldb, info);
 }
 
 // LAPACK
 // QR factorization of general matrix using column pivotin
 static inline void xgeqp3(
-	const int m, 
-	const int n, 
+	int m, 
+	int n, 
 	num* a, 
-	const int lda, 
+	int lda, 
 	int* jpvt, num* tau,
 	num* work, 
-	const int lwork, 
+	int lwork, 
 	double* rwork, 
 	int* info)
 {
 #ifdef USE_CPLX
-	zgeqp3_(&m, &n, cast(a), &lda, jpvt, cast(tau),
-	cast(work), &lwork, rwork, info);
+	zgeqp3_(&m, &n, a, &lda, jpvt, tau,
+	work, &lwork, rwork, info);
 #else
-	dgeqp3_(&m, &n, cast(a), &lda, jpvt, cast(tau),
-	cast(work), &lwork, info); // rwork not used
+	dgeqp3_(&m, &n, a, &lda, jpvt, tau,
+	work, &lwork, info); // rwork not used
 #endif
 }
 
@@ -189,13 +189,13 @@ static inline void xgeqp3(
 // A = Q*R
 // upper triangular part of A is R, Q represented implicitly
 static inline void xgeqrf(
-	const int m, 
-	const int n, 
+	int m, 
+	int n, 
 	num* a, 
-	const int lda, 
+	int lda, 
 	num* tau,
 	num* work, 
-	const int lwork, 
+	int lwork, 
 	int* info)
 {
 #ifdef USE_CPLX
@@ -203,7 +203,7 @@ static inline void xgeqrf(
 #else
 	dgeqrf_(
 #endif
-	&m, &n, cast(a), &lda, cast(tau), cast(work), &lwork, info);
+	&m, &n, a, &lda, tau, work, &lwork, info);
 }
 
 // LAPACK
@@ -212,17 +212,17 @@ static inline void xgeqrf(
 // If trans = 'C', use Q^T/Q^H
 // If side = "L", C <- Q^T * C; if side = "R", C <- C * Q^T
 static inline void xunmqr(char* side, 
-	const char* trans,
-	const int m, 
-	const int n, 
-	const int k, 
-	const num* a,
-	const int lda, 
-	const num* tau, 
+	char* trans,
+	int m, 
+	int n, 
+	int k, 
+	num* a,
+	int lda, 
+	num* tau, 
 	num* c,
-	const int ldc, 
+	int ldc, 
 	num* work, 
-	const int lwork, 
+	int lwork, 
 	int* info)
 {
 #ifdef USE_CPLX
@@ -230,18 +230,18 @@ static inline void xunmqr(char* side,
 #else
 	dormqr_(side, trans[0] == 'C' ? "T" : trans,
 #endif
-	&m, &n, &k, ccast(a), &lda, ccast(tau),
-	cast(c), &ldc, cast(work), &lwork, info);
+	&m, &n, &k, a, &lda, tau,
+	c, &ldc, work, &lwork, info);
 }
 
 // LAPACK
 // Compute inverse of triangular matrix
 static inline void xtrtri(
-	const char* uplo, 
-	const char* diag, 
-	const int n,
+	char* uplo, 
+	char* diag, 
+	int n,
 	num* a, 
-	const int lda, 
+	int lda, 
 	int* info)
 {
 #ifdef USE_CPLX
@@ -249,8 +249,8 @@ static inline void xtrtri(
 #else
 	dtrtri_(
 #endif
-	uplo, diag, &n, cast(a), &lda, info);
+	uplo, diag, &n, a, &lda, info);
 }
 
-#undef ccast
-#undef cast
+// #undef ccast
+// #undef cast
