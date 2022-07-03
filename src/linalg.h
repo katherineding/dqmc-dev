@@ -18,11 +18,20 @@
 
 // general matrix-matrix multiplication: Level 3 BLAS
 // C <- alpha * A * B + beta * C when transa = transb = 'N' or 'n'
-static inline void xgemm(const char *transa, const char *transb,
-		const int m, const int n, const int k,
-		const num alpha, const num *a, const int lda,
-		const num *b, const int ldb,
-		const num beta, num *c, const int ldc)
+static inline void xgemm(
+	const char *transa, 
+	const char *transb,
+	const int m, 
+	const int n, 
+	const int k,
+	const num alpha, 
+	const num *a, 
+	const int lda,
+	const num *b, 
+	const int ldb,
+	const num beta, 
+	num *c, 
+	const int ldc)
 {
 #ifdef USE_CPLX
 	zgemm_(
@@ -36,10 +45,17 @@ static inline void xgemm(const char *transa, const char *transb,
 
 // general matrix-vector product, Level 2 BLAS
 // y <- alpha * A * x + beta * y when trans = 'N' or 'n'
-static inline void xgemv(const char *trans, const int m, const int n,
-		const num alpha, const num *a, const int lda,
-		const num *x, const int incx,
-		const num beta, num *y, const int incy)
+static inline void xgemv(const char *trans, 
+	const int m, 
+	const int n,
+	const num alpha, 
+	const num *a, 
+	const int lda,
+	const num *x, 
+	const int incx,
+	const num beta,
+	num *y, 
+	const int incy)
 {
 #ifdef USE_CPLX
 	zgemv_(
@@ -58,10 +74,18 @@ static inline void xgemv(const char *trans, const int m, const int n,
 // Assume transa = "N" or 'n'
 // If side = "L" or 'l' perform C <- A*B
 // If side = "R" or 'r' perform C <- B*A
-static inline void xtrmm(const char *side, const char *uplo, const char *transa, const char *diag,
-		const int m, const int n,
-		const num alpha, const num *a, const int lda,
-		num *b, const int ldb)
+static inline void xtrmm(
+	const char *side, 
+	const char *uplo, 
+	const char *transa, 
+	const char *diag,
+	const int m, 
+	const int n,
+	const num alpha,
+	const num *a, 
+	const int lda,
+	num *b, 
+	const int ldb)
 {
 #ifdef USE_CPLX
 	ztrmm_(
@@ -81,8 +105,13 @@ static inline void xtrmm(const char *side, const char *uplo, const char *transa,
 // with row interchanges
 // A = P*L*U
 // A is overwritten by L (unit diagonal) and U
-static inline void xgetrf(const int m, const int n, num* a,
-		const int lda, int* ipiv, int* info)
+static inline void xgetrf(
+	const int m, 
+	const int n, 
+	num* a,
+	const int lda, 
+	int* ipiv, 
+	int* info)
 {
 #ifdef USE_CPLX
 	zgetrf_(
@@ -95,8 +124,13 @@ static inline void xgetrf(const int m, const int n, num* a,
 
 // LAPACK
 // Compute inverse of general matrix using LU factorization provided by xgetrf
-static inline void xgetri(const int n, num* a, const int lda, const int* ipiv,
-		num* work, const int lwork, int* info)
+static inline void xgetri(
+	const int n, num* a, 
+	const int lda, 
+	const int* ipiv,
+	num* work, 
+	const int lwork, 
+	int* info)
 {
 #ifdef USE_CPLX
 	zgetri_(
@@ -109,9 +143,16 @@ static inline void xgetri(const int n, num* a, const int lda, const int* ipiv,
 // LAPACK
 // Solve linear equations A * x = b, using LU factorization of A 
 // 	provided by xgetrf, with multiple right hand sides
-static inline void xgetrs(const char* trans, const int n, const int nrhs,
-		const num* a, const int lda, const int* ipiv,
-		num* b, const int ldb, int* info)
+static inline void xgetrs(
+	const char* trans, 
+	const int n, 
+	const int nrhs,
+	const num* a, 
+	const int lda, 
+	const int* ipiv,
+	num* b, 
+	const int ldb, 
+	int* info)
 {
 #ifdef USE_CPLX
 	zgetrs_(
@@ -123,8 +164,16 @@ static inline void xgetrs(const char* trans, const int n, const int nrhs,
 
 // LAPACK
 // QR factorization of general matrix using column pivotin
-static inline void xgeqp3(const int m, const int n, num* a, const int lda, int* jpvt, num* tau,
-		num* work, const int lwork, double* rwork, int* info)
+static inline void xgeqp3(
+	const int m, 
+	const int n, 
+	num* a, 
+	const int lda, 
+	int* jpvt, num* tau,
+	num* work, 
+	const int lwork, 
+	double* rwork, 
+	int* info)
 {
 #ifdef USE_CPLX
 	zgeqp3_(&m, &n, cast(a), &lda, jpvt, cast(tau),
@@ -139,8 +188,15 @@ static inline void xgeqp3(const int m, const int n, num* a, const int lda, int* 
 // QR factorization of general matrix without column pivoting
 // A = Q*R
 // upper triangular part of A is R, Q represented implicitly
-static inline void xgeqrf(const int m, const int n, num* a, const int lda, num* tau,
-		num* work, const int lwork, int* info)
+static inline void xgeqrf(
+	const int m, 
+	const int n, 
+	num* a, 
+	const int lda, 
+	num* tau,
+	num* work, 
+	const int lwork, 
+	int* info)
 {
 #ifdef USE_CPLX
 	zgeqrf_(
@@ -155,10 +211,19 @@ static inline void xgeqrf(const int m, const int n, num* a, const int lda, num* 
 // [stored in A] of the QR factorization formed by xgeqrf
 // If trans = 'C', use Q^T/Q^H
 // If side = "L", C <- Q^T * C; if side = "R", C <- C * Q^T
-static inline void xunmqr(const char* side, const char* trans,
-		const int m, const int n, const int k, const num* a,
-		const int lda, const num* tau, num* c,
-		const int ldc, num* work, const int lwork, int* info)
+static inline void xunmqr(char* side, 
+	const char* trans,
+	const int m, 
+	const int n, 
+	const int k, 
+	const num* a,
+	const int lda, 
+	const num* tau, 
+	num* c,
+	const int ldc, 
+	num* work, 
+	const int lwork, 
+	int* info)
 {
 #ifdef USE_CPLX
 	zunmqr_(side, trans,
@@ -171,8 +236,13 @@ static inline void xunmqr(const char* side, const char* trans,
 
 // LAPACK
 // Compute inverse of triangular matrix
-static inline void xtrtri(const char* uplo, const char* diag, const int n,
-		num* a, const int lda, int* info)
+static inline void xtrtri(
+	const char* uplo, 
+	const char* diag, 
+	const int n,
+	num* a, 
+	const int lda, 
+	int* info)
 {
 #ifdef USE_CPLX
 	ztrtri_(
