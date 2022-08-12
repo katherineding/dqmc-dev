@@ -67,7 +67,7 @@ def create_1(filename=None, overwrite=False, seed=None,
              n_delay=16, n_matmul=8, n_sweep_warm=200, n_sweep_meas=2000,
              period_eqlt=8, period_uneqlt=0,
              meas_bond_corr=0, meas_energy_corr=0, meas_nematic_corr=0,
-             trans_sym=1):
+             trans_sym=1,alpha=1/2):
     assert L % n_matmul == 0 and L % period_eqlt == 0
     #what's the point of Norb? Hexagon Norb = 2, Kagome Norb = 3?
     Norb = 1
@@ -89,8 +89,9 @@ def create_1(filename=None, overwrite=False, seed=None,
     # 1 site mapping
     if trans_sym:
         map_i = np.zeros(N, dtype=np.int32)
-        map_i[Ny*Nx:] = 1 #????
-        degen_i = np.array((Ny*Nx, Ny*Nx), dtype=np.int32)
+        #map_i[Ny*Nx:] = 1 #????
+        #degen_i = np.array((Ny*Nx, Ny*Nx), dtype=np.int32)
+        degen_i = np.array((Ny*Nx, ), dtype=np.int32)
     else:
         map_i = np.arange(N, dtype=np.int32)
         degen_i = np.ones(N, dtype=np.int32)
@@ -184,12 +185,12 @@ def create_1(filename=None, overwrite=False, seed=None,
             kij[ix +Nx*iy1, ix1+Nx*iy ] += t1
 
     # this is the key bit
-    alpha = 0.5  # gauge choice. 0.5 for symmetric gauge.
+    #alpha = 0.5  # gauge choice. 0.5 for symmetric gauge.
     beta = 1 - alpha
     phi = np.zeros((N, N))
     # path is straight line
     # if Ny is even, prefer dy - -Ny/2 over Ny/2. likewise for even Nx
-    const = sqrt(3)
+    const = np.sqrt(3)
     #start site: i
     for iy in range(Ny):
         for ix in range(Nx):
@@ -261,6 +262,9 @@ def create_1(filename=None, overwrite=False, seed=None,
     exp_halfKd = expm(-dt/2 * Kd)
     inv_exp_halfKu = expm(dt/2 * Ku)
     inv_exp_halfKd = expm(dt/2 * Kd)
+
+    return peierls, Ku
+    
 #   exp_K = np.array(mpm.expm(mpm.matrix(-dt * K)).tolist(), dtype=np.float64)
 
     U_i = U*np.ones_like(degen_i, dtype=np.float64)
