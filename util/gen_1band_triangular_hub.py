@@ -1,7 +1,6 @@
 import os
 import shutil
 import sys
-import matplotlib.pyplot as plt
 
 import h5py
 import numpy as np
@@ -71,7 +70,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
              period_eqlt=8, period_uneqlt=0,
              meas_bond_corr=0, meas_energy_corr=0, meas_nematic_corr=0,
              meas_thermal=0, meas_2bond_corr=0, 
-             trans_sym=1):
+             trans_sym=1, alpha = 1/2):
     assert L % n_matmul == 0 and L % period_eqlt == 0
     N = Nx * Ny
 
@@ -476,7 +475,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     # "a2" primitive vector: (-1/2, sqrt(3)/2)
     # phi[i,j] = path integral det by (j-i) * A(mid) = 
     # hopping phase in j -> i hop
-    alpha = 0.5  # gauge choice. 0.5 for symmetric gauge.
+    #alpha = 0.5  # gauge choice. 0.5 for symmetric gauge.
     beta = 1 - alpha
     phi = np.zeros((Ny*Nx, Ny*Nx))
 
@@ -492,9 +491,9 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                 for ix in range(Nx):
                     #start site: j
                     jy = iy + dy
-                    jjy = jy % Ny
+                    jjy = jy % Ny #wrapped
                     jx = ix + dx
-                    jjx = jx % Nx
+                    jjx = jx % Nx #wrapped
 
                     #index offset = \pm Nx, \pm Ny
                     offset_a1 = jx - jjx
@@ -533,10 +532,12 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                     offset_a2_rx = - offset_a2 / 2
                     offset_a2_ry = offset_a2 * const / 2
 
-                    xwrap_phase = (+alpha) * offset_a1_ry * jjrx \
-                                    - beta * offset_a1_rx * jjry
-                    ywrap_phase = (+alpha) * offset_a2_ry * jjrx \
-                                    - beta * offset_a2_rx * jjry
+                    # xwrap_phase = (+alpha) * offset_a1_ry * jjrx \
+                    #                 - beta * offset_a1_rx * jjry
+                    # ywrap_phase = (+alpha) * offset_a2_ry * jjrx \
+                    #                 - beta * offset_a2_rx * jjry
+                    bdy_phase = alpha * (offset_a1_ry + offset_a2_ry) * jjrx \
+                                -beta * (offset_a1_rx + offset_a2_rx) * jjry
 
                     #either choice of xywrap or yxwrap phase should lead to \
                     #the correct Hamiltonian
@@ -556,7 +557,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                     #print("nflux",nflux,corner_diff)
                     
                     phi2[jjx + Nx*jjy,ix + Nx*iy] = - alpha*mry*drx + beta*mrx*dry \
-                        + xwrap_phase + ywrap_phase + xywrap_phase
+                        + bdy_phase + xywrap_phase
 
                     phi[jjx + Nx*jjy,ix + Nx*iy] = \
                         - alpha*mry*drx + beta*mrx*dry + \
@@ -608,23 +609,12 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         Ku = kij * peierls
         Ku2 = kij * peierls2
 
-
-        plt.figure()
-        plt.matshow(Ku.real)
-        plt.colorbar()
-
-        plt.figure()
-        plt.matshow(Ku2.real)
-        plt.colorbar()
-
-        print(np.linalg.norm(Ku-Ku2))
-
-        assert np.linalg.norm(Ku - Ku.T.conj()) < 1e-10, f"max diff {np.linalg.norm(Ku - Ku.T.conj())}"
+        #assert np.linalg.norm(Ku - Ku.T.conj()) < 1e-10, f"max diff {np.linalg.norm(Ku - Ku.T.conj())}"
     else:
         Ku = kij.real
-        assert np.max(np.abs(peierls.imag)) < 1e-10
+        #assert np.max(np.abs(peierls.imag)) < 1e-10
         peierls = peierls.real
-        assert np.max(np.abs(thermal_phases.imag)) < 1e-10
+        #assert np.max(np.abs(thermal_phases.imag)) < 1e-10
         thermal_phases = thermal_phases.real
     #print(thermal_phases.dtype,thermal_phases.shape)
     #
@@ -637,6 +627,8 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     inv_exp_Ku = expm(dt * Ku)
     exp_halfKu = expm(-dt/2 * Ku)
     inv_exp_halfKu = expm(dt/2 * Ku)
+
+    return peierls,peierls2, Ku, Ku2
 #   exp_K = np.array(mpm.expm(mpm.matrix(-dt * K)).tolist(), dtype=np.float64)
 
     U_i = U*np.ones_like(degen_i, dtype=np.float64)
