@@ -64,7 +64,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
              n_delay=16, n_matmul=8, n_sweep_warm=200, n_sweep_meas=2000,
              period_eqlt=8, period_uneqlt=0,
              meas_bond_corr=1, meas_energy_corr=0, meas_nematic_corr=0,
-             trans_sym=1):
+             trans_sym=1,alpha = 1/2):
     assert L % n_matmul == 0 and L % period_eqlt == 0
     N = Nx * Ny
 
@@ -180,7 +180,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
             tij[ix1 + Nx*iy, ix + Nx*iy1] += tp
             tij[ix + Nx*iy1, ix1 + Nx*iy] += tp
 
-    alpha = 0.5  # gauge choice. 0.5 for symmetric gauge.
+    #alpha = 0.5  # gauge choice. 0.5 for symmetric gauge.
     beta = 1 - alpha
     phi = np.zeros((Ny*Nx, Ny*Nx))
     # path is straight line
@@ -216,6 +216,8 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     inv_exp_Ku = expm(dt * Ku)
     exp_halfKu = expm(-dt/2 * Ku)
     inv_exp_halfKu = expm(dt/2 * Ku)
+
+    return peierls, Ku
 #   exp_K = np.array(mpm.expm(mpm.matrix(-dt * K)).tolist(), dtype=np.float64)
 
     U_i = U*np.ones_like(degen_i, dtype=np.float64)
