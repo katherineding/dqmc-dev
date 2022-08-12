@@ -455,20 +455,21 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     # assert num_b2b == map_b2b.max() + 1
 
     # First: hopping (assuming periodic boundaries and no field)
-    kij = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex128)
+    tij = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex128)
     for iy in range(Ny):
         for ix in range(Nx):
-            iy1 = (iy + 1) % Ny
+
             iyn = (iy - 1) % Ny
             ix1 = (ix + 1) % Nx
-            ixn = (ix - 1) % Nx
-                #jx      jy    jo     ix       iy    io
-            kij[ix1+Nx*iy , ix +Nx*iy ] += -1
-            kij[ix +Nx*iy , ix1+Nx*iy ] += -1
-            kij[ix +Nx*iy1, ix +Nx*iy ] += -1
-            kij[ix +Nx*iy , ix +Nx*iy1] += -1
-            kij[ix1+Nx*iy , ix +Nx*iy1] += -1
-            kij[ix +Nx*iy1, ix1+Nx*iy ] += -1
+            iy1 = (iy + 1) % Ny
+            #ixn = (ix - 1) % Nx
+            #   jx    jy    ix    iy   
+            tij[ix1+Nx*iy , ix +Nx*iy ] += -1
+            tij[ix +Nx*iy , ix1+Nx*iy ] += -1 #along a1
+            tij[ix +Nx*iy1, ix +Nx*iy ] += -1
+            tij[ix +Nx*iy , ix +Nx*iy1] += -1 #along a2
+            tij[ix1+Nx*iy , ix +Nx*iy1] += -1
+            tij[ix +Nx*iy1, ix1+Nx*iy ] += -1 #along a3
 
     # Next: phases accumulated by single-hop processes
     # "a1" primitive vector: (1/2, sqrt(3)/2)
@@ -480,6 +481,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     phi = np.zeros((Ny*Nx, Ny*Nx))
 
     phi2 = np.zeros((Ny*Nx, Ny*Nx))
+    phi3 = np.zeros((Ny*Nx, Ny*Nx))
     # path is straight line
     # if Ny is even, prefer dy - -Ny/2 over Ny/2. likewise for even Nx
     const = np.sqrt(3)
@@ -532,12 +534,14 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                     offset_a2_rx = - offset_a2 / 2
                     offset_a2_ry = offset_a2 * const / 2
 
-                    # xwrap_phase = (+alpha) * offset_a1_ry * jjrx \
-                    #                 - beta * offset_a1_rx * jjry
-                    # ywrap_phase = (+alpha) * offset_a2_ry * jjrx \
-                    #                 - beta * offset_a2_rx * jjry
+                    xwrap_phase = (+alpha) * offset_a1_ry * jjrx \
+                                    - beta * offset_a1_rx * jjry
+                    ywrap_phase = (+alpha) * offset_a2_ry * jjrx \
+                                    - beta * offset_a2_rx * jjry
                     bdy_phase = alpha * (offset_a1_ry + offset_a2_ry) * jjrx \
                                 -beta * (offset_a1_rx + offset_a2_rx) * jjry
+
+                    assert np.isclose(xwrap_phase + ywrap_phase,bdy_phase)
 
                     #either choice of xywrap or yxwrap phase should lead to \
                     #the correct Hamiltonian
@@ -547,6 +551,9 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
 
                     yxwrap_phase = alpha * offset_a1_ry * offset_a2_rx \
                                    -beta * offset_a1_rx * offset_a2_ry
+
+                    assert np.isclose(xywrap_phase,offset_a1*offset_a2*const/4)
+                    assert np.isclose(yxwrap_phase,-offset_a1*offset_a2*const/4)
 
                     # if not np.isclose(0,xywrap_phase):
                     #     print(prefactor*xywrap_phase, prefactor*yxwrap_phase)
@@ -559,19 +566,24 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                     phi2[jjx + Nx*jjy,ix + Nx*iy] = - alpha*mry*drx + beta*mrx*dry \
                         + bdy_phase + xywrap_phase
 
+                    phi3[jjx + Nx*jjy,ix + Nx*iy] = - alpha*mry*drx + beta*mrx*dry \
+                        + bdy_phase + yxwrap_phase
+
                     phi[jjx + Nx*jjy,ix + Nx*iy] = \
                         - alpha*mry*drx + beta*mrx*dry + \
-                        - ((-alpha*offset_a1*jrx*const/2+beta*offset_a1*jry/2) + \
-                        (-alpha*offset_a2*jrx*const/2-beta*offset_a2*jry/2) - \
-                        alpha*offset_a1*offset_a2*const/2 )
+                        - ((-alpha*offset_a1*jjrx*const/2+beta*offset_a1*jjry/2) + \
+                           (-alpha*offset_a2*jjrx*const/2-beta*offset_a2*jjry/2) - \
+                           offset_a1*offset_a2*const/4 )
 
     #Lattice total area = Nx * Ny * sqrt(3) * a^2 / 2
     #prefactor = 2*np.pi*2*nflux/(const*Nx*Ny)
     peierls = np.exp(1j*prefactor*phi)
 
     peierls2 = np.exp(1j*prefactor*phi2)
+    peierls3 = np.exp(1j*prefactor*phi3)
 
-    print(np.allclose(peierls,peierls2))
+    print("phi1 = phi2?",np.allclose(peierls,peierls2))
+    print("phi2 = phi3?",np.allclose(peierls2,peierls3))
 
     #phases accumulated by two-hop processes
     #Here: types 0,1 include t' factors
@@ -606,12 +618,12 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     #         
                 
     if dtype_num == np.complex128:
-        Ku = kij * peierls
-        Ku2 = kij * peierls2
+        Ku = tij * peierls
+        Ku2 = tij * peierls2
 
         #assert np.linalg.norm(Ku - Ku.T.conj()) < 1e-10, f"max diff {np.linalg.norm(Ku - Ku.T.conj())}"
     else:
-        Ku = kij.real
+        Ku = tij.real
         #assert np.max(np.abs(peierls.imag)) < 1e-10
         peierls = peierls.real
         #assert np.max(np.abs(thermal_phases.imag)) < 1e-10
@@ -628,7 +640,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     exp_halfKu = expm(-dt/2 * Ku)
     inv_exp_halfKu = expm(dt/2 * Ku)
 
-    return peierls,peierls2, Ku, Ku2
+    return peierls,peierls2, Ku, Ku2, tij
 #   exp_K = np.array(mpm.expm(mpm.matrix(-dt * K)).tolist(), dtype=np.float64)
 
     U_i = U*np.ones_like(degen_i, dtype=np.float64)
