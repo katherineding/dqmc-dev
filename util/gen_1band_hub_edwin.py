@@ -217,7 +217,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     exp_halfKu = expm(-dt/2 * Ku)
     inv_exp_halfKu = expm(dt/2 * Ku)
 
-    return peierls, Ku
+    return peierls, Ku, -tij
 #   exp_K = np.array(mpm.expm(mpm.matrix(-dt * K)).tolist(), dtype=np.float64)
 
     U_i = U*np.ones_like(degen_i, dtype=np.float64)
