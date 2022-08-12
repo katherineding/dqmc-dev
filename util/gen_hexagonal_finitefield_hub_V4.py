@@ -169,7 +169,7 @@ def create_1(filename=None, overwrite=False, seed=None,
 
     # hopping (assuming periodic boundaries and no field)
     # NOTE only uniform NN hopping implemented here
-    kij = np.zeros((Norb*Ny*Nx, Norb*Ny*Nx), dtype=np.complex128)
+    tij = np.zeros((Norb*Ny*Nx, Norb*Ny*Nx), dtype=np.complex128)
     for iy in range(Ny):
         for ix in range(Nx):
             iy1 = (iy + 1) % Ny
@@ -177,12 +177,12 @@ def create_1(filename=None, overwrite=False, seed=None,
             ix1 = (ix + 1) % Nx
             ixn = (ix - 1) % Nx
                 #jx      jy    jo     ix       iy    io
-            kij[ix1+Nx*iy , ix +Nx*iy ] += t1
-            kij[ix +Nx*iy , ix1+Nx*iy ] += t1
-            kij[ix +Nx*iy1, ix +Nx*iy ] += t1
-            kij[ix +Nx*iy , ix +Nx*iy1] += t1
-            kij[ix1+Nx*iy , ix +Nx*iy1] += t1
-            kij[ix +Nx*iy1, ix1+Nx*iy ] += t1
+            tij[ix1+Nx*iy , ix +Nx*iy ] += -t1
+            tij[ix +Nx*iy , ix1+Nx*iy ] += -t1
+            tij[ix +Nx*iy1, ix +Nx*iy ] += -t1
+            tij[ix +Nx*iy , ix +Nx*iy1] += -t1
+            tij[ix1+Nx*iy , ix +Nx*iy1] += -t1
+            tij[ix +Nx*iy1, ix1+Nx*iy ] += -t1
 
     # this is the key bit
     #alpha = 0.5  # gauge choice. 0.5 for symmetric gauge.
@@ -224,30 +224,32 @@ def create_1(filename=None, overwrite=False, seed=None,
                     offset_y = jy - jjy
 
                     # true displacement mid point    
-                    mx = (irx + jrx)/2
-                    my = (iry + jry)/2
+                    mrx = (irx + jrx)/2
+                    mry = (iry + jry)/2
 
                     #indices are opposite edwin's code, but 
                     # results should be equivalent, 
                     # since phi_ij sign also flipped?
-                    # NOTE This is important: How to get this boundary phase?
-                    phi[ix + Nx*iy,jjx + Nx*jjy] = \
-                        alpha*my*drx - beta*mx*dry + \
+                    # NOTE This is important: I think intead of jrx and jry, 
+                    # the boundary phase should be using jjrx and jjry
+                    # NOTE I also think the double wrap phase is incomplete
+                    phi[ix + Nx*iy,jjx + Nx*jjy] += (-1) * (
+                        alpha*mry*drx - beta*mrx*dry + \
                         (-alpha*offset_x*jrx*const/2+beta*offset_x*jry/2) + \
                         (-alpha*offset_y*jrx*const/2-beta*offset_y*jry/2) - \
-                        alpha*offset_x*offset_y*const/2
+                        alpha*offset_x*offset_y*const/2)
 
 
     peierls = np.exp(2j*np.pi*(nflux/(Nx*Ny*const/2))*phi)
 
     if dtype_num == np.complex128:
-        Ku = kij * peierls
-        Kd = kij * peierls
-        assert np.max(np.abs(Ku - Ku.T.conj())) < 1e-10
+        Ku = tij * peierls
+        Kd = tij * peierls
+        #assert np.max(np.abs(Ku - Ku.T.conj())) < 1e-10
     else:
-        Ku = kij.copy().real
-        Kd = kij.copy().real
-        assert np.max(np.abs(peierls.imag)) < 1e-10
+        Ku = tij.copy().real
+        Kd = tij.copy().real
+        #assert np.max(np.abs(peierls.imag)) < 1e-10
         peierls = peierls.real
 
     for i in range(N):
@@ -263,7 +265,7 @@ def create_1(filename=None, overwrite=False, seed=None,
     inv_exp_halfKu = expm(dt/2 * Ku)
     inv_exp_halfKd = expm(dt/2 * Kd)
 
-    return peierls, Ku
+    return peierls, Ku, tij
     
 #   exp_K = np.array(mpm.expm(mpm.matrix(-dt * K)).tolist(), dtype=np.float64)
 
