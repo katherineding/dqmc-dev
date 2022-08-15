@@ -10,12 +10,12 @@ static volatile sig_atomic_t stop_flag = 0;
 static void stop(int signum) { stop_flag = signum; }
 
 static FILE *log = NULL;
-static tick_t wall_start = 0;
-static tick_t max_time = 0;
+static int64_t wall_start = 0;
+static int64_t max_time = 0;
 static int first = 0;
-static tick_t t_first = 0;
+static int64_t t_first = 0;
 
-void sig_init(FILE *_log, const tick_t _wall_start, const tick_t _max_time)
+void sig_init(FILE *_log, const int64_t _wall_start, const int64_t _max_time)
 {
 	static int called = 0; // could be called multiple times
 	if (called == 0) {
@@ -34,7 +34,7 @@ void sig_init(FILE *_log, const tick_t _wall_start, const tick_t _max_time)
 
 int sig_check_state(const int sweep, const int n_sweep_warm, const int n_sweep)
 {
-	const tick_t t_now = time_wall();
+	const int64_t t_now = time_wall();
 
 	if (max_time > 0 && t_now >= wall_start + max_time)
 		stop_flag = -1;

@@ -501,9 +501,9 @@ static int dqmc(struct sim_data *sim)
 }
 
 int dqmc_wrapper(const char *sim_file, const char *log_file,
-		const tick_t max_time, const int bench)
+		const int64_t max_time, const int bench)
 {
-	const tick_t wall_start = time_wall();
+	const int64_t wall_start = time_wall();
 	profile_clear();
 
 	int status = 0;
@@ -567,7 +567,7 @@ cleanup:
 	sim_data_free(sim);
 	my_free(sim);
 
-	const tick_t wall_time = time_wall() - wall_start;
+	const int64_t wall_time = time_wall() - wall_start;
 	fprintf(log, "wall time: %.3f\n", wall_time * SEC_PER_TICK);
 	profile_print(log, wall_time);
 

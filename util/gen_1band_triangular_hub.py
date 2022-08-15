@@ -13,7 +13,7 @@ np.set_printoptions(precision=3)
 import git #relies on gitpython module
 path = os.path.dirname(os.path.abspath(__file__))
 repo = git.Repo(path,search_parent_directories=True)
-hash_long = repo.git.rev_parse(repo.head, short=False)
+hash_short = repo.git.rev_parse(repo.head, short=True)
 
 def rand_seed_urandom():
     rng = np.zeros(17, dtype=np.uint64)
@@ -71,7 +71,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
              period_eqlt=8, period_uneqlt=0,
              meas_bond_corr=0, meas_energy_corr=0, meas_nematic_corr=0,
              meas_thermal=0, meas_2bond_corr=0, 
-             trans_sym=1):
+             trans_sym=1, checkpoint_every=1000):
     assert L % n_matmul == 0 and L % period_eqlt == 0
     N = Nx * Ny
 
@@ -651,7 +651,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     with h5py.File(file_params, "w" if overwrite else "x") as f:
         # parameters not used by dqmc code, but useful for analysis
         f.create_group("metadata")
-        f["metadata"]["commit"] = hash_long
+        f["metadata"]["commit"] = hash_short
         f["metadata"]["version"] = 0.1
         f["metadata"]["model"] = \
             "Hubbard (complex)" if dtype_num == np.complex128 else "Hubbard"
@@ -708,6 +708,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         # f["params"]["meas_hop2_corr"] = meas_hop2_corr
         f["params"]["meas_energy_corr"] = meas_energy_corr
         f["params"]["meas_nematic_corr"] = meas_nematic_corr
+        f["params"]["checkpoint_every"] = checkpoint_every
 
         # precalculated stuff
         f["params"]["num_i"] = num_i
@@ -760,6 +761,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["state"]["init_rng"] = init_rng  # save if need to replicate data
         f["state"]["rng"] = rng
         f["state"]["hs"] = init_hs
+        f["state"]["partial_write"] = 0
 
         # measurements
         f.create_group("meas_eqlt")

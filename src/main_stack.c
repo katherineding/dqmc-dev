@@ -11,16 +11,18 @@
 #include "dqmc.h"
 #include "util.h"
 
+// TODO: hard vs soft link?
 #define USE_HARD_LINK
 
+static char hostname[65];
+static int pid;
+
+// print arg (...) to console with hostname and pid info
 #define my_printf(...) do { \
 	printf("%16s %6d: ", hostname, pid); \
 	printf(__VA_ARGS__); \
 	fflush(stdout); \
 } while (0)
-
-static char hostname[65];
-static int pid;
 
 static void usage(const char *name)
 {
@@ -270,10 +272,10 @@ static void push_stack(const char *file, const char *line)
 
 int main(int argc, char **argv)
 {
-	const tick_t t_start = time_wall();
+	const int64_t t_start = time_wall();
 	omp_set_num_threads(2);
-	gethostname(hostname, 64);
-	pid = getpid();
+	gethostname(hostname, 64); //from <unistd.h>
+	pid = getpid(); //from <unistd.h>
 
 	char *str_max_time = NULL;
 	int c;
@@ -297,7 +299,7 @@ int main(int argc, char **argv)
 
 	const char *stack_file = argv[optind];
 	const int max_time = (str_max_time == NULL) ? 0 : atoi(str_max_time);
-	const tick_t t_stop = t_start + max_time * TICK_PER_SEC;
+	const int64_t t_stop = t_start + max_time * TICK_PER_SEC;
 
 	#define MAX_LEN 512
 	char sim_file[MAX_LEN + 1] = {0};
@@ -314,7 +316,7 @@ int main(int argc, char **argv)
 		memcpy(log_file, sim_file, len_sim_file);
 		memcpy(log_file + len_sim_file, ".log", 5);
 
-		tick_t t_remain;
+		int64_t t_remain;
 		if (max_time > 0) {
 			t_remain = t_stop - time_wall();
 			if (t_remain <= 0) {

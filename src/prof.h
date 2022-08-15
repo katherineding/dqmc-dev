@@ -26,12 +26,12 @@ enum {
 };
 #undef X
 
-extern tick_t profile_time[n_profile];
+extern int64_t profile_time[n_profile];
 extern int profile_count[n_profile];
 #pragma omp threadprivate(profile_time, profile_count)
 
 #define profile_begin(a) \
-	const tick_t __##a##_start = time_wall()
+	const int64_t __##a##_start = time_wall()
 
 #define profile_end(a) \
 	do { \
@@ -39,7 +39,7 @@ extern int profile_count[n_profile];
 		profile_count[__profile_##a]++; \
 	} while (0)
 
-void profile_print(FILE *log, tick_t wall_time);
+void profile_print(FILE *log, int64_t wall_time);
 
 void profile_clear(void);
 
