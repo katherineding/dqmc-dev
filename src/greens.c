@@ -1,9 +1,9 @@
-#include "greens.h"
-#include <complex.h>
 #include <tgmath.h>
 #include "linalg.h"
 #include "prof.h"
-#include "util.h"
+
+#include "greens.h"
+
 
 void mul_seq(const int N, const int L,
 		const int min, const int maxp1,
