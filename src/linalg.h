@@ -1,15 +1,17 @@
 #pragma once
 
-#include <mkl.h>
+#include <cblas.h>
+#include <lapacke.h>
 #include "util.h"
 
-#ifdef USE_CPLX
-	#define cast(p) (MKL_Complex16 *)(p)
-	#define ccast(p) (const MKL_Complex16 *)(p)
-#else
-	#define cast(p) (p)
-	#define ccast(p) (p)
-#endif
+//#ifdef USE_CPLX
+//	#define cast(p) (MKL_Complex16 *)(p)
+//	#define ccast(p) (const MKL_Complex16 *)(p)
+//#else
+//	#define cast(p) (p)
+//	#define ccast(p) (p)
+//#endif
+
 
 /*=============================================
 =            BLAS routine wrappers            =
@@ -17,20 +19,22 @@
 
 // general matrix-matrix multiplication: Level 3 BLAS
 // C <- alpha * A * B + beta * C when transa = transb = 'N' or 'n'
+// Only trans = "N" or trans = "T" appears in the code.
 static inline void xgemm(const char *transa, const char *transb,
 		const int m, const int n, const int k,
 		const num alpha, const num *a, const int lda,
 		const num *b, const int ldb,
 		const num beta, num *c, const int ldc)
 {
+        enum CBLAS_TRANSPOSE Transa = (*transa == 'N' || *transa == 'n') ? CblasNoTrans : CblasTrans;
+        enum CBLAS_TRANSPOSE Transb = (*transb == 'N' || *transb == 'n') ? CblasNoTrans : CblasTrans;
 #ifdef USE_CPLX
-	zgemm(
+	cblas_zgemm(
 #else
-	dgemm(
+	cblas_dgemm(
 #endif
-	transa, transb, &m, &n, &k,
-	ccast(&alpha), ccast(a), &lda, ccast(b), &ldb,
-	ccast(&beta), cast(c), &ldc);
+	CblasColMajor, Transa, Transb, m, n, 
+        k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
 
 // general matrix-vector product, Level 2 BLAS
@@ -40,14 +44,15 @@ static inline void xgemv(const char *trans, const int m, const int n,
 		const num *x, const int incx,
 		const num beta, num *y, const int incy)
 {
+        enum CBLAS_TRANSPOSE Trans = (*trans == 'N' || *trans == 'n') ? CblasNoTrans : CblasTrans;
 #ifdef USE_CPLX
-	zgemv(
+	cblas_zgemv(
 #else
-	dgemv(
+	cblas_dgemv(
 #endif
-	trans, &m, &n,
-	ccast(&alpha), ccast(a), &lda, ccast(x), &incx,
-	ccast(&beta), cast(y), &incy);
+	CblasColMajor, Trans, m, n,
+	alpha, a, lda, x, incx,
+	beta, y, incy);
 }
 
 // triangular matrix - general matrix product, level 3 BLAS
@@ -62,13 +67,18 @@ static inline void xtrmm(const char *side, const char *uplo, const char *transa,
 		const num alpha, const num *a, const int lda,
 		num *b, const int ldb)
 {
+    enum CBLAS_SIDE Side = (*side == 'l' || *side == 'L') ? CblasLeft : CblasRight ;
+    enum CBLAS_UPLO Uplo = (*uplo == 'u' || *uplo == 'U') ? CblasUpper : CblasLower ;
+    enum CBLAS_TRANSPOSE Transa = (*transa == 'N' || *transa == 'n') ? CblasNoTrans : CblasTrans;
+    enum CBLAS_DIAG Diag = (*diag == 'u' || *diag == 'U') ? CblasUnit : CblasNonUnit ; 
+
 #ifdef USE_CPLX
-	ztrmm(
+	cblas_ztrmm(
 #else
-	dtrmm(
+	cblas_dtrmm(
 #endif
-	side, uplo, transa, diag, &m, &n,
-	ccast(&alpha), ccast(a), &lda, cast(b), &ldb);
+	CblasColMajor, Side, Uplo, Transa, Diag, m, n,
+	alpha, a, lda, b, ldb);
 }
 
 /*=============================================
@@ -84,11 +94,11 @@ static inline void xgetrf(const int m, const int n, num* a,
 		const int lda, int* ipiv, int* info)
 {
 #ifdef USE_CPLX
-	zgetrf(
+        LAPACK_zgetrf(
 #else
-	dgetrf(
+	LAPACK_dgetrf(
 #endif
-	&m, &n, cast(a), &lda, ipiv, info);
+	&m, &n, a, &lda, ipiv, info);
 }
 
 
@@ -98,11 +108,11 @@ static inline void xgetri(const int n, num* a, const int lda, const int* ipiv,
 		num* work, const int lwork, int* info)
 {
 #ifdef USE_CPLX
-	zgetri(
+	LAPACK_zgetri(
 #else
-	dgetri(
+	LAPACK_dgetri(
 #endif
-	&n, cast(a), &lda, ipiv, cast(work), &lwork, info);
+	&n, a, &lda, ipiv, work, &lwork, info);
 }
 
 // LAPACK
@@ -113,11 +123,11 @@ static inline void xgetrs(const char* trans, const int n, const int nrhs,
 		num* b, const int ldb, int* info)
 {
 #ifdef USE_CPLX
-	zgetrs(
+	LAPACK_zgetrs(
 #else
-	dgetrs(
+	LAPACK_dgetrs(
 #endif
-	trans, &n, &nrhs, ccast(a), &lda, ipiv, cast(b), &ldb, info);
+	trans, &n, &nrhs, a, &lda, ipiv, b, &ldb,info);
 }
 
 // LAPACK
@@ -126,11 +136,9 @@ static inline void xgeqp3(const int m, const int n, num* a, const int lda, int* 
 		num* work, const int lwork, double* rwork, int* info)
 {
 #ifdef USE_CPLX
-	zgeqp3(&m, &n, cast(a), &lda, jpvt, cast(tau),
-	cast(work), &lwork, rwork, info);
+	LAPACK_zgeqp3(&m, &n, a, &lda, jpvt, tau, work, &lwork, rwork, info);
 #else
-	dgeqp3(&m, &n, cast(a), &lda, jpvt, cast(tau),
-	cast(work), &lwork, info); // rwork not used
+	LAPACK_dgeqp3(&m, &n, a, &lda, jpvt, tau, work, &lwork, info); // rwork not used
 #endif
 }
 
@@ -143,11 +151,11 @@ static inline void xgeqrf(const int m, const int n, num* a, const int lda, num* 
 		num* work, const int lwork, int* info)
 {
 #ifdef USE_CPLX
-	zgeqrf(
+	LAPACK_zgeqrf(
 #else
-	dgeqrf(
+	LAPACK_dgeqrf(
 #endif
-	&m, &n, cast(a), &lda, cast(tau), cast(work), &lwork, info);
+	&m, &n, a, &lda, tau, work, &lwork, info);
 }
 
 // LAPACK
@@ -161,12 +169,12 @@ static inline void xunmqr(const char* side, const char* trans,
 		const int ldc, num* work, const int lwork, int* info)
 {
 #ifdef USE_CPLX
-	zunmqr(side, trans,
+	LAPACK_zunmqr(side, trans,
 #else
-	dormqr(side, trans[0] == 'C' ? "T" : trans,
+	LAPACK_dormqr(side, trans[0] == 'C' ? "T" : trans,
 #endif
-	&m, &n, &k, ccast(a), &lda, ccast(tau),
-	cast(c), &ldc, cast(work), &lwork, info);
+	&m, &n, &k, a, &lda, tau,
+	c, &ldc, work, &lwork, info);
 }
 
 // LAPACK
@@ -175,12 +183,10 @@ static inline void xtrtri(const char* uplo, const char* diag, const int n,
 		num* a, const int lda, int* info)
 {
 #ifdef USE_CPLX
-	ztrtri(
+	LAPACK_ztrtri(
 #else
-	dtrtri(
+	LAPACK_dtrtri(
 #endif
-	uplo, diag, &n, cast(a), &lda, info);
+	uplo, diag, &n, a, &lda, info);
 }
 
-#undef ccast
-#undef cast
