@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string.h>
+#include <string.h> //memset and memcpy
 /**
  * the use of _mm_malloc and _mm_free is an optimization for allocating 
  * aligned memory for SIMD. 

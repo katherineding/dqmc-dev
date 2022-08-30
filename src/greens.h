@@ -2,6 +2,8 @@
 
 #include "util.h"
 
+#define N_MUL 2 // input parameter to calc_eq_g() and calc_ue_g()
+
 void mul_seq(const int N, const int L,
 		const int min, const int maxp1,
 		const num alpha, const num *const restrict B,

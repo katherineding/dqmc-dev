@@ -1,8 +1,8 @@
-#include "updates.h"
 #include <tgmath.h>
 #include "linalg.h"
 #include "rand.h"
-#include "util.h"
+
+#include "updates.h"
 
 void update_delayed(const int N, const int n_delay, const double *const restrict del,
 		const int *const restrict site_order,

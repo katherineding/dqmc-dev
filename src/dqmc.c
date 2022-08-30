@@ -1,18 +1,15 @@
-#include "dqmc.h"
 #include <tgmath.h>
 #include <stdio.h>
-#include "data.h"
+#include <assert.h>
 #include "greens.h"
 #include "linalg.h"
 #include "meas.h"
 #include "prof.h"
 #include "rand.h"
 #include "sig.h"
-#include "time_.h"
 #include "updates.h"
-#include "util.h"
 
-#define N_MUL 2 // input parameter to calc_eq_g() and calc_ue_g()
+#include "dqmc.h"
 
 // uncomment to check recalculated g against wrapped g
 // #define CHECK_G_WRP
@@ -72,8 +69,20 @@
 	printf(#A " - " #B ":\tmax %.3e\tavg %.3e\n", max, avg); \
 } while (0);
 
-static int dqmc(struct sim_data *sim)
-{
+#define INTERRUPTED 5
+#define CHECKPOINT_FAIL 6
+
+/**
+ * Core dqmc logic
+ * @param  sim [description]
+ * @return 0 on success
+ *         1 on interrupt
+ *         2 on checkpoint failure
+ *         ?? TODO any other possibility?
+ */
+static int dqmc(struct sim_data *sim) {
+	int dqmc_return_code = 0;
+
 	const int N = sim->p.N;
 	const int L = sim->p.L;
 	const int n_matmul = sim->p.n_matmul;
@@ -210,15 +219,28 @@ static int dqmc(struct sim_data *sim)
 	}
 
 	for (; sim->s.sweep < sim->p.n_sweep; sim->s.sweep++) {
-		const int sig = sig_check_state(sim->s.sweep, sim->p.n_sweep_warm, sim->p.n_sweep);
-		if (sig == 1) // stop flag
+		// check for signal at every full H-S sweep
+		const int stop_flag = sig_check_state(sim->s.sweep, 
+			sim->p.n_sweep_warm, sim->p.n_sweep);
+		// Received timeout or interrupt
+		if (stop_flag) { 
+			dqmc_return_code = INTERRUPTED;
 			break;
-		else if (sig == 2) { // progress flag
-			const int status = sim_data_save(sim);
-			if (status < 0)
-				fprintf(stderr, "save_file() failed: %d\n", status);
 		}
 
+		// No timeout or interrupt received this sweep
+		if (sim->p.checkpoint_every > 0 && 
+			sim->s.sweep % sim->p.checkpoint_every == 0) {
+			// printf("sweep = %d, checkpoint_every = %d\n", 
+			// 	sim->s.sweep,sim->p.checkpoint_every);
+			const int save_status = sim_data_save(sim);
+			if (save_status < 0) {
+				dqmc_return_code = CHECKPOINT_FAIL;
+				break;
+			}
+		}
+
+		// no timeout, interrupt, and checkpoint OK
 		for (int l = 0; l < L; l++) {
 			profile_begin(updates);
 			shuffle(rng, N, site_order);
@@ -332,6 +354,7 @@ static int dqmc(struct sim_data *sim)
 
 			if (recalc) phase = phaseu*phased;
 
+			//eqlt measurement
 			if ((sim->s.sweep >= sim->p.n_sweep_warm) &&
 					(sim->p.period_eqlt > 0) &&
 					(l + 1) % sim->p.period_eqlt == 0) {
@@ -359,8 +382,10 @@ static int dqmc(struct sim_data *sim)
 			}
 		}
 
-		if ((sim->s.sweep >= sim->p.n_sweep_warm) && (sim->p.period_uneqlt > 0) &&
-				sim->s.sweep % sim->p.period_uneqlt == 0) {
+		//uneqlt measurement
+		if ((sim->s.sweep >= sim->p.n_sweep_warm) && 
+			(sim->p.period_uneqlt > 0) &&
+			(sim->s.sweep % sim->p.period_uneqlt == 0)) {
 			#pragma omp parallel sections
 			{
 			#pragma omp section
@@ -427,10 +452,10 @@ static int dqmc(struct sim_data *sim)
 			// {
 			// #pragma omp section
 			// calc_ue_g(N, L, F, N_MUL, Bu, iBu, Cu,
-			          // ueGu, Gredu, tauu, Qu, worku, lwork);
+			//           ueGu, Gredu, tauu, Qu, worku, lwork);
 			// #pragma omp section
 			// calc_ue_g(N, L, F, N_MUL, Bd, iBd, Cd,
-			          // ueGd, Gredd, taud, Qd, workd, lwork);
+			//           ueGd, Gredd, taud, Qd, workd, lwork);
 			// }
 
 			// #ifdef CHECK_G_UE
@@ -448,7 +473,7 @@ static int dqmc(struct sim_data *sim)
 		}
 	}
 
-
+	// deallocate calculation memory
 	my_free(workd);
 	my_free(worku);
 	if (sim->p.period_uneqlt > 0) {
@@ -497,77 +522,139 @@ static int dqmc(struct sim_data *sim)
 	my_free(Bd);
 	my_free(Bu);
 
-	return 0;
+	return dqmc_return_code;
 }
 
+#define WRAP_FAIL -1
+#define WRAP_INCOMPLETE 1
+
+/**
+ * [dqmc_wrapper description]
+ * @param  sim_file [description]
+ * @param  log_file [description]
+ * @param  max_time [description]
+ * @param  dry      [description]
+ * @param  bench    [description]
+ * @return          [description]
+ */
 int dqmc_wrapper(const char *sim_file, const char *log_file,
-		const tick_t max_time, const int bench)
+		const int64_t max_time, const bool dry, const bool bench)
 {
-	const tick_t wall_start = time_wall();
+	const int64_t wall_start = time_wall();
 	profile_clear();
 
-	int status = 0;
+	int wrap_return_code = 0;
 
-	// open log file
+	// if no log_file specified, then prints go to stdout
 	FILE *log = (log_file != NULL) ? fopen(log_file, "a") : stdout;
+	// if fail to open log file, quit. This error typically never occurs
 	if (log == NULL) {
 		fprintf(stderr, "fopen() failed to open: %s\n", log_file);
-		return -1;
+		return WRAP_FAIL;
 	}
 
+	// opened a log stream
 	fprintf(log, "commit id %s\n", GIT_ID);
 	fprintf(log, "compiled on %s %s\n", __DATE__, __TIME__);
 
+	// exit path if dry run
+	if (dry) {
+		fprintf(log, "toggled dry run for mem and commit checks\n");
+		fprintf(log, "hdf5 and executable consistent? %s\n", 
+			consistency_check(sim_file) ? "No" : "Yes");
+		fprintf(log, "minimum RAM requirement: %.2f MB\n", 
+			(double) get_memory_req(sim_file)*1e-6);
+		fprintf(log, "Not performing: read sim file, alloc mem, "
+			"run core DQMC logic, or save data\n");
+		if (log != stdout) fclose(log);
+		else fflush(log);
+		return wrap_return_code;
+	}
+
+	// Not a dry run
 	// initialize signal handling
+	// Since main_stack repeatedly calls dqmc_wrapper(), this sig_init()
+	// function may be repeatedly called by the same process, 
+	// repeated init is not necessary, but not harmful either(?)
+	// The signal handler is individual to each process and there's no 
+	// interaction between processes.
 	sig_init(log, wall_start, max_time);
 
 	// open and read simulation file
 	struct sim_data *sim = my_calloc(sizeof(struct sim_data));
-	fprintf(log, "opening %s\n", sim_file);
-	status = sim_data_read_alloc(sim, sim_file);
-	if (status < 0) {
-		fprintf(stderr, "read_file() failed: %d\n", status);
-		status = -1;
+	sim->file=sim_file;
+	fprintf(log, "opening %s\n", sim_file); 
+	fflush(log);
+	const int read_status = sim_data_read_alloc(sim);
+	// Fail might be b/c sim_file doesnt exist:
+	// errno = 2, error message = 'No such file or directory'
+	// Or because not enough RAM?? TODO
+	// errno = 12, error message = 'Cannot allocate memory'
+	// Or mismatch between executable compilation flag -DUSE_CPLX
+	//  and gen_1band_hub nflux=?? flag.
+	if (read_status) {
+		fprintf(log, "sim_data_read_alloc() failed: %d\n", read_status);
+		wrap_return_code = WRAP_FAIL;
 		goto cleanup;
 	}
 
-	// check existing progress
-	fprintf(log, "%d/%d sweeps completed\n", sim->s.sweep, sim->p.n_sweep);
-	if (sim->s.sweep >= sim->p.n_sweep) {
-		fprintf(log, "already finished\n");
-		goto cleanup;
-	}
-
-	// run dqmc
-	fprintf(log, "starting dqmc\n");
-	status = dqmc(sim);
-	if (status < 0) {
-		fprintf(stderr, "dqmc() failed to allocate memory\n");
-		status = -1;
-		goto cleanup;
-	}
-	fprintf(log, "%d/%d sweeps completed\n", sim->s.sweep, sim->p.n_sweep);
-
-	// save to simulation file (if not in benchmarking mode)
-	if (!bench) {
-		fprintf(log, "saving data\n");
-		status = sim_data_save(sim);
-		if (status < 0) {
-			fprintf(stderr, "save_file() failed: %d\n", status);
-			status = -1;
-			goto cleanup;
-		}
+	// Read and alloc memory successful, check existing progress
+	if (sim->p.checkpoint_every) {
+		fprintf(log, "checkpointing every %d sweeps\n", sim->p.checkpoint_every);
 	} else {
-		fprintf(log, "benchmark mode enabled; not saving data\n");
+		fprintf(log, "warning: running with no checkpoints\n");
+	}
+	
+	fprintf(log, "%d/%d sweeps completed\n", sim->s.sweep, sim->p.n_sweep);
+	assert(sim->s.sweep <= sim->p.n_sweep);
+	if (sim->s.sweep == sim->p.n_sweep) {
+		fprintf(log, "already finished so don't do anything\n");
+		goto cleanup;
 	}
 
-	status = (sim->s.sweep == sim->p.n_sweep) ? 0 : 1;
+	// Now we know sweep < n_sweep: run dqmc
+	fprintf(log, "starting dqmc\n"); 
+	fflush(log);
+	// This might take a while. 2 OMP threads, blocking.
+	const int dqmc_status = dqmc(sim); 
+	
+	if (dqmc_status == INTERRUPTED) {
+		fprintf(log, "dqmc() interrupted\n");
+		wrap_return_code = WRAP_INCOMPLETE;
+		goto cleanup;
+	} else if (dqmc_status == CHECKPOINT_FAIL) {
+		fprintf(log, "dqmc() checkpoint failed\n");
+		wrap_return_code = WRAP_FAIL;
+		goto cleanup;
+	}
+
+	//dqmc() completed
+	fprintf(log, "%d/%d sweeps completed\n", sim->s.sweep, sim->p.n_sweep);
+
+	// If benchmark mode, don't save data, directly cleanup
+	if (bench) {
+		fprintf(log, "benchmark mode enabled; not saving data to disk\n");
+		goto cleanup;
+	}
+
+	// Save data
+	fprintf(log, "saving data to disk\n");
+	const int save_status = sim_data_save(sim);
+	if (save_status < 0) {
+		fprintf(log,    "sim_data_save() failed: %d\n", save_status);
+		wrap_return_code = WRAP_FAIL;
+		goto cleanup;
+	}
+	fprintf(log, "sim_data_save() succeeded\n");
+
+	// wrap_return_code = (sim->s.sweep == sim->p.n_sweep) ? 0 : 1;
 
 cleanup:
+	//this section is executed at the end always if there's no goto
 	sim_data_free(sim);
 	my_free(sim);
 
-	const tick_t wall_time = time_wall() - wall_start;
+	const int64_t wall_time = time_wall() - wall_start;
 	fprintf(log, "wall time: %.3f\n", wall_time * SEC_PER_TICK);
 	profile_print(log, wall_time);
 
@@ -576,5 +663,5 @@ cleanup:
 	else
 		fflush(log);
 
-	return status;
+	return wrap_return_code;
 }

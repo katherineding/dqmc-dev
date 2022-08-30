@@ -6,19 +6,25 @@
 struct params {
 	int N, L;
 	int *map_i, *map_ij;
-	int *bonds, *map_bs, *map_bb;
+	int *bonds, *bond2s, *map_bs, *map_bb, *map_b2b, *map_bb2, *map_b2b2;
+	// int *hop2s, *map_hop2_b, *map_b_hop2, *map_hop2_hop2;
 	num *peierlsu, *peierlsd;
+	num *pp_u, *pp_d, *ppr_u, *ppr_d;
 //	double *K, *U;
 //	double dt;
 
 	int n_matmul, n_delay;
 	int n_sweep_warm, n_sweep_meas;
 	int period_eqlt, period_uneqlt;
-	int meas_bond_corr, meas_energy_corr, meas_nematic_corr;
+	int meas_bond_corr, meas_thermal, meas_2bond_corr, meas_energy_corr, meas_nematic_corr;
+	int checkpoint_every;
+	// int meas_hop2_corr;
 
 	int num_i, num_ij;
-	int num_b, num_bs, num_bb;
-	int *degen_i, *degen_ij, *degen_bs, *degen_bb;
+	int num_b, num_b2, num_bs, num_bb, num_bb2, num_b2b, num_b2b2;
+	// int num_hop2, num_b_hop2, num_hop2_b, num_hop2_hop2;
+	int *degen_i, *degen_ij, *degen_bs, *degen_bb, *degen_b2b2, *degen_b2b, *degen_bb2;
+	// int *degen_hop2_hop2, *degen_hop2_b, *degen_b_hop2;
 	num *exp_Ku, *exp_Kd, *inv_exp_Ku, *inv_exp_Kd;
 	num *exp_halfKu, *exp_halfKd, *inv_exp_halfKu, *inv_exp_halfKd;
 	double *exp_lambda, *del;
@@ -58,6 +64,13 @@ struct meas_uneqlt {
 	num *pair_bb;
 	num *jj, *jsjs;
 	num *kk, *ksks;
+	// num *pair_b2b2;
+	num *j2jn, *jnj2, *jnjn;
+	num *j2j,  *jj2;
+	num *j2j2;//, *js2js2;
+	// num *k2k2, *ks2ks2;
+	num *new_jnj, *new_jjn;
+	// num *J2J2, *J2jn, *J2j, *jnJ2, *jJ2;
 	num *kv, *kn, *vv, *vn;
 	num *nem_nnnn, *nem_ssss;
 };
@@ -70,7 +83,13 @@ struct sim_data {
 	struct meas_uneqlt m_ue;
 };
 
-int sim_data_read_alloc(struct sim_data *sim, const char *file);
+int set_num_h5t(void);
+
+size_t get_memory_req(const char *file);
+
+int consistency_check(const char *file);
+
+int sim_data_read_alloc(struct sim_data *sim);
 
 int sim_data_save(const struct sim_data *sim);
 
