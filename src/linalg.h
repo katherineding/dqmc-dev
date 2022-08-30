@@ -4,11 +4,12 @@
  * Interface of DQMC code with CUBLAS and CUSOLVER library code.
  * Define away d (double) and z (double complex) prefixes into x
 */
-#include "util.h"
 
 #include <cusolverDn.h>
 //#include <cublas_v2.h>
 #include <cuda_runtime.h>
+
+#include "util.h"
 
 // TODO: handle proper casting to cuDoubleComplex type
 // want to use C "double complex" or C++ complex<double> on host side

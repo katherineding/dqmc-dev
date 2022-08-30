@@ -1,10 +1,13 @@
-#include "linalg.h"
 #include <stdio.h>
 #include <stdexcept>
 
 
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
+#include <cusolverDn.h>
+
+#include "linalg.h"
+//#include "util.h"
 
 // CUDA API error checking
 #define CUDA_CHECK(err)                                                                            \
@@ -242,7 +245,7 @@ int main(){
 
     CUDA_CHECK(cudaFree(d_AA));
     CUDA_CHECK(cudaFree(d_BB));
-    CUDA_CHECK(cudaFree(d_iniv));
+    CUDA_CHECK(cudaFree(d_ipiv));
     CUDA_CHECK(cudaFree(d_info));
 
     CUBLAS_CHECK(cublasDestroy(cublasH));

@@ -32,12 +32,12 @@
  */
 #include <xmmintrin.h>
 
-// #ifdef USE_CPLX
-// 	#include <complex.h>
-// 	typedef double complex num;
-// #else
-// 	typedef double num;
-// #endif
+#ifdef USE_CPLX
+	//#include <complex.h>
+	typedef double _Complex num;
+#else
+	typedef double num;
+#endif
 
 #define MEM_ALIGN 64
 

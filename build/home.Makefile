@@ -12,7 +12,7 @@ CFLAGS += -I/usr/include/hdf5/serial
 LDFLAGS += -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 LDFLAGS += -lhdf5 -lhdf5_hl 
 
-SRCFILES = data.o dqmc.o greens.o meas.o updates.o
+SRCFILES = data.o dqmc.o greens.o meas.o prof.o sig.o updates.o
 
 all: one stack
 

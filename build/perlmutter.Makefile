@@ -1,6 +1,6 @@
-CC = nvc #use nvc to compile all files
+CC = nvc++ #use nvc to compile all files
 
-CFLAGS = -fast -mp=gpu -gpu=cc80,cuda11.4 -Minfo 
+CFLAGS = -fast -mp=gpu -gpu=cc80,cuda11.7 -Minfo 
 CFLAGS += -cuda #tell nvc that .c files might contain GPU device code
 CFLAGS += -cudalib=cublas,cusolver,curand #link to libraries
 CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
