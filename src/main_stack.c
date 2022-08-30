@@ -1,31 +1,37 @@
-#include <stdint.h>
+//#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <omp.h>
+#include <argp.h>
+
+#include "data.h"
 #include "dqmc.h"
-#include "util.h"
+#include "time_.h"
 
+
+// TODO: hard vs soft link?
 #define USE_HARD_LINK
+// max allowed number of chars in absolute path string to any *.h5 file
+//   in stack_file
+#define MAX_LEN 512 
+// TODO: ??
+#define BUF_SZ 128
 
+static char hostname[65];
+static int pid;
+
+// print arg (...) to console with hostname and pid info
 #define my_printf(...) do { \
 	printf("%16s %6d: ", hostname, pid); \
 	printf(__VA_ARGS__); \
 	fflush(stdout); \
 } while (0)
-
-static char hostname[65];
-static int pid;
-
-static void usage(const char *name)
-{
-	my_printf("usage: %s [-t max_time] stack_file\n", name);
-}
 
 // sleep a number of seconds between min and max (assumes both > 0)
 // so that processes don't repeatedly try to do something simultaneously
@@ -36,10 +42,19 @@ static void sleep_rand(double min, double max)
 	nanosleep(&ts, NULL);
 }
 
+/**
+ * "Lock" file for RW
+ * @param  file  [description]
+ * @param  retry [description]
+ * @return       0 on successful lock
+ *               1 on failure
+ * TODO: can we replace this with something better?
+ */
 static int lock_file(const char *file, const int retry)
 {
 	const size_t len_file = strlen(file);
-	char *lfile = my_calloc(len_file + 2);
+	//char *lfile = my_calloc(len_file + 2);
+	char *lfile = calloc(len_file + 2, sizeof(char));
 	memcpy(lfile, file, len_file);
 	lfile[len_file] = '~';
 
@@ -51,7 +66,7 @@ static int lock_file(const char *file, const int retry)
 #else
 		if (symlink(file, lfile) == 0) { // successfully locked
 #endif
-			my_free(lfile);
+			free(lfile);
 			return 0;
 		}
 
@@ -98,21 +113,30 @@ static int lock_file(const char *file, const int retry)
 static void unlock_file(const char *file)
 {
 	const size_t len_file = strlen(file);
-	char *lfile = my_calloc(len_file + 2);
+	//char *lfile = my_calloc(len_file + 2);
+	char *lfile = calloc(len_file + 2, sizeof(char));
 	memcpy(lfile, file, len_file);
 	lfile[len_file] = '~';
 
 	if (remove(lfile) != 0)
 		my_printf("warning: lock release failed (already removed?)\n");
 
-	my_free(lfile);
+	free(lfile);
 }
 
-static int pop_stack(const char *file, int max_len, char *line)
+/**
+ * LIFO remove last path from file and place it in line
+ * @param  char* file string
+ * @param  char* line string
+ * @return 0 on success of both operations; file modified, line has content
+ *         -1 if I/O error;    file not modified, line empty
+ *         1  if no I/O error; file not modified, line empty
+ */
+static int pop_stack(const char *file, char *line)
 {
 	int ret = 0;
 	int len_line = 0;
-	memset(line, 0, max_len);
+	memset(line, 0, MAX_LEN);
 
 	lock_file(file, 1);
 
@@ -122,8 +146,6 @@ static int pop_stack(const char *file, int max_len, char *line)
 		my_printf("error: open() failed in pop_stack\n");
 		return -1;
 	}
-
-	#define BUF_SZ 128
 
 	off_t offset = lseek(fd, 0, SEEK_END);
 	if (offset == -1) {
@@ -146,7 +168,7 @@ static int pop_stack(const char *file, int max_len, char *line)
 			goto end;
 		} else if (actual_ofs != ofs) {
 			my_printf("error: actual_ofs=%d, requested=%d\n",
-			           actual_ofs, ofs);
+					   actual_ofs, ofs);
 			ret = -1;
 			goto end;
 		}
@@ -178,8 +200,8 @@ static int pop_stack(const char *file, int max_len, char *line)
 		if (start == -1) start = 0;
 
 		const int new_chars = end - start + 1;
-		if (len_line + new_chars > max_len) {
-			my_printf("error: last line length > %d\n", max_len);
+		if (len_line + new_chars > MAX_LEN) {
+			my_printf("error: last line length > %d\n", MAX_LEN);
 			ret = -1;
 			goto end;
 		}
@@ -213,7 +235,8 @@ static void push_stack(const char *file, const char *line)
 {
 	// add newline here instead of using fputc
 	const size_t len_line = strlen(line);
-	char *line_nl = my_calloc(len_line + 2);
+	//char *line_nl = my_calloc(len_line + 2);
+	char *line_nl = calloc(len_line + 2, sizeof(char));
 	memcpy(line_nl, line, len_line);
 	line_nl[len_line] = '\n';
 	char *backup = NULL;
@@ -223,7 +246,8 @@ static void push_stack(const char *file, const char *line)
 	if (lock_file(file, 0) != 0) { // if locking fails on first try
 		// save line to backup in case process gets killed
 		const size_t len_file = strlen(file);
-		backup = my_calloc(len_file + 32);
+		//backup = my_calloc(len_file + 32);
+		backup = calloc(len_file + 32, sizeof(char));
 		snprintf(backup, len_file + 32, "%s_%.20s_%d", file, hostname, pid);
 
 		const int bfd = open(backup, O_CREAT | O_WRONLY | O_APPEND, 0644);
@@ -255,10 +279,10 @@ static void push_stack(const char *file, const char *line)
 	if (backup != NULL) {
 		if (status == 0)
 			remove(backup);
-		my_free(backup);
+		free(backup);
 	}
 
-	my_free(line_nl);
+	free(line_nl);
 
 	if (status & 1)
 		my_printf("error: open() failed in push_stack()\n");
@@ -268,77 +292,154 @@ static void push_stack(const char *file, const char *line)
 		my_printf("error: close() failed in push_stack()\n");
 }
 
-int main(int argc, char **argv)
+
+
+// boilerplate required by argp
+const char *argp_program_version= "commit id " GIT_ID "\n"
+	"compiled on " __DATE__ " " __TIME__;
+const char *argp_program_bug_address = "<jxding@stanford.edu>";
+
+// Options.  Field 1 in ARGP.
+// Order of fields: {NAME, KEY, ARG, FLAGS, DOC, GROUP}.
+static struct argp_option options[] = {
+	{0, 't', "TIME", 0, "Max allowed wall time in integer seconds", 0},
+	{"dry-run", 'n', 0, 0,"Run through stack, report mem requirement only", 0},
+	{"benchmark", 'b', 0, 0,"Don't save sim_data to disk", 0},
+	{0}
+};
+
+/* Used by main to communicate with parse_opt */
+struct arguments{
+	int time; //optional argument
+	bool dry_run;
+	bool bench;
+	char *args[1]; // mandatory argument
+};
+
+/* Parser function. Field 2 in ARGP.*/
+static error_t parse_opt(int key, char *arg, struct argp_state *state) 
 {
-	const tick_t t_start = time_wall();
-	omp_set_num_threads(2);
-	gethostname(hostname, 64);
-	pid = getpid();
-
-	char *str_max_time = NULL;
-	int c;
-	while ((c = getopt(argc, argv, "t:")) != -1)
-		switch (c) {
-		case 't':
-			str_max_time = optarg;
+	/* Get the input argument from argp_parse, which we
+	know is a pointer to our arguments structure. */
+	struct arguments *arguments = state->input;
+	switch (key) {
+		case 't': 
+			arguments->time = atoi(arg); 
 			break;
-		default:
-			usage(argv[0]);
-			return 0;
-		}
-
-	if (argc - optind <= 0) {
-		usage(argv[0]);
-		return 0;
+		case 'b': 
+			arguments->bench = true; 
+			break;
+		case 'n': 
+			arguments->dry_run = true; 
+			break;
+		case ARGP_KEY_ARG: // mandatory argument
+			if (state->arg_num >= 1) {
+				/* Too many arguments. */
+				argp_usage(state);
+			}
+			arguments->args[state->arg_num] = arg;
+			break;
+		case ARGP_KEY_END:
+			if (state->arg_num < 1) {
+				/* Not enough arguments. */
+				argp_usage(state);
+			}
+			break;
+		default: 
+			return ARGP_ERR_UNKNOWN;
 	}
+	return 0;
+} 
 
-	srand((unsigned int)pid);
-	sleep_rand(0.0, 4.0);
+/* Brief program documentation. Field 4 in ARGP.*/
+static char doc[] = "Complex-capable DQMC, stack version";
+/* names of mandatory arguments Field 3 in ARGP.*/
+static char args_doc[] = "stack_file";
 
-	const char *stack_file = argv[optind];
-	const int max_time = (str_max_time == NULL) ? 0 : atoi(str_max_time);
-	const tick_t t_stop = t_start + max_time * TICK_PER_SEC;
+// This is very important
+static struct argp argp = { options, parse_opt, args_doc, doc }; 
 
-	#define MAX_LEN 512
+int main(int argc, char **argv)
+{	
+	// Get command line arguments arguments
+	struct arguments arguments;
+	// Default: If no -t max time supplied, then run indefinitely until
+	// user interrupt, done with stack file, or ?? TODO
+	arguments.time = 0; 
+	arguments.dry_run = false; //default: really run everything
+	arguments.bench = false;   //default: no benchmark, save data
+	argp_parse(&argp, argc, argv, 0, 0, &arguments); 
+
+	set_num_h5t(); //set hdf5 library data type
+	omp_set_num_threads(2);
+	gethostname(hostname, 64); //from <unistd.h>
+	pid = getpid(); //from <unistd.h>
+
+	srand((unsigned int)pid); //seed random number generator
+	sleep_rand(0.0, 4.0); //why sleep for some time first?
+
+	// Start timing
+	const int64_t t_start = time_wall();
+	const int max_time = arguments.time;
+	const int64_t t_stop = t_start + max_time * TICK_PER_SEC;
+
+	const char *stack_file = arguments.args[0];
 	char sim_file[MAX_LEN + 1] = {0};
 	char log_file[MAX_LEN + 5] = {0};
 
+	//check that stack exists, and we can both R and W to it.
+	if (access(stack_file,R_OK | W_OK ) != 0) {
+		my_printf("[ERROR] %s does not exist or you don't have access; "
+			"idling\n", stack_file);
+		return EXIT_FAILURE;
+	}
+
+	int64_t t_remain = 0;
 	while (1) {
-		int status = pop_stack(stack_file, MAX_LEN, sim_file);
-		if (status == 1 || status < 0) { // empty or pop_stack failed
-			my_printf("pop_stack() returned %d; idling\n", status);
-			break;
+
+		if (max_time > 0) {
+			t_remain = t_stop - time_wall();
+			if (t_remain <= 0) {
+				my_printf("dqmc_stack reached wall time limit; idling");
+				return EXIT_SUCCESS;
+			}
 		}
 
+		int pop_status = pop_stack(stack_file, sim_file);
+		if (pop_status == -1) { // pop_stack() failed
+			my_printf("[ERROR] pop_stack() failed; idling\n");
+			return EXIT_FAILURE;
+		}
+		else if (pop_status == 1) { // stack_file empty
+			my_printf("pop_stack() returned %d, %s empty; idling\n", 
+				pop_status, stack_file);
+			return EXIT_SUCCESS;
+		}
+
+		// pop success, sim_file has content
 		const size_t len_sim_file = strlen(sim_file);
 		memcpy(log_file, sim_file, len_sim_file);
 		memcpy(log_file + len_sim_file, ".log", 5);
 
-		tick_t t_remain;
-		if (max_time > 0) {
-			t_remain = t_stop - time_wall();
-			if (t_remain <= 0) {
-				push_stack(stack_file, sim_file);
-				break;
-			}
-		} else
-			t_remain = 0;
+		// my_printf("memory requirement: %zu bytes\n", get_memory_req(sim_file));
+		my_printf("starting:   %s\n", sim_file);
+		my_printf("logging to: %s\n", log_file);
+		// run dqmc here 
+		const int wrap_status = dqmc_wrapper(sim_file, log_file, t_remain, 
+			arguments.dry_run, arguments.bench);
 
-		my_printf("starting: %s\n", sim_file);
-		status = dqmc_wrapper(sim_file, log_file, t_remain, 0);
-
-		if (status > 0) {
-			my_printf("checkpointed: %s\n", sim_file);
+		if (wrap_status > 0) {
 			push_stack(stack_file, sim_file);
+			my_printf("dqmc_wrapper() incomplete, pushed: %s\n", sim_file);
 			// checkpoint would only happen if signal received or
 			// time limit reached, so break here
 			break;
-		} else if (status == 0)
+		} 
+		else if (wrap_status == 0)  
 			my_printf("completed: %s\n", sim_file);
 		else
-			my_printf("dqmc_wrapper() failed: %d, %s\n",
-			           status, sim_file);
+			my_printf("dqmc_wrapper() failed: %s\n", sim_file);
 	}
 
-	return 0;
+	return EXIT_SUCCESS;
 }

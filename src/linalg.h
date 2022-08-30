@@ -10,15 +10,6 @@
 //#include <cublas_v2.h>
 #include <cuda_runtime.h>
 
-// #ifdef USE_CPLX
-// 	#define cast(p) (cuDoubleComplex *)(p)
-// 	#define ccast(p) (const cuDoubleComplex *)(p)
-// #else
-// 	#define cast(p) (p)
-// 	#define ccast(p) (p)
-// #endif
-// #define USE_CPLX
-
 // TODO: handle proper casting to cuDoubleComplex type
 // want to use C "double complex" or C++ complex<double> on host side
 // and cuDoubleComplex on device side.
@@ -26,12 +17,9 @@
 // between these produces the desired behavior as per C++0x standard,
 // but need to check this.
 
-#ifdef USE_CPLX
-	#include <complex.h>
-	typedef double complex num;
-#else
-	typedef double num;
-#endif
+/*=============================================
+=            BLAS routine wrappers            =
+=============================================*/
 
 // general matrix-matrix multiplication: Level 3 BLAS
 // C <- alpha * A * B + beta * C when transa = transb = 'N' or 'n'
@@ -116,6 +104,10 @@ static inline cublasStatus_t xtrmm(cublasHandle_t handle,
 	handle, side, uplo, transa, diag, m, n,
 	alpha, A, lda, B, ldb, C, ldc);
 }
+
+/*=============================================
+=           LAPACK routine wrappers           =
+=============================================*/
 
 // LAPACK
 // Compute LU factorization of general matrix A using partial pivoting 
@@ -258,5 +250,5 @@ static inline cusolverStatus_t xunmqr(cusolverDnHandle_t handle,
 // 	uplo, diag, &n, cast(a), &lda, info);
 // }
 
-#undef ccast
-#undef cast
+// #undef ccast
+// #undef cast
