@@ -553,6 +553,11 @@ int dqmc_wrapper(const char *sim_file, const char *log_file,
 		return WRAP_FAIL;
 	}
 
+	// printf("C complex size: %zu\n",sizeof(num));
+	// printf("dcomplex size: %zu\n",sizeof(dcomplex));
+	// printf("libFLAME \"complex\" size: %zu\n",sizeof(complex));
+	// fflush(stdout);
+
 	// opened a log stream
 	fprintf(log, "commit id %s\n", GIT_ID);
 	fprintf(log, "compiled on %s %s\n", __DATE__, __TIME__);

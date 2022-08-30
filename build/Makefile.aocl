@@ -1,13 +1,12 @@
 CC = clang 
 
 # modify march to znver3 for Perlmutter
-CFLAGS = -std=gnu17 -O0 -march=native 
-CFLAGS += -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter
-CFLAGS += -Wno-incompatible-pointer-types-discards-qualifiers
+CFLAGS = -std=gnu17 -Ofast -march=native 
+CFLAGS += -Wall -Wextra -Wno-incompatible-pointer-types
 CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
 CFLAGS += -DPROFILE_ENABLE
-#CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
-CFLAGS += -fopenmp -g -H -v
+CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
+CFLAGS += -fopenmp # -g -H -v
 
 # HDF5
 CFLAGS += -I/home/jxding/miniconda3/include 
