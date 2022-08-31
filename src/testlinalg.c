@@ -2,9 +2,7 @@
 #include <stdexcept>
 
 
-#include <cublas_v2.h>
 #include <cuda_runtime.h>
-#include <cusolverDn.h>
 
 #include "linalg.h"
 //#include "util.h"
@@ -40,10 +38,12 @@
     } while (0)
 
 
-typedef double data_type;
-
-
 int main(){
+
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, 0);
+    printf("This device supports CUDA compute version %d\n", prop.major * 10 + prop.minor);
+
 
     cublasHandle_t cublasH = NULL;
     cusolverDnHandle_t cusolverH = NULL;
@@ -64,39 +64,39 @@ int main(){
     const cublasOperation_t transa = CUBLAS_OP_N;
     const cublasOperation_t transb = CUBLAS_OP_N;
 
-    const data_type A[m*k] = {1,3,2,4};
-    const data_type B[k*n] = {5,7,6,8};
-    const data_type x[n] = {5,6};
+    const num A[m*k] = {1,3,2,4};
+    const num B[k*n] = {5,7,6,8};
+    const num x[n] = {5,6};
 
-    const data_type alpha = 1.0;
-    const data_type beta = 0.0;
-    data_type C[m*n] = {0};
-    data_type D[m*n] = {0};
-    data_type y[m] = {0};
+    const num alpha = 1.0;
+    const num beta = 0.0;
+    num C[m*n] = {0};
+    num D[m*n] = {0};
+    num y[m] = {0};
 
     const int incx =1;
     const int incy =1;
 
-    data_type *d_A = NULL;
-    data_type *d_x = NULL;
-    data_type *d_y = NULL;
-    data_type *d_B = NULL;
-    data_type *d_C = NULL;
-    data_type *d_D = NULL;
+    num *d_A = NULL;
+    num *d_x = NULL;
+    num *d_y = NULL;
+    num *d_B = NULL;
+    num *d_C = NULL;
+    num *d_D = NULL;
 
     //host side initialization
-    data_type AA[3*3] = {1,4,7,2,5,8,3,6,10};
-    data_type BB[3] = {1,2,3};
+    num AA[3*3] = {1,4,7,2,5,8,3,6,10};
+    num BB[3] = {1,2,3};
     int ipiv[3] = {0};
     int info = 0;
     int lwork = 0;
 
     //device pointers
-    data_type *d_AA = NULL;
-    data_type *d_BB = NULL;
+    num *d_AA = NULL;
+    num *d_BB = NULL;
     int *d_ipiv = NULL; /* pivoting sequence */
     int *d_info = NULL; /* error info */
-    data_type *d_work = NULL; /* device workspace for getrf */
+    num *d_work = NULL; /* device workspace for getrf */
 
     printf("size of A: %d\n",sizeof(A));
     printf("size of B: %d\n",sizeof(B));
@@ -138,10 +138,10 @@ int main(){
 
     /* step 2.5: query working space of getrf in lwork
     Note lwork is host side variable and its address is passed to bufferSize*/
-    CUSOLVER_CHECK(cusolverDnDgetrf_bufferSize(cusolverH, 3, 3, d_AA, 3, &lwork));
+    CUSOLVER_CHECK(xgetrf_bs(cusolverH, 3, 3, d_AA, 3, &lwork));
     printf("lwork = %d\n", lwork); //lwork is a pretty large multiple of n
 
-    CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_work), sizeof(double) * lwork));
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_work), sizeof(num) * lwork));
 
 
     /* step 3: compute */
@@ -219,7 +219,7 @@ int main(){
     }
 
     /* step n: solve using LU decomposition*/
-    CUSOLVER_CHECK(cusolverDnDgetrs(cusolverH, CUBLAS_OP_N, 3, 1, /* nrhs */
+    CUSOLVER_CHECK(xgetrs(cusolverH, CUBLAS_OP_N, 3, 1, /* nrhs */
                                         d_AA, 3, d_ipiv, d_BB, 3, d_info));
     CUDA_CHECK(cudaMemcpyAsync(&info, d_info, sizeof(info), cudaMemcpyDeviceToHost, stream));
     CUDA_CHECK(cudaMemcpyAsync(&BB, d_BB, sizeof(BB), cudaMemcpyDeviceToHost, stream));
@@ -250,7 +250,6 @@ int main(){
 
     CUBLAS_CHECK(cublasDestroy(cublasH));
     CUDA_CHECK(cudaStreamDestroy(stream));
-    CUDA_CHECK(cudaDeviceReset());
 
     CUSOLVER_CHECK(cusolverDnDestroy(cusolverH));
     CUDA_CHECK(cudaStreamDestroy(stream2));

@@ -1,15 +1,17 @@
 CC = nvc++ #use nvc to compile all files
 
-CFLAGS = -fast -mp=gpu -gpu=cc75,cuda11.6 -Minfo 
+CFLAGS = -fast -mp=gpu -gpu=cc75,cuda11.7 -Minfo
 CFLAGS += -cuda #tell nvc that .c files might contain GPU device code
-CFLAGS += -cudalib=cublas,cusolver,curand #link to libraries
+#link to libraries, can also just do -cudalib for automatic linking
+CFLAGS += -cudalib=cublas,cusolver,curand 
 CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
 #don't need Edwin's profiling if using Nsight instead
 #CFLAGS += -DPROFILE_ENABLE 
-#CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
-CFLAGS += -I/usr/include/hdf5/serial
+CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 
-LDFLAGS += -L/usr/lib/x86_64-linux-gnu/hdf5/serial
+CFLAGS += -I/home/jxding/miniconda3/include/
+LDFLAGS += -L/home/jxding/miniconda3/lib/
+
 LDFLAGS += -lhdf5 -lhdf5_hl 
 
 SRCFILES = data.o dqmc.o greens.o meas.o prof.o sig.o updates.o
@@ -33,4 +35,4 @@ stack: ${SRCFILES} main_stack.o
 	@${CC} -c ${CFLAGS} $<
 
 clean:
-	rm -f *.o *.optrpt *.seq *.par
+	rm -f *.o *.optrpt *.seq *.par testlinalg

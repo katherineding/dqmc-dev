@@ -6,17 +6,31 @@
 */
 
 #include <cusolverDn.h>
-//#include <cublas_v2.h>
-#include <cuda_runtime.h>
+#include <cublas_v2.h>
 
 #include "util.h"
 
-// TODO: handle proper casting to cuDoubleComplex type
-// want to use C "double complex" or C++ complex<double> on host side
-// and cuDoubleComplex on device side.
-// Some stackoverflow posts claim that a simple reinterpret_cast
-// between these produces the desired behavior as per C++0x standard,
-// but need to check this.
+// TODO: made function non-void return. Restore original void return?
+// TODO: how to handle functions without cublas/cuSolve implementation?
+
+
+// Pointer casting to and from Nvidia cuDoubleComplex type
+#ifdef USE_CPLX
+	//#include <complex.h>
+	// here p is double _Complex * type
+	#define cast(p)  reinterpret_cast<cuDoubleComplex *>(p)
+	// here p is const double _Complex * type
+	#define ccast(p)  reinterpret_cast<const cuDoubleComplex *>(p)
+	// here p is cuDoubleComplex * type
+	#define recast(p) reinterpret_cast<double _Complex *>(p)
+#else
+	// if using double, just leave p alone
+	#define cast(p)  p
+	#define ccast(p)  p
+	#define recast(p)  p
+#endif
+
+
 
 /*=============================================
 =            BLAS routine wrappers            =
@@ -39,12 +53,12 @@ static inline cublasStatus_t xgemm(
 		const int ldc)
 {
 #ifdef USE_CPLX
-	cublasZgemm(
+	return cublasZgemm(
 #else
-	cublasDgemm(
+	return cublasDgemm(
 #endif
 	handle, transa, transb, m, n, k,
-	alpha, A, lda, B, ldb, beta, C, ldc);
+	ccast(alpha), ccast(A), lda, ccast(B), ldb, ccast(beta), cast(C), ldc);
 }
 
 // general matrix-vector product, Level 2 BLAS
@@ -62,13 +76,13 @@ static inline cublasStatus_t xgemv(cublasHandle_t handle,
 		const int incy)
 {
 #ifdef USE_CPLX
-	cublasZgemv(
+	return cublasZgemv(
 #else
-	cublasDgemv(
+	return cublasDgemv(
 #endif
 	handle, trans, m, n,
-	alpha, A, lda, x, incx,
-	beta, y, incy);
+	ccast(alpha), ccast(A), lda, ccast(x), incx,
+	ccast(beta), cast(y), incy);
 }
 
 
@@ -98,12 +112,12 @@ static inline cublasStatus_t xtrmm(cublasHandle_t handle,
 		const int ldc)
 {
 #ifdef USE_CPLX
-	cublasDtrmm(
+	return cublasZtrmm(
 #else
-	cublasDtrmm(
+	return cublasDtrmm(
 #endif
 	handle, side, uplo, transa, diag, m, n,
-	alpha, A, lda, B, ldb, C, ldc);
+	ccast(alpha), ccast(A), lda, ccast(B), ldb, cast(C), ldc);
 }
 
 /*=============================================
@@ -126,11 +140,28 @@ static inline cusolverStatus_t xgetrf(cusolverDnHandle_t handle,
 	)
 {
 #ifdef USE_CPLX
-	cusolverDnZgetrf(
+	return cusolverDnZgetrf(
 #else
-	cusolverDnDgetrf(
+	return cusolverDnDgetrf(
 #endif
-	handle, m, n, a, lda, work, ipiv, info);
+	handle, m, n, cast(a), lda, cast(work), ipiv, info);
+}
+
+static inline cusolverStatus_t xgetrf_bs(
+	cusolverDnHandle_t handle, 
+	const int m, 
+	const int n, 
+	num *a, 
+	const int lda, 
+	int *lwork
+	)
+{
+#ifdef USE_CPLX
+	return cusolverDnZgetrf_bufferSize(
+#else
+	return cusolverDnDgetrf_bufferSize(
+#endif
+	handle, m, n, cast(a), lda, lwork);
 }
 
 // // LAPACK
@@ -154,19 +185,19 @@ static inline cusolverStatus_t xgetrs(cusolverDnHandle_t handle,
 	cublasOperation_t trans, 
 	const int n, 
 	const int nrhs,
-	const num* a, 
+	const num* a,    /* device in */
 	const int lda, 
-	const int* ipiv,
-	num* b, 
+	const int* ipiv, /* device in */
+	num* b,          /* device out*/
 	const int ldb, 
-	int* info)
+	int* info)       /* device out*/
 {
 #ifdef USE_CPLX
-	cusolverDnZgetrs(
+	return cusolverDnZgetrs(
 #else
-	cusolverDnDgetrs(
+	return cusolverDnDgetrs(
 #endif
-	handle, trans, n, nrhs, a, lda, ipiv, b, ldb, info);
+	handle, trans, n, nrhs, ccast(a), lda, ipiv, cast(b), ldb, info);
 }
 
 // TODO: problem! No pivoted QR in CUSOLVER
@@ -200,11 +231,11 @@ static inline cusolverStatus_t xgeqrf(cusolverDnHandle_t handle,
 	int* info)
 {
 #ifdef USE_CPLX
-	cusolverDnZgeqrf(
+	return cusolverDnZgeqrf(
 #else
-	cusolverDnDgeqrf(
+	return cusolverDnDgeqrf(
 #endif
-	handle, m, n, a, lda, tau, work, lwork, info);
+	handle, m, n, cast(a), lda, cast(tau), cast(work), lwork, info);
 }
 
 
@@ -229,27 +260,61 @@ static inline cusolverStatus_t xunmqr(cusolverDnHandle_t handle,
 	int* info)
 {
 #ifdef USE_CPLX
-	cusolverDnZunmqr(handle, side, trans,
+	return cusolverDnZunmqr(handle, side, trans,
 #else
-	cusolverDnDormqr(handle, side, trans == CUBLAS_OP_C ? CUBLAS_OP_T : trans,
+	return cusolverDnDormqr(handle, side, trans == CUBLAS_OP_C ? CUBLAS_OP_T : trans,
 #endif
-	m, n, k, a, lda, tau,
-	c, ldc, work, lwork, info);
+	m, n, k, ccast(a), lda, ccast(tau),
+	cast(c), ldc, cast(work), lwork, info);
 }
 
-// TODO: problem! only cusolverDnXtrtri interface in CUBLAS
-// // LAPACK
-// // Compute inverse of triangular matrix
-// static inline void xtrtri(const char* uplo, const char* diag, const int n,
-// 		num* a, const int lda, int* info)
-// {
-// #ifdef USE_CPLX
-// 	ztrtri(
-// #else
-// 	dtrtri(
-// #endif
-// 	uplo, diag, &n, cast(a), &lda, info);
-// }
+// LAPACK
+// Compute inverse of triangular matrix
+static inline cusolverStatus_t xtrtri(
+	cusolverDnHandle_t handle,
+	cublasFillMode_t uplo,
+	cublasDiagType_t diag,
+	const int n,
+	num* a, 
+	const int lda, 
+	num *dwork,
+	size_t dwork_size,
+	num *hwork,
+	size_t hwork_size,
+	int *info)
+{
+	return cusolverDnXtrtri(handle, uplo, diag, n, 
+#ifdef USE_CPLX
+	CUDA_C_64F, 
+#else
+	CUDA_R_64F, 
+#endif
+	cast(a), lda, dwork, dwork_size, hwork, hwork_size, info);
 
-// #undef ccast
-// #undef cast
+}
+
+static inline cusolverStatus_t xtrtri_bs(
+	cusolverDnHandle_t handle,
+	cublasFillMode_t uplo,
+	cublasDiagType_t diag,
+	const int n,
+	num* a, 
+	const int lda, 
+	size_t* dwork_size,
+	size_t* hwork_size
+	)
+{
+	return cusolverDnXtrtri_bufferSize(handle, uplo, diag, n, 
+#ifdef USE_CPLX
+	CUDA_C_64F, 
+#else
+	CUDA_R_64F, 
+#endif
+	cast(a), lda, dwork_size,hwork_size);
+
+}
+
+// avoid namespace pollution
+#undef cast
+#undef ccast
+#undef recast
