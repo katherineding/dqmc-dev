@@ -31,14 +31,21 @@
 #define puj1j0 1
 #define pdj0j1 1
 #define pdj1j0 1
-#define ppui0i2 1 //these are actually not one!
-#define ppui2i0 1
-#define ppdi0i2 1
-#define ppdi2i0 1
-#define ppuj0j2 1
-#define ppuj2j0 1
-#define ppdj0j2 1
-#define ppdj2j0 1
+/**
+ * these should not be defined as one in the nflux=0 case, they 
+ * can be 1,2,4, 1+tp^2, so they are not constant. Unless I introduce scaling
+ * in the gen_1band_hub.py file
+ * Must keep consistent between gen_1band_hub, simulation here, and
+ * data analysis in thermal.py and jqjq.py
+ */
+// #define ppui0i2 1 
+// #define ppui2i0 1
+// #define ppdi0i2 1
+// #define ppdi2i0 1
+// #define ppuj0j2 1
+// #define ppuj2j0 1
+// #define ppdj0j2 1
+// #define ppdj2j0 1
 #endif
 
 // #ifdef USE_CPLX
@@ -561,23 +568,23 @@ void measure_uneqlt(const struct params *const restrict p,
 	for (int c = 0; c < num_b2; c++) {
 		const int jtype = c / N;
 		const int j = c % N;
-#ifdef USE_PEIERLS
+
 		const num ppuj0j2 = p->pp_u[ j + N*jtype];
 		const num ppuj2j0 = p->ppr_u[j + N*jtype];
 		const num ppdj0j2 = p->pp_d[ j + N*jtype];
 		const num ppdj2j0 = p->ppr_d[j + N*jtype];
-#endif
+
 		const int j0 = p->bond2s[c];
 		const int j2 = p->bond2s[c + num_b2];
 	for (int b = 0; b < num_b2; b++) {
 		const int itype = b / N;
 		const int i = b % N;
-#ifdef USE_PEIERLS
+
 		const num ppui0i2 = p->pp_u[ i + N*itype];
 		const num ppui2i0 = p->ppr_u[i + N*itype];
 		const num ppdi0i2 = p->pp_d[ i + N*itype];
 		const num ppdi2i0 = p->ppr_d[i + N*itype];
-#endif
+
 		const int i0 = p->bond2s[b];
 		const int i2 = p->bond2s[b + num_b2];
 
@@ -638,12 +645,12 @@ void measure_uneqlt(const struct params *const restrict p,
 	for (int c = 0; c < num_b2; c++) {
 		const int jtype = c / N;
 		const int j = c % N;
-#ifdef USE_PEIERLS
+
 		const num ppuj0j2 = p->pp_u[ j + N*jtype];
 		const num ppuj2j0 = p->ppr_u[j + N*jtype];
 		const num ppdj0j2 = p->pp_d[ j + N*jtype];
 		const num ppdj2j0 = p->ppr_d[j + N*jtype];
-#endif
+
 		const int j0 = p->bond2s[c];
 		const int j2 = p->bond2s[c + num_b2];
 	for (int b = 0; b < num_b; b++) {
@@ -754,15 +761,17 @@ void measure_uneqlt(const struct params *const restrict p,
 		const num pdj0j1 = p->peierlsd[j0 + N*j1];
 		const num pdj1j0 = p->peierlsd[j1 + N*j0];
 #endif
+
 	for (int b = 0; b < num_b2; b++) {
 		const int itype = b / N;
 		const int i = b % N;
-#ifdef USE_PEIERLS
+
 		const num ppui0i2 = p->pp_u[ i + N*itype];
 		const num ppui2i0 = p->ppr_u[i + N*itype];
 		const num ppdi0i2 = p->pp_d[ i + N*itype];
 		const num ppdi2i0 = p->ppr_d[i + N*itype];
-#endif
+		// printf("ppui0i2 = %f\n",ppui0i2);
+
 		const int i0 = p->bond2s[b];
 		const int i2 = p->bond2s[b + num_b2];
 
@@ -1163,23 +1172,23 @@ void measure_uneqlt(const struct params *const restrict p,
 	for (int c = 0; c < num_b2; c++) {
 		const int jtype = c / N;
 		const int j = c % N;
-#ifdef USE_PEIERLS
+
 		const num ppuj0j2 = p->pp_u[ j + N*jtype];
 		const num ppuj2j0 = p->ppr_u[j + N*jtype];
 		const num ppdj0j2 = p->pp_d[ j + N*jtype];
 		const num ppdj2j0 = p->ppr_d[j + N*jtype];
-#endif
+
 		const int j0 = p->bond2s[c];
 		const int j2 = p->bond2s[c + num_b2];
 	for (int b = 0; b < num_b2; b++) {
 		const int itype = b / N;
 		const int i = b % N;
-#ifdef USE_PEIERLS
+
 		const num ppui0i2 = p->pp_u[ i + N*itype];
 		const num ppui2i0 = p->ppr_u[i + N*itype];
 		const num ppdi0i2 = p->pp_d[ i + N*itype];
 		const num ppdi2i0 = p->ppr_d[i + N*itype];
-#endif
+
 		const int i0 = p->bond2s[b];
 		const int i2 = p->bond2s[b + num_b2];
 
@@ -1251,12 +1260,12 @@ void measure_uneqlt(const struct params *const restrict p,
 	for (int c = 0; c < num_b2; c++) {
 		const int jtype = c / N;
 		const int j = c % N;
-#ifdef USE_PEIERLS
+
 		const num ppuj0j2 = p->pp_u[ j + N*jtype];
 		const num ppuj2j0 = p->ppr_u[j + N*jtype];
 		const num ppdj0j2 = p->pp_d[ j + N*jtype];
 		const num ppdj2j0 = p->ppr_d[j + N*jtype];
-#endif
+
 		const int j0 = p->bond2s[c];
 		const int j2 = p->bond2s[c + num_b2];
 	for (int b = 0; b < num_b; b++) {
@@ -1377,12 +1386,12 @@ void measure_uneqlt(const struct params *const restrict p,
 	for (int b = 0; b < num_b2; b++) {
 		const int itype = b / N;
 		const int i = b % N;
-#ifdef USE_PEIERLS
+
 		const num ppui0i2 = p->pp_u[ i + N*itype];
 		const num ppui2i0 = p->ppr_u[i + N*itype];
 		const num ppdi0i2 = p->pp_d[ i + N*itype];
 		const num ppdi2i0 = p->ppr_d[i + N*itype];
-#endif
+
 		const int i0 = p->bond2s[b];
 		const int i2 = p->bond2s[b + num_b2];
 
