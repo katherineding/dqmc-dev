@@ -113,4 +113,6 @@ This version of the DQMC code is based on edwnh/dqmc commit c91ba61. Divergence 
 - Improve stack mechanism to reduce competition and wait times -- double ended queue? process private queues? But this is not the main bottleneck right now.
 - Add safeguards for simultaneous hdf5 file RW failure mode
 - BUGFIX for thermal phase `#define`s b/c of premature optimization.
-- `aocc + aocl` make path.
+- ~~`aocc + aocl` make path.~~ Add check for complex vs math library (AOCL, cray-libsci) struct size to make sure the complex libs are not playing funny.
+- Add a last_modified field for hdf5 files refreshed and always in $SCRATCH dir?
+- my_calloc() might no longer be the most optimal thing to do on AMD CPUs. It also may be less important to worry about memory alignment if matrix operations are offloaded to GPUs. 
