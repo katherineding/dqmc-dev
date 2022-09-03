@@ -1,6 +1,8 @@
 #include "meas.h"
 #include "data.h"
 #include "util.h"
+#include "prof.h"
+// #include "omp.h"
 // #include <stdio.h>
 // #include <math.h>
 // #include <assert.h>
@@ -8,6 +10,10 @@
 // number of types of bonds kept for 4-particle nematic correlators.
 // 2 by default since these are slow measurerments
 #define NEM_BONDS 2
+
+// Number of OpenMP threads used for expensive unequal time measurements.
+// This overrides the omp_set_num_threads() function called by main
+#define OMP_MEAS_NUM_THREADS 8
 
 // if complex numbers are being used, multiple some measurements by Peierls
 // phases to preserve gauge invariance
@@ -25,7 +31,7 @@
 #define puj1j0 1
 #define pdj0j1 1
 #define pdj1j0 1
-#define ppui0i2 1
+#define ppui0i2 1 //these are actually not one!
 #define ppui2i0 1
 #define ppdi0i2 1
 #define ppdi2i0 1
@@ -45,6 +51,15 @@
 // }
 // #endif
 
+
+/**
+ * [measure_eqlt description]
+ * @param p     [description]
+ * @param phase [description]
+ * @param gu    [description]
+ * @param gd    [description]
+ * @param m     [description]
+ */
 void measure_eqlt(const struct params *const restrict p, const num phase,
 		const num *const restrict gu,
 		const num *const restrict gd,
@@ -195,7 +210,21 @@ void measure_eqlt(const struct params *const restrict p, const num phase,
 	}
 }
 
-void measure_uneqlt(const struct params *const restrict p, const num phase,
+
+/**
+ * [measure_uneqlt description]
+ * @param p     [description]
+ * @param phase [description]
+ * @param Gu0t  [description]
+ * @param Gutt  [description]
+ * @param Gut0  [description]
+ * @param Gd0t  [description]
+ * @param Gdtt  [description]
+ * @param Gdt0  [description]
+ * @param m     [description]
+ */
+void measure_uneqlt(const struct params *const restrict p, 
+		const num phase,
 		const num *const Gu0t,
 		const num *const Gutt,
 		const num *const Gut0,
@@ -222,7 +251,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	const num *const restrict Gd00 = Gdtt;
 
 	// 2 site measurements
-	#pragma omp parallel for
+	#pragma omp parallel for num_threads(OMP_MEAS_NUM_THREADS)
 	for (int t = 0; t < L; t++) {
 		const int delta_t = (t == 0);
 		const num *const restrict Gu0t_t = Gu0t + N*N*t;
@@ -265,7 +294,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 
 	// 1 bond 1 site measurements
 	if (meas_energy_corr)
-	#pragma omp parallel for
+	#pragma omp parallel for num_threads(OMP_MEAS_NUM_THREADS)
 	for (int t = 0; t < L; t++) {
 		const int delta_t = (t == 0);
 		const num *const restrict Gu0t_t = Gu0t + N*N*t;
@@ -910,10 +939,15 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 
 	//=======================================================================
 	// now handle t > 0 case: no delta functions here.
-
-	if (meas_bond_corr || meas_thermal)
-	#pragma omp parallel for
+	//int id,np;
+	//profile_begin(two_bond_two_bond);
+	//#pragma omp requires unified_shared_memory
+	if (meas_bond_corr || meas_thermal) 
+	#pragma omp parallel for num_threads(OMP_MEAS_NUM_THREADS) //private(id,np)
 	for (int t = 1; t < L; t++) {
+		//np = omp_get_num_threads();
+		//id = omp_get_thread_num();
+		//printf("Hello from thread %d out of %d threads\n", id, np);
 		const num *const restrict Gu0t_t = Gu0t + N*N*t;
 		const num *const restrict Gutt_t = Gutt + N*N*t;
 		const num *const restrict Gut0_t = Gut0 + N*N*t;
@@ -1118,7 +1152,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	// this is the ``clever'' way to do it
 	// TODO: implement pair_b2b2,js2js2,k2k2,ks2ks2
 	if (meas_2bond_corr)
-	#pragma omp parallel for
+	#pragma omp parallel for num_threads(OMP_MEAS_NUM_THREADS)
 	for (int t = 1; t < L; t++) {
 		const num *const restrict Gu0t_t = Gu0t + N*N*t;
 		const num *const restrict Gutt_t = Gutt + N*N*t;
@@ -1206,7 +1240,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	// Essentially matrix[j,i] = bond(i) x bond2(j)
 	// This is "clever" way to do it
 	if (meas_thermal || meas_2bond_corr) 
-	#pragma omp parallel for
+	#pragma omp parallel for num_threads(OMP_MEAS_NUM_THREADS)
 	for (int t = 1; t < L; t++) {
 		const num *const restrict Gu0t_t = Gu0t + N*N*t;
 		const num *const restrict Gutt_t = Gutt + N*N*t;
@@ -1323,7 +1357,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	// j = j0 <-> j1 Is this the correct indexing?
 	// Essentially matrix[j,i] = bond2(i) x bond(j)
 	if (meas_thermal || meas_2bond_corr) 
-	#pragma omp parallel for
+	#pragma omp parallel for num_threads(OMP_MEAS_NUM_THREADS)
 	for (int t = 1; t < L; t++) {
 		const num *const restrict Gu0t_t = Gu0t + N*N*t;
 		const num *const restrict Gutt_t = Gutt + N*N*t;
@@ -1437,10 +1471,11 @@ void measure_uneqlt(const struct params *const restrict p, const num phase,
 	}
 	}
 	}
+	//profile_end(two_bond_two_bond);
 
 	// nematic correlator measurements, t > 0
 	if (meas_nematic_corr)
-	#pragma omp parallel for
+	#pragma omp parallel for num_threads(OMP_MEAS_NUM_THREADS)
 	for (int t = 1; t < L; t++) {
 		const num *const restrict Gu0t_t = Gu0t + N*N*t;
 		const num *const restrict Gutt_t = Gutt + N*N*t;

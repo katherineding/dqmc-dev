@@ -110,6 +110,7 @@ This version of the DQMC code is based on edwnh/dqmc commit c91ba61. Divergence 
 
 - Make `double` vs `complex double` a runtime choice, so we don't have to do separate compilations
 - Make dry run completely side-effect-free
-- Improve stack mechanism to reduce competition and wait times
+- Improve stack mechanism to reduce competition and wait times -- double ended queue? process private queues? But this is not the main bottleneck right now.
 - Add safeguards for simultaneous hdf5 file RW failure mode
 - BUGFIX for thermal phase `#define`s b/c of premature optimization.
+- `aocc + aocl` make path.
