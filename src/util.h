@@ -33,8 +33,8 @@
 #include <xmmintrin.h>
 
 #ifdef USE_CPLX
-	//#include <complex.h>
-	typedef double _Complex num;
+	#include <complex.h>
+	typedef double complex num;
 #else
 	typedef double num;
 #endif
