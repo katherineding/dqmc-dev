@@ -365,19 +365,19 @@ int init_setting(void){
 	pid = getpid(); //from <unistd.h>
 	
 	// OPENMP
-	const int max_threads = omp_get_max_threads();
-	const int num_procs = omp_get_num_procs();
-	const int default_device = omp_get_default_device();
-	const int num_devices = omp_get_num_devices();
-	const int dn = omp_get_device_num();
-	const int is_init = omp_is_initial_device();
+	// const int max_threads = omp_get_max_threads();
+	// const int num_procs = omp_get_num_procs();
+	// const int default_device = omp_get_default_device();
+	// const int num_devices = omp_get_num_devices();
+	// const int dn = omp_get_device_num();
+	// const int is_init = omp_is_initial_device();
 
-	my_printf("number of processors available to device: %d\n",num_procs);
-	my_printf("max omp threads: %d\n",max_threads);
-	my_printf("default device: %d\n",default_device);
-	my_printf("num_devices: %d\n",num_devices);
-	my_printf("device number: %d\n",dn);
-	my_printf("is initial device? %d\n",is_init);
+	// my_printf("number of processors available to device: %d\n",num_procs);
+	// my_printf("max omp threads: %d\n",max_threads);
+	// my_printf("default device: %d\n",default_device);
+	// my_printf("num_devices: %d\n",num_devices);
+	// my_printf("device number: %d\n",dn);
+	// my_printf("is initial device? %d\n",is_init);
 
 	omp_set_num_threads(DQMC_NUM_SECTIONS);
 
