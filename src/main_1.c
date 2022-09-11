@@ -96,7 +96,7 @@ int main(int argc, char **argv)
 	argp_parse(&argp, argc, argv, 0, 0, &arguments); 
 
 	set_num_h5t(); //set hdf5 library data type
-	omp_set_num_threads(2);
+	omp_set_num_threads(DQMC_NUM_SECTIONS);
 
 	const char *sim_file = arguments.args[0];
 

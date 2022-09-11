@@ -533,7 +533,8 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         peierls = peierls.real
         assert np.max(np.abs(thermal_phases.imag)) < 1e-10
         thermal_phases = thermal_phases.real
-    #print(thermal_phases.dtype,thermal_phases.shape)
+    # print(thermal_phases.dtype,thermal_phases.shape)
+    # print(thermal_phases)
 
     for i in range(Ny*Nx):
         Ku[i, i] -= mu
