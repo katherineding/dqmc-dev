@@ -359,6 +359,38 @@ static char args_doc[] = "stack_file";
 // This is very important
 static struct argp argp = { options, parse_opt, args_doc, doc }; 
 
+int init_setting(void){
+	//static variables for printout
+	gethostname(hostname, 64); //from <unistd.h>
+	pid = getpid(); //from <unistd.h>
+	
+	// OPENMP
+	// const int max_threads = omp_get_max_threads();
+	// const int num_procs = omp_get_num_procs();
+	// const int default_device = omp_get_default_device();
+	// const int num_devices = omp_get_num_devices();
+	// const int dn = omp_get_device_num();
+	// const int is_init = omp_is_initial_device();
+
+	// my_printf("number of processors available to device: %d\n",num_procs);
+	// my_printf("max omp threads: %d\n",max_threads);
+	// my_printf("default device: %d\n",default_device);
+	// my_printf("num_devices: %d\n",num_devices);
+	// my_printf("device number: %d\n",dn);
+	// my_printf("is initial device? %d\n",is_init);
+
+	omp_set_num_threads(DQMC_NUM_SECTIONS);
+
+	//set hdf5 library data type
+	set_num_h5t(); 
+
+	//seed random number generator
+	srand((unsigned int)pid); 
+
+	return 0;
+
+}
+
 int main(int argc, char **argv)
 {	
 	// Get command line arguments arguments
@@ -370,12 +402,9 @@ int main(int argc, char **argv)
 	arguments.bench = false;   //default: no benchmark, save data
 	argp_parse(&argp, argc, argv, 0, 0, &arguments); 
 
-	set_num_h5t(); //set hdf5 library data type
-	omp_set_num_threads(2);
-	gethostname(hostname, 64); //from <unistd.h>
-	pid = getpid(); //from <unistd.h>
+	init_setting();
 
-	srand((unsigned int)pid); //seed random number generator
+
 	sleep_rand(0.0, 4.0); //why sleep for some time first?
 
 	// Start timing

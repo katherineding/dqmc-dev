@@ -386,6 +386,9 @@ static int dqmc(struct sim_data *sim) {
 		if ((sim->s.sweep >= sim->p.n_sweep_warm) && 
 			(sim->p.period_uneqlt > 0) &&
 			(sim->s.sweep % sim->p.period_uneqlt == 0)) {
+			// calculate all unequal time Green's functions 
+			// G(0,t), G(t,t), G(t,0) for up/down electrons in parallel.
+			// Each G object is size N x N x L
 			#pragma omp parallel sections
 			{
 			#pragma omp section
@@ -405,6 +408,7 @@ static int dqmc(struct sim_data *sim) {
 			matdiff(N, N, Gdtt, N, gdacc, N);
 			#endif
 
+			// TODO: why do we need to half wrap before measuring here?
 			#pragma omp parallel sections
 			{
 			#pragma omp section
@@ -448,28 +452,6 @@ static int dqmc(struct sim_data *sim) {
 			               Gu0t, Gutt, Gut0, Gd0t, Gdtt, Gdt0,
 			               &sim->m_ue);
 			profile_end(meas_uneq);
-			// #pragma omp parallel sections
-			// {
-			// #pragma omp section
-			// calc_ue_g(N, L, F, N_MUL, Bu, iBu, Cu,
-			//           ueGu, Gredu, tauu, Qu, worku, lwork);
-			// #pragma omp section
-			// calc_ue_g(N, L, F, N_MUL, Bd, iBd, Cd,
-			//           ueGd, Gredd, taud, Qd, workd, lwork);
-			// }
-
-			// #ifdef CHECK_G_UE
-			// matdiff(N, N, gu, N, ueGu, N);
-			// matdiff(N, N, gd, N, ueGd, N);
-			// #endif
-			// #if defined(CHECK_G_UE) && defined(CHECK_G_ACC)
-			// matdiff(N, N, ueGu, N, guacc, N);
-			// matdiff(N, N, ueGd, N, gdacc, N);
-			// #endif
-
-			// profile_begin(meas_uneq);
-			// measure_uneqlt(&sim->p, sign, ueGu, ueGd, &sim->m_ue);
-			// profile_end(meas_uneq);
 		}
 	}
 
@@ -571,6 +553,7 @@ int dqmc_wrapper(const char *sim_file, const char *log_file,
 			(double) get_memory_req(sim_file)*1e-6);
 		fprintf(log, "Not performing: read sim file, alloc mem, "
 			"run core DQMC logic, or save data\n");
+		fprintf(log, "Integer size on this system: %zu bytes\n",sizeof(int));
 		if (log != stdout) fclose(log);
 		else fflush(log);
 		return wrap_return_code;

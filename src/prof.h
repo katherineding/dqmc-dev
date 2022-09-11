@@ -17,7 +17,9 @@
 	X(calc_o) \
 	X(bsofi) \
 	X(expand_g) \
-	X(meas_uneq)
+	X(meas_uneq) 
+
+//	X(two_bond_two_bond) 
 
 #define X(a) __profile_##a,
 enum {
