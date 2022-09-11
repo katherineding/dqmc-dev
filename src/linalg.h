@@ -19,66 +19,80 @@
 
 // general matrix-matrix multiplication: Level 3 BLAS
 // C <- alpha * A * B + beta * C when transa = transb = 'N' or 'n'
-// Only trans = "N" or trans = "T" appears in the code.
+// Use ternary here b/c only trans = "N" or trans = "T" appears in the code.
+// TODO: handle trans="C" case as well?
 static inline void xgemm(const char *transa, const char *transb,
 		const int m, const int n, const int k,
 		const num alpha, const num *a, const int lda,
 		const num *b, const int ldb,
 		const num beta, num *c, const int ldc)
 {
-        enum CBLAS_TRANSPOSE Transa = (*transa == 'N' || *transa == 'n') ? CblasNoTrans : CblasTrans;
-        enum CBLAS_TRANSPOSE Transb = (*transb == 'N' || *transb == 'n') ? CblasNoTrans : CblasTrans;
+        enum CBLAS_TRANSPOSE TransA = 
+        	(*transa == 'N' || *transa == 'n') ? CblasNoTrans : CblasTrans;
+        enum CBLAS_TRANSPOSE TransB = 
+        	(*transb == 'N' || *transb == 'n') ? CblasNoTrans : CblasTrans;
 #ifdef USE_CPLX
-	cblas_zgemm(
+	cblas_zgemm(CblasColMajor, TransA, TransB, m, n, 
+        k, &alpha, a, lda, b, ldb, &beta, c, ldc);
 #else
-	cblas_dgemm(
+	cblas_dgemm(CblasColMajor, TransA, TransB, m, n, 
+        k,  alpha, a, lda, b, ldb,  beta, c, ldc);
 #endif
-	CblasColMajor, Transa, Transb, m, n, 
-        k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
 
 // general matrix-vector product, Level 2 BLAS
 // y <- alpha * A * x + beta * y when trans = 'N' or 'n'
+// Actually, only trans = "N" appears in the code.
+// TODO: handle trans = "C"
 static inline void xgemv(const char *trans, const int m, const int n,
 		const num alpha, const num *a, const int lda,
 		const num *x, const int incx,
 		const num beta, num *y, const int incy)
 {
-        enum CBLAS_TRANSPOSE Trans = (*trans == 'N' || *trans == 'n') ? CblasNoTrans : CblasTrans;
+        enum CBLAS_TRANSPOSE Trans = 
+        	(*trans == 'N' || *trans == 'n') ? CblasNoTrans : CblasTrans;
 #ifdef USE_CPLX
-	cblas_zgemv(
+	cblas_zgemv(CblasColMajor, Trans, m, n,
+	&alpha, a, lda, x, incx,
+	&beta, y, incy);
 #else
-	cblas_dgemv(
+	cblas_dgemv(CblasColMajor, Trans, m, n,
+	alpha,  a, lda, x, incx,
+	beta,  y, incy);
 #endif
-	CblasColMajor, Trans, m, n,
-	alpha, a, lda, x, incx,
-	beta, y, incy);
+
 }
 
 // triangular matrix - general matrix product, level 3 BLAS
-// Assume uplo = "U" or 'u' so A is a upper triangular matrix. The entries in 
+// If uplo = "U" or 'u', A is a upper triangular matrix. The entries in 
 // 	the strictly lower triangular part of A is ignored
-// Assume diag = 'N' or 'n' so A does not have unit diagonal
+// If diag = 'N' or 'n', A does not have unit diagonal
 // Assume transa = "N" or 'n'
-// If side = "L" or 'l' perform C <- A*B
-// If side = "R" or 'r' perform C <- B*A
+// If side = "L" or 'l' perform C <- op(A)*B
+// If side = "R" or 'r' perform C <- B*op(A)
+// TODO: handle transa = "C"
 static inline void xtrmm(const char *side, const char *uplo, const char *transa, const char *diag,
 		const int m, const int n,
 		const num alpha, const num *a, const int lda,
 		num *b, const int ldb)
 {
-    enum CBLAS_SIDE Side = (*side == 'l' || *side == 'L') ? CblasLeft : CblasRight ;
-    enum CBLAS_UPLO Uplo = (*uplo == 'u' || *uplo == 'U') ? CblasUpper : CblasLower ;
-    enum CBLAS_TRANSPOSE Transa = (*transa == 'N' || *transa == 'n') ? CblasNoTrans : CblasTrans;
-    enum CBLAS_DIAG Diag = (*diag == 'u' || *diag == 'U') ? CblasUnit : CblasNonUnit ; 
+    enum CBLAS_SIDE Side = 
+    	(*side == 'l' || *side == 'L') ? CblasLeft : CblasRight ;
+    enum CBLAS_UPLO Uplo = 
+    	(*uplo == 'u' || *uplo == 'U') ? CblasUpper : CblasLower ;
+    enum CBLAS_TRANSPOSE TransA = 
+    	(*transa == 'N' || *transa == 'n') ? CblasNoTrans : CblasTrans;
+    enum CBLAS_DIAG Diag = 
+    	(*diag == 'u' || *diag == 'U') ? CblasUnit : CblasNonUnit ; 
 
 #ifdef USE_CPLX
-	cblas_ztrmm(
+	cblas_ztrmm(CblasColMajor, Side, Uplo, TransA, Diag, m, n,
+	&alpha, a, lda, b, ldb);
 #else
-	cblas_dtrmm(
+	cblas_dtrmm(CblasColMajor, Side, Uplo, TransA, Diag, m, n,
+	alpha,  a, lda, b, ldb);
 #endif
-	CblasColMajor, Side, Uplo, Transa, Diag, m, n,
-	alpha, a, lda, b, ldb);
+
 }
 
 /*=============================================
