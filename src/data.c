@@ -65,7 +65,7 @@ int set_num_h5t(void){
  *         -3 if my_read failed
  *         -4 if H5F/Tclose() failed
  */
-int consistency_check(const char *file){
+int consistency_check(const char *file, FILE * log){
 	const hid_t file_id = H5Fopen(file, H5F_ACC_RDONLY, H5P_DEFAULT);
 	return_if(file_id < 0, OPEN_FAIL, "H5Fopen() failed for %s: %ld\n", 
 		file, file_id);
@@ -85,8 +85,7 @@ int consistency_check(const char *file){
   	// HDF5 C API for reading variable length strings is ... quirky
 	char * rdata[1] = {NULL};
 	my_read(, "/metadata/commit" , attr_type, rdata);
-	// printf("hdf5 commit %s\n", rdata[0]);
-	// printf("executable commit %s\n",GIT_ID);
+	fprintf(log,"hdf5 generation script commit id %s\n", rdata[0]);
 
 	//prevent mem leaks
 	status = H5Tclose(attr_type);

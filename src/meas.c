@@ -13,7 +13,9 @@
 
 // Number of OpenMP threads used for expensive unequal time measurements.
 // This overrides the omp_set_num_threads() function called by main
-#define OMP_MEAS_NUM_THREADS 8
+#ifndef OMP_MEAS_NUM_THREADS
+	#define OMP_MEAS_NUM_THREADS 2
+#endif
 
 // if complex numbers are being used, multiple some measurements by Peierls
 // phases to preserve gauge invariance

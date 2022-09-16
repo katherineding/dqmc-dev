@@ -34,7 +34,7 @@
 
 #ifdef USE_CPLX
 	#include <complex.h>
-	typedef double complex num;
+	typedef double _Complex num;
 #else
 	typedef double num;
 #endif

@@ -536,19 +536,20 @@ int dqmc_wrapper(const char *sim_file, const char *log_file,
 	}
 
 	// opened a log stream
-	fprintf(log, "commit id %s\n", GIT_ID);
+	fprintf(log, "executable commit id %s from repo %s\n", GIT_ID, GIT_REPO);
 	fprintf(log, "compiled on %s %s\n", __DATE__, __TIME__);
+	fprintf(log, "hdf5 and executable versions consistent? %s\n", 
+		consistency_check(sim_file,log) ? "No" : "Yes");
+	fprintf(log, "Integer size on this system: %zu bytes\n",sizeof(int));
 
 	// exit path if dry run
 	if (dry) {
-		fprintf(log, "toggled dry run for mem and commit checks\n");
-		fprintf(log, "hdf5 and executable consistent? %s\n", 
-			consistency_check(sim_file) ? "No" : "Yes");
+		fprintf(log, "toggled dry run for mem check only\n");
 		fprintf(log, "minimum RAM requirement: %.2f MB\n", 
 			(double) get_memory_req(sim_file)*1e-6);
 		fprintf(log, "Not performing: read sim file, alloc mem, "
 			"run core DQMC logic, or save data\n");
-		fprintf(log, "Integer size on this system: %zu bytes\n",sizeof(int));
+
 		if (log != stdout) fclose(log);
 		else fflush(log);
 		return wrap_return_code;
