@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdio.h>
 #include "util.h"
 
 struct params {
@@ -87,7 +88,7 @@ int set_num_h5t(void);
 
 size_t get_memory_req(const char *file);
 
-int consistency_check(const char *file);
+int consistency_check(const char *file, FILE * log);
 
 int sim_data_read_alloc(struct sim_data *sim);
 

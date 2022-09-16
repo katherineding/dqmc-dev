@@ -1,6 +1,11 @@
 # Complex-capable DQMC
 
-This program relies on POSIX C APIs, like `clock_gettime()` and `sigaction()`. It works in various flavours of Linux. It probably works in MacOS. It probably doesn't work in Windows. 
+This DQMC code is for single-band Hubbard model, allowing kinetic hopping to be modified by Peierl's phase (which requires complexifying the entire simulation).
+Simulation parameters (including geometry and potentially multiple orbitals) are controlled by a python utility script in `util/`. The goal was to make the C code as "model parameter agnostic" as possible. Whether this is achieved is debatable -- it is usually still necessary to manually modify the C source code when we want to study a slightly different model, or add new measurements.
+
+The source code is in C and uses idioms like `goto`, `restrict`, and implicit casting of `void *`pointers into other pointer types, which are not consistent with C++ standards. So if you try to compile the code with a C++ compiler, you'll likely get compilation errors.
+
+This program relies on POSIX C APIs, like `clock_gettime()` and `sigaction()`. It works in various flavours of Linux. It probably works in MacOS. It probably doesn't work in Windows. There's no plans to add support for Windows.
 
 ## Prerequisites
 
@@ -9,9 +14,22 @@ This program relies on POSIX C APIs, like `clock_gettime()` and `sigaction()`. I
 
 ### For compilation
 
-- Intel compiler `icc`/`icx`
-- `imkl` headers and library `>= 2019`
-- `hdf5` headers and library `>= 1.10`
+Unfortunately, as we are dealing with a variety of computing environments, both the source code and the Makefile must be adjusted, based on what compilers, BLAS + LAPACK libraries, and offload devices (if any) are available.
+
+1. Sherlock or Cori KNL, CPU only: `master` branch
+	- Intel compiler `icc`
+	- `imkl` headers and library `>= 2019`
+	- `hdf5` headers and library `>= 1.10`
+2. Perlmutter, CPU only: `perlmt-cpu` branch
+*Note: this branch may be modified to use the AOCC compiler and AOCL math libraries when it becomes supported in the future*
+	- GNU Compiler `gcc`
+	- `cray-libsci` headers and library
+	- `hdf5` headers and library
+3. Perlmutter, with GPU offloading: `perlmt-gpu` branch 
+*Note: this branch may be modified to use the AOCL math libraries when it becomes supported in the future*
+	- Nvidia Compiler `ncc`
+	- `cray-libsci` headers and library
+	- `hdf5` headers and library
 
 ### For python scripts in `util/`
 - `python3`
@@ -26,11 +44,13 @@ You can get these via miniconda/anaconda.
 
 Go to build/
 
-Optionally, replace `-xHost` in Makefile or Makefile.icx with appropriate instruction set flag.
+Optionally, replace `-xHost` in Makefile or Makefile.icx with appropriate optimized instruction set flags.
 
 Mandatory: pick whether to compile with `-DUSE_CPLX`. Real DQMC can only be used with hdf5 files generated with `nflux=0` option, while Complex DQMC can only be used with hdf5 files generated with `nflux!=0` option. 
 
-Run `make` if using `icc` or `make -f Makefile.icx` when using `icx`
+Optional: Set a sensible number of `OMP_MEAS_NUM_THREADS` to use for the slowest unequal time measurements. The default is 2.
+
+Run `make -f <makefilename>`.
 
 ## Usage
 
@@ -48,7 +68,7 @@ Run dqmc in stack mode:
 
 Command line options are found by using the standard `--help` or `--usage` flags.
 
-To check estimated memory usage and commit version, toggle `--dry-run` or `-n`. But note this option edits the stack file. 
+To check estimated memory usage and exit, toggle `--dry-run` or `-n`. But note this option for `dqmc_stack` edits the stack file, so you have to re-add the .h5 files back to the stack file after this.
 
 ## Best practice
 
@@ -72,33 +92,35 @@ When running in stack mode on a cluster, you might do something like
 >
 > p3: `./dqmc_stack stack`
 
-Thus many parallel processes compete to access the same `stack` file which serves as a LIFO job board listing all the .h5 files that needs to be worked on. There are `pop()` and `push()` functions which implement a crude locking mechanism for preventing race conditions. 
+Thus many parallel processes compete to access the same `stack` file which serves as a LIFO job board listing all the .h5 files that needs to be worked on. There are `pop()` and `push()` functions which implement a crude locking mechanism for preventing race conditions. These functions are not fool-proof however, so you might get random warnings and failures. These are usually not critical, but -- 
 
-A catastropic failure mode that is NOT safeguarded against is if the same file is listed in `stack` twice, and it is picked up by two different processes to each individually R/W to the same .h5 file. This causes all sorts of inconsistent state/race conditions in both the .h5 and the .h5.log file!!  
+A catastropic failure mode that is NOT safeguarded against is if the same file is listed in `stack` twice, or otherwise somehow picked up by two different processes to each individually R/W to the same .h5 file. This causes all sorts of inconsistent state/race conditions in both the .h5 and the .h5.log file!! I want to say this never happens, but this needs more testing.
 
 Unix system signals SIGINT, SIGTERM, SIGHUP, SIGUSR1 are caught by signal handlers and used to set a stop flag. The dqmc() loop checks for the stop flag every full H-S sweep. Upon reaching time limit or receiving an interrupt signal, simulation stops and throws away all unsaved data. We essentially regress to the last valid checkpoint.
 
-Checkpointing (save current simulation state and measurements to disk) is by default performed every 1000 full H-S sweeps. This is user adjustable in simulation file generation. If `checkpoint_every=0`, no checkpointing is performed at all (so upon any interrupt, all working data is lost).
+Checkpointing (save current simulation state and measurements to disk) is by default performed every 1000 full H-S sweeps. This is probably too frequent, so it's user adjustable in simulation file generation. If `checkpoint_every=0`, no checkpointing is performed at all (so upon any interrupt, all working data is lost).
 
-To have true benchmarking mode, genereate simulation file with `checkpoint_every=0` and run dqmc with `./<executable> -b`.
+To have true benchmarking mode, where you never save any data to disk, genereate simulation file with `checkpoint_every=0` and run dqmc with `./<executable> -b`.
 
 A crude mechanism for detecting hdf5 file corruption is implemented by setting a `partial_write` flag. Upon detecting any corruption, we just give up on working on this file entirely. Partial writes can occur if the simulation is killed in the middle of performing `sim_data_save()`. I'm not sure this method is watertight yet, needs more testing.
 
 ## Differences from Edwin's Code
 
-This version of the DQMC code is based on edwnh/dqmc commit c91ba61. Divergence from Edwin's code at this point include:
+This version of the DQMC code is based on edwnh/dqmc commit c91ba61. Divergence from Edwin's code as of 09/2022 at this point include:
 
-- Remove `tick_t` alias
+- Removed `tick_t` alias
 
-- Rewrote command line option parsing for `dqmc_1` and `dqmc_stack`to use `argp`. Added `dry-run` for checking memory consumption and checking git version consistency for hdf5 simulation file generation script and compiled dqmc executable. Inconsistent versions do not necessarily indicate a problem.
+- Rewrote command line option parsing for `dqmc_1` and `dqmc_stack`to use `argp`. Added `--dry-run` or `-n` for checking memory consumption.
 
-- Changed checkpoint behavior to be more conservative. Added file corruption check. This may change in future.
+- Added consistency check between hdf5 simulation file generation script and compiled dqmc executable. Inconsistent versions do not necessarily indicate a problem.
+
+- Changed checkpoint behavior to be more conservative, as desrived above.
+
+- Added `partial_write` file corruption check. 
 
 - More verbose log information.
 
-- Different return flags for functions. Most notably nonzero return codes for main() functions. This may Trigger unexpected SLURM behavior. Needs testing.
-
-- More comments and documentation.
+- Different return flags for functions. Most notably nonzero return codes for main() functions. This may trigger unexpected SLURM behavior. Needs testing.
 
 - Removed unused python dqmc source code.
 
@@ -108,11 +130,12 @@ This version of the DQMC code is based on edwnh/dqmc commit c91ba61. Divergence 
 
 ## TODOs
 
+- Add profiling for how much overhead regular checkpoints add.
 - Make `double` vs `complex double` a runtime choice, so we don't have to do separate compilations
 - Make dry run completely side-effect-free
 - Improve stack mechanism to reduce competition and wait times -- double ended queue? process private queues? But this is not the main bottleneck right now.
 - Add safeguards for simultaneous hdf5 file RW failure mode
 - BUGFIX for thermal phase `#define`s b/c of premature optimization.
-- ~~`aocc + aocl` make path.~~ Add check for complex vs math library (AOCL, cray-libsci) struct size to make sure the complex libs are not playing funny.
-- Add a last_modified field for hdf5 files refreshed and always in $SCRATCH dir?
+- Add check for consistency between C standard `double _Complex` and whatever idiosyncratic complex type (probably a struct) the math library (AOCL, cray-libsci, IMKL, cuBLAS) is using, to make sure they are both 16 bytes.
+- Add a last_modified field to keep hdf5 files refreshed and always in $SCRATCH dir?
 - my_calloc() might no longer be the most optimal thing to do on AMD CPUs. It also may be less important to worry about memory alignment if matrix operations are offloaded to GPUs. 
