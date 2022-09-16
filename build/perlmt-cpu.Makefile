@@ -5,8 +5,10 @@ CFLAGS = -std=gnu17 -Ofast -march=native
 CFLAGS += -Wall -Wextra -Wno-discarded-qualifiers
 #CFLAGS += -DMKL_DIRECT_CALL_SEQ -Wno-ignored-pragmas
 CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
+CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
+CFLAGS += -DOMP_MEAS_NUM_THREADS=6
 CFLAGS += -DPROFILE_ENABLE
-# CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
+CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 CFLAGS += -fopenmp  # to disable openmp, use -qopenmp-stubs
 
 LDFLAGS += -lhdf5 -lhdf5_hl
