@@ -3,6 +3,8 @@ CC = icx
 CFLAGS = -std=gnu17 -Ofast #-v -Wl,--verbose#-xHost
 CFLAGS += -Wall -Wextra -Wno-unused-variable #-Wno-unused-parameter
 CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
+CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
+CFLAGS += -DOMP_MEAS_NUM_THREADS=6
 CFLAGS += -DPROFILE_ENABLE
 CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 CFLAGS += -fopenmp  # to disable openmp, use -qopenmp-stubs
