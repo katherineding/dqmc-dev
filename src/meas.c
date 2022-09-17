@@ -968,6 +968,7 @@ void measure_uneqlt(const struct params *const restrict p,
 	// TODO: consider atomics: carrying large reduce arrays now.
 	// Or only reduction on the (i,j) loop, since the l loop is always independent
 	
+	profile_begin(meas_uneq_sub);
 
 	// // declare device arrays -- these have to be stack arrays, it's annoying!
 	// num jj_arr[num_bb*L];
@@ -2143,6 +2144,7 @@ void measure_uneqlt(const struct params *const restrict p,
 	// if (meas_thermal || meas_2bond_corr) {
 
 	// }
+	profile_end(meas_uneq_sub);
 
 #ifdef USE_PEIERLS
 
