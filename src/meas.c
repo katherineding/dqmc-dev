@@ -963,6 +963,7 @@ void measure_uneqlt(const struct params *const restrict p,
 
 	//=======================================================================
 	// now handle t > 0 case: no delta functions here.
+	profile_begin(meas_uneq_sub);
 
 	if (meas_bond_corr || meas_thermal || meas_2bond_corr) {
 		#pragma omp parallel for num_threads(OMP_MEAS_NUM_THREADS) 
@@ -1470,6 +1471,7 @@ void measure_uneqlt(const struct params *const restrict p,
 	// if (meas_thermal || meas_2bond_corr) {
 
 	// }
+	profile_end(meas_uneq_sub);
 
 #ifdef USE_PEIERLS
 

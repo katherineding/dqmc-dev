@@ -233,7 +233,9 @@ static int dqmc(struct sim_data *sim) {
 			sim->s.sweep % sim->p.checkpoint_every == 0) {
 			// printf("sweep = %d, checkpoint_every = %d\n", 
 			// 	sim->s.sweep,sim->p.checkpoint_every);
+			profile_begin(checkpoint);
 			const int save_status = sim_data_save(sim);
+			profile_end(checkpoint);
 			if (save_status < 0) {
 				dqmc_return_code = CHECKPOINT_FAIL;
 				break;

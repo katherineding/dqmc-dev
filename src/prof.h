@@ -17,7 +17,9 @@
 	X(calc_o) \
 	X(bsofi) \
 	X(expand_g) \
-	X(meas_uneq) 
+	X(meas_uneq) \
+	X(meas_uneq_sub) \
+	X(checkpoint)
 
 //	X(two_bond_two_bond) 
 
