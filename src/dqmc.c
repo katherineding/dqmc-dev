@@ -542,7 +542,8 @@ int dqmc_wrapper(const char *sim_file, const char *log_file,
 	fprintf(log, "compiled on %s %s\n", __DATE__, __TIME__);
 	fprintf(log, "hdf5 and executable versions consistent? %s\n", 
 		consistency_check(sim_file,log) ? "No" : "Yes");
-	fprintf(log, "Integer size on this system: %zu bytes\n",sizeof(int));
+	fprintf(log, "integer size on this system: %zu bytes\n",sizeof(int));
+	fprintf(log, "using %d measurement threads\n", OMP_MEAS_NUM_THREADS);
 
 	// exit path if dry run
 	if (dry) {
