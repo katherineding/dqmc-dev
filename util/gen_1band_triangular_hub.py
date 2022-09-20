@@ -570,7 +570,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
 
     peierls2 = np.exp(1j*prefactor*phi2)
 
-    print(np.allclose(peierls,peierls2))
+    # print(np.allclose(peierls,peierls2))
 
     #phases accumulated by two-hop processes
     #Here: types 0,1 include t' factors
@@ -609,15 +609,15 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         Ku2 = kij * peierls2
 
 
-        plt.figure()
-        plt.matshow(Ku.real)
-        plt.colorbar()
+        # plt.figure()
+        # plt.matshow(Ku.real)
+        # plt.colorbar()
 
-        plt.figure()
-        plt.matshow(Ku2.real)
-        plt.colorbar()
+        # plt.figure()
+        # plt.matshow(Ku2.real)
+        # plt.colorbar()
 
-        print(np.linalg.norm(Ku-Ku2))
+        # print(np.linalg.norm(Ku-Ku2))
 
         assert np.linalg.norm(Ku - Ku.T.conj()) < 1e-10, f"max diff {np.linalg.norm(Ku - Ku.T.conj())}"
     else:
