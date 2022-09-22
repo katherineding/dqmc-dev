@@ -1,6 +1,6 @@
-CC = icc
+CC = cc
 
-CFLAGS = -std=gnu11 -Wall -Wextra -Ofast -xHost
+CFLAGS = -std=gnu11 -Wall -Wextra -Ofast -axCORE-AVX2,MIC-AVX512
 CFLAGS += -DMKL_DIRECT_CALL_SEQ -mkl=sequential
 CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
 CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
@@ -11,7 +11,6 @@ CFLAGS += -qopenmp  # to disable openmp, use -qopenmp-stubs
 
 LDFLAGS += -lhdf5 -lhdf5_hl
 
-#SRCFILES = data.o dqmc.o prof.o sig.o
 SRCFILES = data.o dqmc.o greens.o meas.o prof.o sig.o updates.o
 
 all: one stack

@@ -7,6 +7,7 @@ def main(argv):
         print("usage: {} stackfile a.h5 b.h5 ...".format(argv[0]))
         return
     stack = argv[1]
+    #          src    dest (created)
     os.symlink(stack, stack + "~")
     with open(stack, "a") as f:
         for x in argv[2:]:

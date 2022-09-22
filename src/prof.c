@@ -6,10 +6,10 @@
 #include <omp.h>
 #include "time_.h"
 
-tick_t profile_time[n_profile] = {0};
+int64_t profile_time[n_profile] = {0};
 int profile_count[n_profile] = {0};
 
-void profile_print(FILE *log, tick_t wall_time)
+void profile_print(FILE *log, int64_t wall_time)
 {
 	#define X(a) #a,
 	const char *name[] = {
@@ -53,7 +53,7 @@ void profile_clear(void)
 {
 	#pragma omp parallel
 	{
-	memset(profile_time, 0, n_profile * sizeof(tick_t));
+	memset(profile_time, 0, n_profile * sizeof(int64_t));
 	memset(profile_count, 0, n_profile * sizeof(int));
 	}
 }

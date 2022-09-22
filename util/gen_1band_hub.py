@@ -12,7 +12,7 @@ np.set_printoptions(precision=3)
 import git #relies on gitpython module
 path = os.path.dirname(os.path.abspath(__file__))
 repo = git.Repo(path,search_parent_directories=True)
-hash_long = repo.git.rev_parse(repo.head, short=False)
+hash_short = repo.git.rev_parse(repo.head, short=True)
 
 def rand_seed_urandom():
     rng = np.zeros(17, dtype=np.uint64)
@@ -70,7 +70,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
              period_eqlt=8, period_uneqlt=0,
              meas_bond_corr=1, meas_energy_corr=0, meas_nematic_corr=0,
              meas_thermal=0, meas_2bond_corr=0, 
-             trans_sym=1):
+             trans_sym=1, checkpoint_every=1000):
     assert L % n_matmul == 0 and L % period_eqlt == 0
     N = Nx * Ny
 
@@ -105,7 +105,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     num_i = map_i.max() + 1
     assert num_i == degen_i.size
 
-    # 2 site mapping
+    # 2 site mapping: site r = (x,y) has total (column order) index x + Nx * y
     map_ij = np.zeros((N, N), dtype=np.int32)
     num_ij = N if trans_sym else N*N
     degen_ij = np.zeros(num_ij, dtype=np.int32)
@@ -143,6 +143,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                 bonds[1, i + 3*N] = ix + Nx*iy1   # i1 = i + y
 
     # 1 bond 1 site mapping
+    # Translated to fortran order: [j,istuff] -> [istuff + num_b * j] -> [istuff,j]
     map_bs = np.zeros((N, num_b), dtype=np.int32)
     num_bs = bps*N if trans_sym else num_b*N
     degen_bs = np.zeros(num_bs, dtype=np.int32)
@@ -156,6 +157,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     assert num_bs == map_bs.max() + 1
 
     # 1 bond - 1 bond mapping
+    # Translated to Fortran order: [jstuff ,istuff] -> [istuff + num_b * jstuff] -> [istuff,jstuff]
     map_bb = np.zeros((num_b, num_b), dtype=np.int32)
     num_bb = bps*bps*N if trans_sym else num_b*num_b
     degen_bb = np.zeros(num_bb, dtype = np.int32)
@@ -412,6 +414,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
 
 
     # 2 2-bond mapping
+    # Translated to Fortran order: [jstuff ,istuff] -> [istuff + num_b2 * jstuff] -> [istuff,jstuff]
     num_b2b2 = b2ps*b2ps*N if trans_sym else num_b2*num_b2
     map_b2b2 = np.zeros((num_b2, num_b2), dtype=np.int32)
     degen_b2b2 = np.zeros(num_b2b2, dtype = np.int32)
@@ -533,7 +536,8 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         peierls = peierls.real
         assert np.max(np.abs(thermal_phases.imag)) < 1e-10
         thermal_phases = thermal_phases.real
-    #print(thermal_phases.dtype,thermal_phases.shape)
+    # print(thermal_phases.dtype,thermal_phases.shape)
+    # print(thermal_phases)
 
     for i in range(Ny*Nx):
         Ku[i, i] -= mu
@@ -556,7 +560,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     with h5py.File(file_params, "w" if overwrite else "x") as f:
         # parameters not used by dqmc code, but useful for analysis
         f.create_group("metadata")
-        f["metadata"]["commit"] = hash_long
+        f["metadata"]["commit"] = hash_short
         f["metadata"]["version"] = 0.1
         f["metadata"]["model"] = \
             "Hubbard (complex)" if dtype_num == np.complex128 else "Hubbard"
@@ -613,6 +617,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         # f["params"]["meas_hop2_corr"] = meas_hop2_corr
         f["params"]["meas_energy_corr"] = meas_energy_corr
         f["params"]["meas_nematic_corr"] = meas_nematic_corr
+        f["params"]["checkpoint_every"] = checkpoint_every
 
         # precalculated stuff
         f["params"]["num_i"] = num_i
@@ -665,6 +670,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["state"]["init_rng"] = init_rng  # save if need to replicate data
         f["state"]["rng"] = rng
         f["state"]["hs"] = init_hs
+        f["state"]["partial_write"] = 0
 
         # measurements
         f.create_group("meas_eqlt")

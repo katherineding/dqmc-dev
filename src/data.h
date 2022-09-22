@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdio.h>
 #include "util.h"
 
 struct params {
@@ -17,6 +18,7 @@ struct params {
 	int n_sweep_warm, n_sweep_meas;
 	int period_eqlt, period_uneqlt;
 	int meas_bond_corr, meas_thermal, meas_2bond_corr, meas_energy_corr, meas_nematic_corr;
+	int checkpoint_every;
 	// int meas_hop2_corr;
 
 	int num_i, num_ij;
@@ -82,7 +84,13 @@ struct sim_data {
 	struct meas_uneqlt m_ue;
 };
 
-int sim_data_read_alloc(struct sim_data *sim, const char *file);
+int set_num_h5t(void);
+
+size_t get_memory_req(const char *file);
+
+int consistency_check(const char *file, FILE * log);
+
+int sim_data_read_alloc(struct sim_data *sim);
 
 int sim_data_save(const struct sim_data *sim);
 

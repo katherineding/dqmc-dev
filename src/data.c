@@ -1,25 +1,49 @@
-#include "data.h"
 #include <stdio.h>
 #include <hdf5.h>
 #include <hdf5_hl.h>
-#include "util.h"
+#include <string.h>
+#include "greens.h"
+
+#include "data.h"
+
+#define OPEN_FAIL -1
+#define CORRUPT_FAIL -2
+#define RW_FAIL -3
+#define CLOSE_FAIL -4
 
 #define return_if(cond, val, ...) \
 	do {if (cond) {fprintf(stderr, __VA_ARGS__); return (val);}} while (0)
 
-static hid_t num_h5t;
+#define my_read(_type, name, ...) do { \
+	status = H5LTread_dataset##_type(file_id, (name), __VA_ARGS__); \
+	return_if(status < 0, RW_FAIL, "H5LTread_dataset() failed for %s: %d\n", (name), status); \
+} while (0);
 
-int sim_data_read_alloc(struct sim_data *sim, const char *file)
-{
-	const hid_t file_id = H5Fopen(file, H5F_ACC_RDONLY, H5P_DEFAULT);
-	return_if(file_id < 0, -1, "H5Fopen() failed: %ld\n", file_id);
+#define my_write(name, type, data) do { \
+	dset_id = H5Dopen2(file_id, (name), H5P_DEFAULT); \
+	return_if(dset_id < 0, RW_FAIL, "H5Dopen2() failed for %s: %ld\n", name, dset_id); \
+	status = H5Dwrite(dset_id, (type), H5S_ALL, H5S_ALL, H5P_DEFAULT, (data)); \
+	return_if(status < 0, RW_FAIL, "H5Dwrite() failed for %s: %d\n", name, status); \
+	status = H5Dclose(dset_id); \
+	return_if(status < 0, RW_FAIL, "H5Dclose() failed for %s: %d\n", name, status); \
+} while (0);
 
-	sim->file = file;
-
-	herr_t status;
-
+static hid_t num_h5t = 0;
+/**
+ * If USE_COMPLEX, set type num_h5t to be a H5T_COMPOUND of two doubles. 
+ * otherwise, set to H5T_NATIVE_DOUBLE.
+ * This should be called once per ./dqmc_stack or ./dqmc_1 invocation, in the 
+ * main() loop, to avoid repeatedly creating new complex datatypes.
+ * Note H5Tclose() is not called so we have a memory leak, but this is not 
+ * serious. TODO fix it anyways.
+ * @return -1/abort(?) on failure
+ *          0 on success.
+ */
+int set_num_h5t(void){
+	int status;
 #ifdef USE_CPLX
 	num_h5t = H5Tcreate(H5T_COMPOUND, sizeof(num));
+	return_if(num_h5t < 0, -1, "H5Tcreate() failed\n");
 	status = H5Tinsert(num_h5t, "r", 0, H5T_NATIVE_DOUBLE);
 	return_if(status < 0, -1, "H5Tinsert() failed: %d\n", status);
 	status = H5Tinsert(num_h5t, "i", 8, H5T_NATIVE_DOUBLE);
@@ -27,13 +51,292 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 #else
 	num_h5t = H5T_NATIVE_DOUBLE;
 #endif
+	return_if(sizeof(num) != H5Tget_size(num_h5t), -1, 
+		"num_h5t and num inconsistent\n");
+	return 0;
+}
+
+/**
+ * Check hdf5 against executable version
+ * @param  char* file_name of form <name>.h5
+ * @return 0 if consistent
+ *         nonzero if inconsistent
+ * 		   -1 if H5Fopen or type-setting failed
+ *         -3 if my_read failed
+ *         -4 if H5F/Tclose() failed
+ */
+int consistency_check(const char *file, FILE * log){
+	const hid_t file_id = H5Fopen(file, H5F_ACC_RDONLY, H5P_DEFAULT);
+	return_if(file_id < 0, OPEN_FAIL, "H5Fopen() failed for %s: %ld\n", 
+		file, file_id);
+
+	// Variable for error checking
+	int status;
+
+	hid_t attr_type = H5Tcopy(H5T_C_S1);
+	return_if(attr_type < 0, OPEN_FAIL, "H5Tcopy() failed\n");
+  	status = H5Tset_size(attr_type, H5T_VARIABLE);
+  	return_if(status < 0, OPEN_FAIL, "H5Tset_size() failed\n");
+  	status = H5Tset_strpad(attr_type, H5T_STR_NULLTERM);
+  	return_if(status < 0, OPEN_FAIL, "H5Tset_strpad() failed\n");
+  	status = H5Tset_cset(attr_type, H5T_CSET_UTF8);
+  	return_if(status < 0, OPEN_FAIL, "H5Tset_cset() failed\n");
+
+  	// HDF5 C API for reading variable length strings is ... quirky
+	char * rdata[1] = {NULL};
+	my_read(, "/metadata/commit" , attr_type, rdata);
+	fprintf(log,"hdf5 generation script commit id %s\n", rdata[0]);
+
+	//prevent mem leaks
+	status = H5Tclose(attr_type);
+	return_if(status < 0, CLOSE_FAIL, "H5Tclose() failed");
+	status = H5Fclose(file_id);
+	return_if(status < 0, CLOSE_FAIL, "H5Fclose() failed for %s: %d\n", 
+		file, status);
+
+	return strcmp(rdata[0],GIT_ID);
+}
+
+/**
+ * Calculate the amount of heap memory required, without actually mallocing, 
+ * if we are to run DQMC against this file. This is an estimate and doesn't 
+ * account for -DCHECK_G_WRP, -DCHECK_G_ACC -DCHECK_G_UE
+ * TODO: separate the sim vs calculation components?
+ * @param  char*  file_name of form <name>.h5
+ * @return size_t heap memory requirement
+ *         -1 if H5Fopen() failed
+ *         -3 if my_read failed
+ *         -4 if H5Fclose() failed
+ */
+size_t get_memory_req(const char *file) {
+	const hid_t file_id = H5Fopen(file, H5F_ACC_RDONLY, H5P_DEFAULT);
+	return_if(file_id < 0, OPEN_FAIL, "H5Fopen() failed for %s: %ld\n", 
+		file, file_id);
+
+	// Variable for error checking
+	int status;
+
+	// These params are used in sim_data mem allocation
+	int N, L, num_i, num_ij,
+		num_b, num_b2, num_bs, num_bb, num_b2b, num_bb2, num_b2b2;
+	int period_uneqlt, meas_bond_corr,meas_thermal,meas_2bond_corr,
+		meas_energy_corr, meas_nematic_corr;
+
+	my_read(_int, "/params/N",        &N);
+	my_read(_int, "/params/L",        &L);
+	my_read(_int, "/params/num_i",    &num_i);
+	my_read(_int, "/params/num_ij",   &num_ij);
+	my_read(_int, "/params/num_b",    &num_b);
+	my_read(_int, "/params/num_b2",   &num_b2);
+	my_read(_int, "/params/num_bs",   &num_bs);
+	my_read(_int, "/params/num_bb",   &num_bb);
+	my_read(_int, "/params/num_b2b",  &num_b2b);
+	my_read(_int, "/params/num_bb2",  &num_bb2);
+	my_read(_int, "/params/num_b2b2", &num_b2b2);
+	my_read(_int, "/params/period_uneqlt",     &period_uneqlt);
+	my_read(_int, "/params/meas_bond_corr",    &meas_bond_corr);
+	my_read(_int, "/params/meas_thermal",      &meas_thermal);
+	my_read(_int, "/params/meas_2bond_corr",   &meas_2bond_corr);
+	my_read(_int, "/params/meas_energy_corr",  &meas_energy_corr);
+	my_read(_int, "/params/meas_nematic_corr", &meas_nematic_corr);
+
+	size_t sim_alloc_in_bytes = 0;
+	sim_alloc_in_bytes +=
+		+ N        * sizeof(int)
+		+ N*N      * sizeof(int)
+		+ num_b*2  * sizeof(int)
+		+ N        * sizeof(int)
+		+ N*N      * sizeof(int)
+		+ num_b*2  * sizeof(int)
+		+ num_b2*2  * sizeof(int)
+		+ num_b*N  * sizeof(int)
+		+ num_b*num_b * sizeof(int)
+		+ num_b2*num_b2 * sizeof(int)
+		+ num_b2*num_b * sizeof(int)
+		+ num_b*num_b2 * sizeof(int)
+		+ N*N      * sizeof(num)
+		+ N*N      * sizeof(num)
+		+ N*num_b2/N * sizeof(num)
+		+ N*num_b2/N * sizeof(num)
+		+ N*num_b2/N * sizeof(num)
+		+ N*num_b2/N * sizeof(num)
+		+ num_i    * sizeof(int)
+		+ num_ij   * sizeof(int)
+		+ num_bs   * sizeof(int)
+		+ num_bb   * sizeof(int)
+		+ num_b2b2   * sizeof(int)
+		+ num_b2b   * sizeof(int)
+		+ num_bb2   * sizeof(int)
+		+ N*N      * sizeof(num)
+		+ N*N      * sizeof(num)
+		+ N*N      * sizeof(num)
+		+ N*N      * sizeof(num)
+		+ N*N      * sizeof(num)
+		+ N*N      * sizeof(num)
+		+ N*N      * sizeof(num)
+		+ N*N      * sizeof(num)
+		+ N*2      * sizeof(double)
+		+ N*2      * sizeof(double)
+		+ N*L      * sizeof(int)
+		+ num_i    * sizeof(num)
+		+ num_i    * sizeof(num)
+		+ num_ij   * sizeof(num)
+		+ num_ij   * sizeof(num)
+		+ num_ij   * sizeof(num)
+		+ num_ij   * sizeof(num)
+		+ num_ij   * sizeof(num);
+	if (meas_energy_corr) {
+		sim_alloc_in_bytes +=
+			+ num_bb * sizeof(num)
+			+ num_bs * sizeof(num)
+		 	+ num_bs * sizeof(num)
+			+ num_ij * sizeof(num)
+		 	+ num_ij * sizeof(num);
+	}
+	if (period_uneqlt > 0) {
+		sim_alloc_in_bytes +=
+			+ num_ij*L * sizeof(num)
+			+ num_ij*L * sizeof(num)
+			+ num_ij*L * sizeof(num)
+			+ num_ij*L * sizeof(num)
+			+ num_ij*L * sizeof(num);
+		if (meas_bond_corr) {
+			sim_alloc_in_bytes +=
+			+ num_bb*L * sizeof(num)
+			+ num_bb*L * sizeof(num)
+			+ num_bb*L * sizeof(num)
+			+ num_bb*L * sizeof(num)
+			+ num_bb*L * sizeof(num);
+		}
+		if (meas_thermal) {
+			sim_alloc_in_bytes +=
+			+ num_b2b*L * sizeof(num)
+			+ num_bb2*L * sizeof(num)
+			+ num_bb*L * sizeof(num)
+			+ num_bb*L * sizeof(num)
+			+ num_bb*L * sizeof(num);
+		}
+		if (meas_2bond_corr) {
+			sim_alloc_in_bytes +=
+			+ num_b2b2*L * sizeof(num)
+			+ num_b2b*L * sizeof(num)
+			+ num_bb2*L * sizeof(num);
+		}
+		if (meas_energy_corr) {
+			sim_alloc_in_bytes +=
+			+ num_bs*L * sizeof(num)
+			+ num_bs*L * sizeof(num)
+			+ num_ij*L * sizeof(num)
+			+ num_ij*L * sizeof(num);
+		}
+		if (meas_nematic_corr) {
+			sim_alloc_in_bytes +=
+			+ num_bb*L * sizeof(num)
+			+ num_bb*L * sizeof(num);
+		}
+	}
+
+	// These params are used in compute mem allocation
+	int F, n_matmul, n_delay;
+	my_read(_int, "/params/F",        &F);
+	my_read(_int, "/params/n_matmul", &n_matmul);
+	my_read(_int, "/params/n_delay",  &n_delay);
+
+	status = H5Fclose(file_id);
+	return_if(status < 0, CLOSE_FAIL, "H5Fclose() failed for %s: %d\n", 
+		file, status);
+
+	size_t compute_alloc_in_bytes = 0;
+	compute_alloc_in_bytes +=
+		+ N*N*L * sizeof(num)
+		+ N*N*L * sizeof(num)
+		+ N*N*L * sizeof(num)
+		+ N*N*L * sizeof(num)
+		+ N*N*F * sizeof(num)
+		+ N*N*F * sizeof(num)
+		+ N*N * sizeof(num)
+		+ N*N * sizeof(num)
+		+ N * sizeof(double)
+
+		/* work arrays for calc_eq_g and stuff.
+		 two sets for easy 2x parallelization */
+		+ N*N * sizeof(num)
+		+ N*N * sizeof(num)
+		+ N * sizeof(num)
+		+ N * sizeof(num)
+		+ N * sizeof(num)
+		+ N * sizeof(int)
+
+		+ N*N * sizeof(num)
+		+ N*N * sizeof(num)
+		+ N * sizeof(num)
+		+ N * sizeof(num)
+		+ N * sizeof(num)
+		+ N * sizeof(int);
 
 
-#define my_read(_type, name, ...) do { \
-	status = H5LTread_dataset##_type(file_id, (name), __VA_ARGS__); \
-	return_if(status < 0, -1, "H5LTread_dataset() failed for %s: %d\n", (name), status); \
-} while (0);
+	if (period_uneqlt > 0) {
+		const int E = 1 + (F - 1) / N_MUL;
 
+		compute_alloc_in_bytes +=
+			+ N*E*N*E * sizeof(num)
+			+ N*E * sizeof(num)
+			+ 4*N*N * sizeof(num)
+
+			+ N*E*N*E * sizeof(num)
+			+ N*E * sizeof(num)
+			+ 4*N*N * sizeof(num)
+
+			+ N*N*L * sizeof(num)
+			+ N*N*L * sizeof(num)
+			+ N*N*L * sizeof(num)
+			+ N*N*L * sizeof(num)
+			+ N*N*L * sizeof(num)
+			+ N*N*L * sizeof(num);
+	}
+
+	// lapack work arrays
+	int lwork = get_lwork_eq_g(N);
+	if (period_uneqlt > 0) {
+		const int E = 1 + (F - 1) / N_MUL;
+		const int lwork_ue = get_lwork_ue_g(N, E);
+		if (lwork_ue > lwork) lwork = lwork_ue;
+	}
+
+	compute_alloc_in_bytes += 
+		+ lwork * sizeof(num)
+		+ lwork * sizeof(num);
+
+	// printf("sim alloc: %zu bytes \n", sim_alloc_in_bytes);
+	// printf("compute alloc: %zu bytes \n", compute_alloc_in_bytes);
+
+	const size_t total_mem = sim_alloc_in_bytes + compute_alloc_in_bytes;
+
+	return total_mem;
+}
+
+/**
+ * Read data from sim->file and place into sim->p, sim->s, sim->m_eq, sim->m_ue
+ * @param  sim  [description]
+ * @return -1 if H5Fopen() failed
+ *         -2 if file is corrupted
+ *         -3 if my_read failed
+ *         -4 if H5Fclose() failed
+ */
+int sim_data_read_alloc(struct sim_data *sim) {
+	const hid_t file_id = H5Fopen(sim->file, H5F_ACC_RDONLY, H5P_DEFAULT);
+	return_if(file_id < 0, OPEN_FAIL, "H5Fopen() failed for %s: %ld\n", 
+		sim->file, file_id);
+
+	int status; //see my_read macro
+	int partial_write;
+
+	// Check if we are starting from a valid file
+	my_read(_int,"/state/partial_write", &partial_write);
+	if (partial_write) {
+		return_if(partial_write, CORRUPT_FAIL, \
+			"Last checkpoint in %s contained partial write\n", sim->file);
+	}
 	my_read(_int, "/params/N",      &sim->p.N);
 	my_read(_int, "/params/L",      &sim->p.L);
 	my_read(_int, "/params/num_i",  &sim->p.num_i);
@@ -56,6 +359,7 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 	// my_read(_int, "/params/meas_hop2_corr", &sim->p.meas_hop2_corr);
 	my_read(_int, "/params/meas_energy_corr", &sim->p.meas_energy_corr);
 	my_read(_int, "/params/meas_nematic_corr", &sim->p.meas_nematic_corr);
+	my_read(_int, "/params/checkpoint_every", &sim->p.checkpoint_every);
 
 	const int N = sim->p.N, L = sim->p.L;
 	const int num_i = sim->p.num_i, num_ij = sim->p.num_ij;
@@ -85,8 +389,8 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 	sim->p.pp_d      = my_calloc(N*num_b2/N * sizeof(num));
 	sim->p.ppr_u      = my_calloc(N*num_b2/N * sizeof(num));
 	sim->p.ppr_d      = my_calloc(N*num_b2/N * sizeof(num));
-//	sim->p.K             = my_calloc(N*N      * sizeof(double));
-//	sim->p.U             = my_calloc(num_i    * sizeof(double));
+	//	sim->p.K             = my_calloc(N*N      * sizeof(double));
+	//	sim->p.U             = my_calloc(num_i    * sizeof(double));
 	sim->p.degen_i       = my_calloc(num_i    * sizeof(int));
 	sim->p.degen_ij      = my_calloc(num_ij   * sizeof(int));
 	sim->p.degen_bs      = my_calloc(num_bs   * sizeof(int));
@@ -190,9 +494,9 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 	my_read( , "/params/pp_d", num_h5t,    sim->p.pp_d);
 	my_read( , "/params/ppr_u", num_h5t,    sim->p.ppr_u);
 	my_read( , "/params/ppr_d", num_h5t,    sim->p.ppr_d);
-//	my_read(_double, "/params/K",              sim->p.K);
-//	my_read(_double, "/params/U",              sim->p.U);
-//	my_read(_double, "/params/dt",            &sim->p.dt);
+	//	my_read(_double, "/params/K",              sim->p.K);
+	//	my_read(_double, "/params/U",              sim->p.U);
+	//	my_read(_double, "/params/dt",            &sim->p.dt);
 	my_read(_int,    "/params/n_matmul",      &sim->p.n_matmul);
 	my_read(_int,    "/params/n_delay",       &sim->p.n_delay);
 	my_read(_int,    "/params/n_sweep_warm",  &sim->p.n_sweep_warm);
@@ -289,30 +593,40 @@ int sim_data_read_alloc(struct sim_data *sim, const char *file)
 		}
 	}
 
-#undef my_read
-
 	status = H5Fclose(file_id);
-	return_if(status < 0, -1, "H5Fclose() failed: %d\n", status);
+	return_if(status < 0, CLOSE_FAIL, "H5Fclose() failed for %s: %d\n", sim->file, status);
 	return 0;
 }
 
-int sim_data_save(const struct sim_data *sim)
-{
+/**
+ * Save simulation state and measurements to disk
+ * @param  sim [description]
+ * @return -1 if H5Fopen() failed
+ *         -2 if file is corrupted
+ *         -3 if my_read or my_write failed
+ *         -4 if H5Fclose() failed
+ */
+int sim_data_save(const struct sim_data *sim) {
 	const hid_t file_id = H5Fopen(sim->file, H5F_ACC_RDWR, H5P_DEFAULT);
-	return_if(file_id < 0, -1, "H5Fopen() failed: %ld\n", file_id);
+	return_if(file_id < 0, OPEN_FAIL, "H5Fopen() failed for %s: %ld\n", 
+		sim->file, file_id);
 
-	herr_t status;
-	hid_t dset_id;
+	int status; // see my_write macro
+	hid_t dset_id; //see my_write macro
 
-#define my_write(name, type, data) do { \
-	dset_id = H5Dopen2(file_id, (name), H5P_DEFAULT); \
-	return_if(dset_id < 0, -1, "H5Dopen2() failed for %s: %ld\n", name, dset_id); \
-	status = H5Dwrite(dset_id, (type), H5S_ALL, H5S_ALL, H5P_DEFAULT, (data)); \
-	return_if(status < 0, -1, "H5Dwrite() failed for %s: %d\n", name, status); \
-	status = H5Dclose(dset_id); \
-	return_if(status < 0, -1, "H5Dclose() failed for %s: %d\n", name, status); \
-} while (0);
+	int partial_write;
+	// Check if we are saving to a valid file
+	my_read(_int,"/state/partial_write", &partial_write);
+	if (partial_write) {
+		return_if(partial_write, CORRUPT_FAIL, \
+			"Last checkpoint in %s contained partial write\n", sim->file);
+	}
+	
+	//mark this file as having a write in progress
+	partial_write = 1;
+	my_write("/state/partial_write", H5T_NATIVE_INT, &partial_write);
 
+	//write state + measurement data
 	my_write("/state/rng",            H5T_NATIVE_UINT64,  sim->s.rng);
 	my_write("/state/sweep",          H5T_NATIVE_INT,    &sim->s.sweep);
 	my_write("/state/hs",             H5T_NATIVE_INT,     sim->s.hs);
@@ -382,15 +696,17 @@ int sim_data_save(const struct sim_data *sim)
 		}
 	}
 
-#undef my_write
+	//mark this file as having no partial writes, i.e. a clean checkpoint.
+	partial_write = 0;
+	my_write("/state/partial_write", H5T_NATIVE_INT, &partial_write);
 
 	status = H5Fclose(file_id);
-	return_if(status < 0, -1, "H5Fclose() failed: %d\n", status);
+	return_if(status < 0, CLOSE_FAIL, "H5Fclose() failed for %s: %d\n", 
+		sim->file, status);
 	return 0;
 }
 
-void sim_data_free(const struct sim_data *sim)
-{
+void sim_data_free(const struct sim_data *sim) {
 	if (sim->p.period_uneqlt > 0) {
 		if (sim->p.meas_nematic_corr) {
 			my_free(sim->m_ue.nem_ssss);
@@ -473,8 +789,8 @@ void sim_data_free(const struct sim_data *sim)
 	my_free(sim->p.degen_bs);
 	my_free(sim->p.degen_ij);
 	my_free(sim->p.degen_i);
-//	my_free(sim->p.U);
-//	my_free(sim->p.K);
+	//	my_free(sim->p.U);
+	//	my_free(sim->p.K);
 	my_free(sim->p.peierlsd);
 	my_free(sim->p.peierlsu);
 	my_free(sim->p.pp_u);

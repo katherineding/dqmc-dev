@@ -1,14 +1,35 @@
 CC = icx
 
-CFLAGS = -std=gnu17 -fast -xHost
-CFLAGS += -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter
-CFLAGS += -DMKL_DIRECT_CALL_SEQ -Wno-ignored-pragmas
+CFLAGS = -std=gnu17 -Ofast #-v -Wl,--verbose#-xHost
+CFLAGS += -Wall -Wextra -Wno-unused-variable #-Wno-unused-parameter
 CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
+CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
+CFLAGS += -DOMP_MEAS_NUM_THREADS=6
 CFLAGS += -DPROFILE_ENABLE
-# CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
-CFLAGS += -fiopenmp  # to disable openmp, use -qopenmp-stubs
+CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
+CFLAGS += -fopenmp  # to disable openmp, use -qopenmp-stubs
 
-LDFLAGS += -lhdf5 -lhdf5_hl -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
+# Careful: CFLAGS and LDFLAGS are suspect to contamination by Ana/Miniconda
+CFLAGS += -I/usr/include/hdf5/serial/
+LDFLAGS = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/
+LDFLAGS += -lhdf5 -lhdf5_hl 
+
+#CFLAGS += -I/home/jxding/miniconda3/include/
+#LDFLAGS += -L/home/jxding/miniconda3/lib/
+#LDFLAGS += -lhdf5 -lhdf5_hl 
+
+# these lines are not necessary after running ICX setvars.sh, which sets
+# $CPATH and $LD_LIBRARY_PATH
+# CFLAGS += -I${MKLROOT}/include
+# LDFLAGS += -L${MKLROOT}/lib/intel64
+
+# sequential version of MKL
+CFLAGS += -DMKL_DIRECT_CALL_SEQ #-Wno-ignored-pragmas
+LDFLAGS += -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
+
+#multithreaded version of MKL
+# CFLAGS += -DMKL_DIRECT_CALL #-Wno-ignored-pragmas
+# LDFLAGS += -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
 
 OBJS = data.o dqmc.o greens.o meas.o prof.o sig.o updates.o
 
