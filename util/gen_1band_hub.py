@@ -65,7 +65,7 @@ def rand_jump(rng):
 
 def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
              Nx=16, Ny=4, mu=0.0, tp=0.0, U=6.0, dt=0.115, L=40,
-             nflux=0,
+             nflux=0, h=0.0,
              n_delay=16, n_matmul=8, n_sweep_warm=200, n_sweep_meas=2000,
              period_eqlt=8, period_uneqlt=0,
              meas_bond_corr=1, meas_energy_corr=0, meas_nematic_corr=0,
@@ -529,9 +529,11 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                 
     if dtype_num == np.complex128:
         Ku = -tij * peierls
+        Kd = Ku
         assert np.max(np.abs(Ku - Ku.T.conj())) < 1e-10
     else:
         Ku = -tij.real
+        Kd = Ku
         assert np.max(np.abs(peierls.imag)) < 1e-10
         peierls = peierls.real
         assert np.max(np.abs(thermal_phases.imag)) < 1e-10
@@ -540,12 +542,18 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     # print(thermal_phases)
 
     for i in range(Ny*Nx):
-        Ku[i, i] -= mu
+        Ku[i, i] -= (mu - h)
+        Kd[i, i] -= (mu + h)
 
     exp_Ku = expm(-dt * Ku)
     inv_exp_Ku = expm(dt * Ku)
     exp_halfKu = expm(-dt/2 * Ku)
     inv_exp_halfKu = expm(dt/2 * Ku)
+
+    exp_Kd = expm(-dt * Kd)
+    inv_exp_Kd = expm(dt * Kd)
+    exp_halfKd = expm(-dt/2 * Kd)
+    inv_exp_halfKd = expm(dt/2 * Kd)
 #   exp_K = np.array(mpm.expm(mpm.matrix(-dt * K)).tolist(), dtype=np.float64)
 
     U_i = U*np.ones_like(degen_i, dtype=np.float64)
@@ -600,7 +608,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["ppr_u"] = thermal_phases
         f["params"]["ppr_d"] = thermal_phases
         f["params"]["Ku"] = Ku
-        f["params"]["Kd"] = f["params"]["Ku"]
+        f["params"]["Kd"] = Kd
         f["params"]["U"] = U_i
         f["params"]["dt"] = np.array(dt, dtype=np.float64)
 
@@ -644,13 +652,13 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         # f["params"]["degen_hop2_b"] = degen_hop2_b
         # f["params"]["degen_hop2_hop2"] = degen_hop2_hop2
         f["params"]["exp_Ku"] = exp_Ku
-        f["params"]["exp_Kd"] = f["params"]["exp_Ku"]
+        f["params"]["exp_Kd"] = exp_Kd
         f["params"]["inv_exp_Ku"] = inv_exp_Ku
-        f["params"]["inv_exp_Kd"] = f["params"]["inv_exp_Ku"]
+        f["params"]["inv_exp_Kd"] = inv_exp_Kd
         f["params"]["exp_halfKu"] = exp_halfKu
-        f["params"]["exp_halfKd"] = f["params"]["exp_halfKu"]
+        f["params"]["exp_halfKd"] = exp_halfKd
         f["params"]["inv_exp_halfKu"] = inv_exp_halfKu
-        f["params"]["inv_exp_halfKd"] = f["params"]["inv_exp_halfKu"]
+        f["params"]["inv_exp_halfKd"] = inv_exp_halfKd
         f["params"]["exp_lambda"] = exp_lambda
         f["params"]["del"] = delll
         f["params"]["F"] = np.array(L//n_matmul, dtype=np.int32)
@@ -677,8 +685,12 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["meas_eqlt"]["n_sample"] = np.array(0, dtype=np.int32)
         f["meas_eqlt"]["sign"] = np.array(0.0, dtype=dtype_num)
         f["meas_eqlt"]["density"] = np.zeros(num_i, dtype=dtype_num)
+        f["meas_eqlt"]["density_u"] = np.zeros(num_i, dtype=dtype_num)
+        f["meas_eqlt"]["density_d"] = np.zeros(num_i, dtype=dtype_num)
         f["meas_eqlt"]["double_occ"] = np.zeros(num_i, dtype=dtype_num)
         f["meas_eqlt"]["g00"] = np.zeros(num_ij, dtype=dtype_num)
+        f["meas_eqlt"]["g00_u"] = np.zeros(num_ij, dtype=dtype_num)
+        f["meas_eqlt"]["g00_d"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["nn"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["xx"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["zz"] = np.zeros(num_ij, dtype=dtype_num)
@@ -695,6 +707,8 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
             f["meas_uneqlt"]["n_sample"] = np.array(0, dtype=np.int32)
             f["meas_uneqlt"]["sign"] = np.array(0.0, dtype=dtype_num)
             f["meas_uneqlt"]["gt0"] = np.zeros(num_ij*L, dtype=dtype_num)
+            f["meas_uneqlt"]["gt0_u"] = np.zeros(num_ij*L, dtype=dtype_num)
+            f["meas_uneqlt"]["gt0_d"] = np.zeros(num_ij*L, dtype=dtype_num)
             f["meas_uneqlt"]["nn"] = np.zeros(num_ij*L, dtype=dtype_num)
             f["meas_uneqlt"]["xx"] = np.zeros(num_ij*L, dtype=dtype_num)
             f["meas_uneqlt"]["zz"] = np.zeros(num_ij*L, dtype=dtype_num)
