@@ -607,7 +607,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     if dtype_num == np.complex128:
         Ku = kij * peierls
         Ku2 = kij * peierls2
-        Kd = Ku
+        Kd = Ku.copy()
 
 
         # plt.figure()
@@ -623,7 +623,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         assert np.linalg.norm(Ku - Ku.T.conj()) < 1e-10, f"max diff {np.linalg.norm(Ku - Ku.T.conj())}"
     else:
         Ku = kij.real
-        Kd = Ku
+        Kd = Ku.copy()
         assert np.max(np.abs(peierls.imag)) < 1e-10
         peierls = peierls.real
         assert np.max(np.abs(thermal_phases.imag)) < 1e-10
@@ -670,6 +670,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["metadata"]["t'"] = tp
         f["metadata"]["nflux"] = nflux
         f["metadata"]["mu"] = mu
+        f["metadata"]["h"] = h
         f["metadata"]["beta"] = L*dt
 
         # parameters used by dqmc code
