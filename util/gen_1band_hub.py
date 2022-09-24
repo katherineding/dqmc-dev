@@ -105,7 +105,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     num_i = map_i.max() + 1
     assert num_i == degen_i.size
 
-    # 2 site mapping
+    # 2 site mapping: site r = (x,y) has total (column order) index x + Nx * y
     map_ij = np.zeros((N, N), dtype=np.int32)
     num_ij = N if trans_sym else N*N
     degen_ij = np.zeros(num_ij, dtype=np.int32)
@@ -143,6 +143,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                 bonds[1, i + 3*N] = ix + Nx*iy1   # i1 = i + y
 
     # 1 bond 1 site mapping
+    # Translated to fortran order: [j,istuff] -> [istuff + num_b * j] -> [istuff,j]
     map_bs = np.zeros((N, num_b), dtype=np.int32)
     num_bs = bps*N if trans_sym else num_b*N
     degen_bs = np.zeros(num_bs, dtype=np.int32)
@@ -156,6 +157,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     assert num_bs == map_bs.max() + 1
 
     # 1 bond - 1 bond mapping
+    # Translated to Fortran order: [jstuff ,istuff] -> [istuff + num_b * jstuff] -> [istuff,jstuff]
     map_bb = np.zeros((num_b, num_b), dtype=np.int32)
     num_bb = bps*bps*N if trans_sym else num_b*num_b
     degen_bb = np.zeros(num_bb, dtype = np.int32)
@@ -412,6 +414,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
 
 
     # 2 2-bond mapping
+    # Translated to Fortran order: [jstuff ,istuff] -> [istuff + num_b2 * jstuff] -> [istuff,jstuff]
     num_b2b2 = b2ps*b2ps*N if trans_sym else num_b2*num_b2
     map_b2b2 = np.zeros((num_b2, num_b2), dtype=np.int32)
     degen_b2b2 = np.zeros(num_b2b2, dtype = np.int32)

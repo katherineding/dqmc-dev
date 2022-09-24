@@ -543,16 +543,19 @@ int dqmc_wrapper(const char *sim_file, const char *log_file,
 	fprintf(log, "hdf5 and executable versions consistent? %s\n", 
 		consistency_check(sim_file,log) ? "No" : "Yes");
 	fprintf(log, "integer size on this system: %zu bytes\n",sizeof(int));
+#ifdef OMP_MEAS_NUM_THREADS
 	fprintf(log, "using %d measurement threads\n", OMP_MEAS_NUM_THREADS);
+#else
+	fprintf(log, "using 2 measurement threads (default)\n");
+#endif
+	fprintf(log, "minimum RAM requirement: %.2f MB\n", 
+		(double) get_memory_req(sim_file)*1e-6);
 
 	// exit path if dry run
 	if (dry) {
 		fprintf(log, "toggled dry run for mem check only\n");
-		fprintf(log, "minimum RAM requirement: %.2f MB\n", 
-			(double) get_memory_req(sim_file)*1e-6);
 		fprintf(log, "Not performing: read sim file, alloc mem, "
 			"run core DQMC logic, or save data\n");
-
 		if (log != stdout) fclose(log);
 		else fflush(log);
 		return wrap_return_code;
@@ -600,7 +603,9 @@ int dqmc_wrapper(const char *sim_file, const char *log_file,
 	}
 
 	// Now we know sweep < n_sweep: run dqmc
-	fprintf(log, "starting dqmc\n"); 
+	time_t current_time;
+	time(&current_time);
+	fprintf(log, "[%.24s] starting dqmc\n", ctime(&current_time)); 
 	fflush(log);
 	// This might take a while. 2 OMP threads, blocking.
 	const int dqmc_status = dqmc(sim); 
@@ -616,7 +621,9 @@ int dqmc_wrapper(const char *sim_file, const char *log_file,
 	}
 
 	//dqmc() completed
-	fprintf(log, "%d/%d sweeps completed\n", sim->s.sweep, sim->p.n_sweep);
+	time(&current_time);
+	fprintf(log, "[%.24s] %d/%d sweeps completed\n", 
+		ctime(&current_time),sim->s.sweep, sim->p.n_sweep);
 
 	// If benchmark mode, don't save data, directly cleanup
 	if (bench) {
