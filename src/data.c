@@ -409,6 +409,16 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	sim->p.exp_halfKd    = my_calloc(N*N      * sizeof(num));
 	sim->p.inv_exp_halfKu= my_calloc(N*N      * sizeof(num));
 	sim->p.inv_exp_halfKd= my_calloc(N*N      * sizeof(num));
+
+	sim->p.exp_Ku_warm        = my_calloc(N*N      * sizeof(num));
+	sim->p.exp_Kd_warm        = my_calloc(N*N      * sizeof(num));
+	sim->p.inv_exp_Ku_warm    = my_calloc(N*N      * sizeof(num));
+	sim->p.inv_exp_Kd_warm    = my_calloc(N*N      * sizeof(num));
+	sim->p.exp_halfKu_warm    = my_calloc(N*N      * sizeof(num));
+	sim->p.exp_halfKd_warm    = my_calloc(N*N      * sizeof(num));
+	sim->p.inv_exp_halfKu_warm= my_calloc(N*N      * sizeof(num));
+	sim->p.inv_exp_halfKd_warm= my_calloc(N*N      * sizeof(num));
+
 	sim->p.exp_lambda    = my_calloc(N*2      * sizeof(double));
 	sim->p.del           = my_calloc(N*2      * sizeof(double));
 	sim->s.hs            = my_calloc(N*L      * sizeof(int));
@@ -526,6 +536,17 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	my_read( , "/params/exp_halfKd",     num_h5t,   sim->p.exp_halfKd);
 	my_read( , "/params/inv_exp_halfKu", num_h5t,   sim->p.inv_exp_halfKu);
 	my_read( , "/params/inv_exp_halfKd", num_h5t,   sim->p.inv_exp_halfKd);
+
+
+	my_read( , "/params/exp_Ku_warm",     num_h5t,   sim->p.exp_Ku_warm);
+	my_read( , "/params/exp_Kd_warm",     num_h5t,   sim->p.exp_Kd_warm);
+	my_read( , "/params/inv_exp_Ku_warm", num_h5t,   sim->p.inv_exp_Ku_warm);
+	my_read( , "/params/inv_exp_Kd_warm", num_h5t,   sim->p.inv_exp_Kd_warm);
+	my_read( , "/params/exp_halfKu_warm",     num_h5t,   sim->p.exp_halfKu_warm);
+	my_read( , "/params/exp_halfKd_warm",     num_h5t,   sim->p.exp_halfKd_warm);
+	my_read( , "/params/inv_exp_halfKu_warm", num_h5t,   sim->p.inv_exp_halfKu_warm);
+	my_read( , "/params/inv_exp_halfKd_warm", num_h5t,   sim->p.inv_exp_halfKd_warm);
+
 	my_read(_double, "/params/exp_lambda",     sim->p.exp_lambda);
 	my_read(_double, "/params/del",            sim->p.del);
 	my_read(_int,    "/params/F",             &sim->p.F);
@@ -803,6 +824,16 @@ void sim_data_free(const struct sim_data *sim) {
 	my_free(sim->p.inv_exp_Ku);
 	my_free(sim->p.exp_Kd);
 	my_free(sim->p.exp_Ku);
+
+	my_free(sim->p.inv_exp_halfKd_warm);
+	my_free(sim->p.inv_exp_halfKu_warm);
+	my_free(sim->p.exp_halfKd_warm);
+	my_free(sim->p.exp_halfKu_warm);
+	my_free(sim->p.inv_exp_Kd_warm);
+	my_free(sim->p.inv_exp_Ku_warm);
+	my_free(sim->p.exp_Kd_warm);
+	my_free(sim->p.exp_Ku_warm);
+
 	my_free(sim->p.degen_b2b2);
 	my_free(sim->p.degen_bb);
 	my_free(sim->p.degen_bb2);

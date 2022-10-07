@@ -188,32 +188,32 @@ static int dqmc(struct sim_data *sim) {
 	num phaseu, phased;
 	#pragma omp parallel sections
 	{
-	#pragma omp section
-	{
-	if (sim->p.period_uneqlt > 0)
-		for (int l = 0; l < L; l++)
-			calciBu(iBu + N*N*l, l);
-	for (int l = 0; l < L; l++)
-		calcBu(Bu + N*N*l, l);
-	for (int f = 0; f < F; f++)
-		mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L, 1.0,
-		        Bu, Cu + N*N*f, N, tmpNN1u);
-	phaseu = calc_eq_g(0, N, F, N_MUL, Cu, gu, tmpNN1u, tmpNN2u,
-	                  tmpN1u, tmpN2u, tmpN3u, pvtu, worku, lwork);
-	}
-	#pragma omp section
-	{
-	if (sim->p.period_uneqlt > 0)
-		for (int l = 0; l < L; l++)
-			calciBd(iBd + N*N*l, l);
-	for (int l = 0; l < L; l++)
-		calcBd(Bd + N*N*l, l);
-	for (int f = 0; f < F; f++)
-		mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L, 1.0,
-		        Bd, Cd + N*N*f, N, tmpNN1d);
-	phased = calc_eq_g(0, N, F, N_MUL, Cd, gd, tmpNN1d, tmpNN2d,
-	                  tmpN1d, tmpN2d, tmpN3d, pvtd, workd, lwork);
-	}
+		#pragma omp section
+		{
+			if (sim->p.period_uneqlt > 0)
+				for (int l = 0; l < L; l++)
+					calciBu(iBu + N*N*l, l);
+			for (int l = 0; l < L; l++)
+				calcBu(Bu + N*N*l, l);
+			for (int f = 0; f < F; f++)
+				mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L, 1.0,
+				        Bu, Cu + N*N*f, N, tmpNN1u);
+			phaseu = calc_eq_g(0, N, F, N_MUL, Cu, gu, tmpNN1u, tmpNN2u,
+			                  tmpN1u, tmpN2u, tmpN3u, pvtu, worku, lwork);
+		}
+		#pragma omp section
+		{
+			if (sim->p.period_uneqlt > 0)
+				for (int l = 0; l < L; l++)
+					calciBd(iBd + N*N*l, l);
+			for (int l = 0; l < L; l++)
+				calcBd(Bd + N*N*l, l);
+			for (int f = 0; f < F; f++)
+				mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L, 1.0,
+				        Bd, Cd + N*N*f, N, tmpNN1d);
+			phased = calc_eq_g(0, N, F, N_MUL, Cd, gd, tmpNN1d, tmpNN2d,
+			                  tmpN1d, tmpN2d, tmpN3d, pvtd, workd, lwork);
+		}
 	}
 	phase = phaseu*phased;
 	}
@@ -257,82 +257,82 @@ static int dqmc(struct sim_data *sim) {
 			num phaseu, phased;
 			#pragma omp parallel sections
 			{
-			#pragma omp section
-			{
-			num *const restrict Bul = Bu + N*N*l;
-			num *const restrict iBul = iBu + N*N*l;
-			num *const restrict Cuf = Cu + N*N*f;
-			profile_begin(calcb);
-			calcBu(Bul, l);
-			if (!recalc || sim->p.period_uneqlt > 0)
-				calciBu(iBul, l);
-			profile_end(calcb);
-			if (recalc) {
-				profile_begin(multb);
-				mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L,
-				        1.0, Bu, Cuf, N, tmpNN1u);
-				profile_end(multb);
-				profile_begin(recalc);
-				#ifdef CHECK_G_WRP
-				if (sim->p.period_uneqlt == 0)
-					calciBu(iBu + N*N*l, l);
-				matmul(tmpNN1u, gu, iBu + N*N*l);
-				matmul(guwrp, Bu + N*N*l, tmpNN1u);
-				#endif
-				#ifdef CHECK_G_ACC
-				calc_eq_g((l + 1) % L, N, L, 1, Bu, guacc,
-				          tmpNN1u, tmpNN2u, tmpN1u, tmpN2u,
-				          tmpN3u, pvtu, worku, lwork);
-				#endif
-				phaseu = calc_eq_g((f + 1) % F, N, F, N_MUL, Cu, gu,
-				                  tmpNN1u, tmpNN2u, tmpN1u, tmpN2u,
-				                  tmpN3u, pvtu, worku, lwork);
-				profile_end(recalc);
-			} else {
-				profile_begin(wrap);
-				matmul(tmpNN1u, gu, iBul);
-				matmul(gu, Bul, tmpNN1u);
-				profile_end(wrap);
-			}
-			}
-			#pragma omp section
-			{
-			num *const restrict Bdl = Bd + N*N*l;
-			num *const restrict iBdl = iBd + N*N*l;
-			num *const restrict Cdf = Cd + N*N*f;
-			profile_begin(calcb);
-			calcBd(Bdl, l);
-			if (!recalc || sim->p.period_uneqlt > 0)
-				calciBd(iBdl, l);
-			profile_end(calcb);
-			if (recalc) {
-				profile_begin(multb);
-				mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L,
-				        1.0, Bd, Cdf, N, tmpNN1d);
-				profile_end(multb);
-				profile_begin(recalc);
-				#ifdef CHECK_G_WRP
-				if (sim->p.period_uneqlt == 0)
-					calciBd(iBd + N*N*l, l);
-				matmul(tmpNN1d, gd, iBd + N*N*l);
-				matmul(gdwrp, Bd + N*N*l, tmpNN1d);
-				#endif
-				#ifdef CHECK_G_ACC
-				calc_eq_g((l + 1) % L, N, L, 1, Bd, gdacc,
-				          tmpNN1d, tmpNN2d, tmpN1d, tmpN2d,
-				          tmpN3d, pvtd, workd, lwork);
-				#endif
-				phased = calc_eq_g((f + 1) % F, N, F, N_MUL, Cd, gd,
-				                  tmpNN1d, tmpNN2d, tmpN1d, tmpN2d,
-				                  tmpN3d, pvtd, workd, lwork);
-				profile_end(recalc);
-			} else {
-				profile_begin(wrap);
-				matmul(tmpNN1d, gd, iBdl);
-				matmul(gd, Bdl, tmpNN1d);
-				profile_end(wrap);
-			}
-			}
+				#pragma omp section
+				{
+					num *const restrict Bul = Bu + N*N*l;
+					num *const restrict iBul = iBu + N*N*l;
+					num *const restrict Cuf = Cu + N*N*f;
+					profile_begin(calcb);
+					calcBu(Bul, l);
+					if (!recalc || sim->p.period_uneqlt > 0)
+						calciBu(iBul, l);
+					profile_end(calcb);
+					if (recalc) {
+						profile_begin(multb);
+						mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L,
+						        1.0, Bu, Cuf, N, tmpNN1u);
+						profile_end(multb);
+						profile_begin(recalc);
+						#ifdef CHECK_G_WRP
+						if (sim->p.period_uneqlt == 0)
+							calciBu(iBu + N*N*l, l);
+						matmul(tmpNN1u, gu, iBu + N*N*l);
+						matmul(guwrp, Bu + N*N*l, tmpNN1u);
+						#endif
+						#ifdef CHECK_G_ACC
+						calc_eq_g((l + 1) % L, N, L, 1, Bu, guacc,
+						          tmpNN1u, tmpNN2u, tmpN1u, tmpN2u,
+						          tmpN3u, pvtu, worku, lwork);
+						#endif
+						phaseu = calc_eq_g((f + 1) % F, N, F, N_MUL, Cu, gu,
+						                  tmpNN1u, tmpNN2u, tmpN1u, tmpN2u,
+						                  tmpN3u, pvtu, worku, lwork);
+						profile_end(recalc);
+					} else {
+						profile_begin(wrap);
+						matmul(tmpNN1u, gu, iBul);
+						matmul(gu, Bul, tmpNN1u);
+						profile_end(wrap);
+					}
+				}
+				#pragma omp section
+				{
+					num *const restrict Bdl = Bd + N*N*l;
+					num *const restrict iBdl = iBd + N*N*l;
+					num *const restrict Cdf = Cd + N*N*f;
+					profile_begin(calcb);
+					calcBd(Bdl, l);
+					if (!recalc || sim->p.period_uneqlt > 0)
+						calciBd(iBdl, l);
+					profile_end(calcb);
+					if (recalc) {
+						profile_begin(multb);
+						mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L,
+						        1.0, Bd, Cdf, N, tmpNN1d);
+						profile_end(multb);
+						profile_begin(recalc);
+						#ifdef CHECK_G_WRP
+						if (sim->p.period_uneqlt == 0)
+							calciBd(iBd + N*N*l, l);
+						matmul(tmpNN1d, gd, iBd + N*N*l);
+						matmul(gdwrp, Bd + N*N*l, tmpNN1d);
+						#endif
+						#ifdef CHECK_G_ACC
+						calc_eq_g((l + 1) % L, N, L, 1, Bd, gdacc,
+						          tmpNN1d, tmpNN2d, tmpN1d, tmpN2d,
+						          tmpN3d, pvtd, workd, lwork);
+						#endif
+						phased = calc_eq_g((f + 1) % F, N, F, N_MUL, Cd, gd,
+						                  tmpNN1d, tmpNN2d, tmpN1d, tmpN2d,
+						                  tmpN3d, pvtd, workd, lwork);
+						profile_end(recalc);
+					} else {
+						profile_begin(wrap);
+						matmul(tmpNN1d, gd, iBdl);
+						matmul(gd, Bdl, tmpNN1d);
+						profile_end(wrap);
+					}
+				}
 			}
 
 			#ifdef CHECK_G_WRP

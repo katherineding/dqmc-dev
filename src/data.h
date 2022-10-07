@@ -28,6 +28,8 @@ struct params {
 	// int *degen_hop2_hop2, *degen_hop2_b, *degen_b_hop2;
 	num *exp_Ku, *exp_Kd, *inv_exp_Ku, *inv_exp_Kd;
 	num *exp_halfKu, *exp_halfKd, *inv_exp_halfKu, *inv_exp_halfKd;
+	num *exp_Ku_warm, *exp_Kd_warm, *inv_exp_Ku_warm, *inv_exp_Kd_warm;
+	num *exp_halfKu_warm, *exp_halfKd_warm, *inv_exp_halfKu_warm, *inv_exp_halfKd_warm;
 	double *exp_lambda, *del;
 	int F, n_sweep;
 };

@@ -65,7 +65,7 @@ def rand_jump(rng):
 
 def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
              Nx=16, Ny=4, mu=0.0, tp=0.0, U=6.0, dt=0.115, L=40,
-             nflux=0, h=0.0,
+             nflux=0, h=0.0, h_warm=0.0,
              n_delay=16, n_matmul=8, n_sweep_warm=200, n_sweep_meas=2000,
              period_eqlt=8, period_uneqlt=0,
              meas_bond_corr=1, meas_energy_corr=0, meas_nematic_corr=0,
@@ -529,21 +529,34 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                 
     if dtype_num == np.complex128:
         Ku = -tij * peierls
-        Kd = Ku.copy()
         assert np.max(np.abs(Ku - Ku.T.conj())) < 1e-10
     else:
         Ku = -tij.real
-        Kd = Ku.copy()
         assert np.max(np.abs(peierls.imag)) < 1e-10
         peierls = peierls.real
         assert np.max(np.abs(thermal_phases.imag)) < 1e-10
         thermal_phases = thermal_phases.real
     # print(thermal_phases.dtype,thermal_phases.shape)
     # print(thermal_phases)
+    Kd = Ku.copy()
+    Ku_warm = Ku.copy()
+    Kd_warm = Ku.copy()
 
     for i in range(Ny*Nx):
         Ku[i, i] -= (mu - h)
         Kd[i, i] -= (mu + h)
+        Ku_warm[i, i] -= (mu - h_warm)
+        Kd_warm[i, i] -= (mu + h_warm)
+
+    exp_Ku_warm = expm(-dt * Ku_warm)
+    inv_exp_Ku_warm = expm(dt * Ku_warm)
+    exp_halfKu_warm = expm(-dt/2 * Ku_warm)
+    inv_exp_halfKu_warm = expm(dt/2 * Ku_warm)
+
+    exp_Kd_warm = expm(-dt * Kd_warm)
+    inv_exp_Kd_warm = expm(dt * Kd_warm)
+    exp_halfKd_warm = expm(-dt/2 * Kd_warm)
+    inv_exp_halfKd_warm = expm(dt/2 * Kd_warm)
 
     exp_Ku = expm(-dt * Ku)
     inv_exp_Ku = expm(dt * Ku)
@@ -582,6 +595,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["metadata"]["nflux"] = nflux
         f["metadata"]["mu"] = mu
         f["metadata"]["h"] = h
+        f["metadata"]["h_warm"] = h_warm
         f["metadata"]["beta"] = L*dt
 
         # parameters used by dqmc code
@@ -610,6 +624,8 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["ppr_d"] = thermal_phases
         f["params"]["Ku"] = Ku
         f["params"]["Kd"] = Kd
+        f["params"]["Ku_warm"] = Ku_warm
+        f["params"]["Kd_warm"] = Kd_warm
         f["params"]["U"] = U_i
         f["params"]["dt"] = np.array(dt, dtype=np.float64)
 
@@ -652,6 +668,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         # f["params"]["degen_b_hop2"] = degen_b_hop2
         # f["params"]["degen_hop2_b"] = degen_hop2_b
         # f["params"]["degen_hop2_hop2"] = degen_hop2_hop2
+
         f["params"]["exp_Ku"] = exp_Ku
         f["params"]["exp_Kd"] = exp_Kd
         f["params"]["inv_exp_Ku"] = inv_exp_Ku
@@ -660,6 +677,16 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["exp_halfKd"] = exp_halfKd
         f["params"]["inv_exp_halfKu"] = inv_exp_halfKu
         f["params"]["inv_exp_halfKd"] = inv_exp_halfKd
+
+        f["params"]["exp_Ku_warm"] = exp_Ku_warm
+        f["params"]["exp_Kd_warm"] = exp_Kd_warm
+        f["params"]["inv_exp_Ku_warm"] = inv_exp_Ku_warm
+        f["params"]["inv_exp_Kd_warm"] = inv_exp_Kd_warm
+        f["params"]["exp_halfKu_warm"] = exp_halfKu_warm
+        f["params"]["exp_halfKd_warm"] = exp_halfKd_warm
+        f["params"]["inv_exp_halfKu_warm"] = inv_exp_halfKu_warm
+        f["params"]["inv_exp_halfKd_warm"] = inv_exp_halfKd_warm
+
         f["params"]["exp_lambda"] = exp_lambda
         f["params"]["del"] = delll
         f["params"]["F"] = np.array(L//n_matmul, dtype=np.int32)
