@@ -25,7 +25,7 @@
 	xgemm("N", "N", N, N, N, 1.0, (A), N, (B), N, 0.0, (C), N); \
 } while (0);
 
-#define calcBu(B, l) do { \
+#define calcBu(B, l, exp_Ku) do { \
 	for (int j = 0; j < N; j++) { \
 		const double el = exp_lambda[j + N*hs[j + N*(l)]]; \
 		for (int i = 0; i < N; i++) \
@@ -33,7 +33,7 @@
 	} \
 } while (0);
 
-#define calcBd(B, l) do { \
+#define calcBd(B, l, exp_Kd) do { \
 	for (int j = 0; j < N; j++) { \
 		const double el = exp_lambda[j + N*!hs[j + N*(l)]]; \
 		for (int i = 0; i < N; i++) \
@@ -41,7 +41,7 @@
 	} \
 } while (0);
 
-#define calciBu(iB, l) do { \
+#define calciBu(iB, l, inv_exp_Ku) do { \
 	for (int i = 0; i < N; i++) { \
 		const double el = exp_lambda[i + N*!hs[i + N*(l)]]; \
 		for (int j = 0; j < N; j++) \
@@ -49,7 +49,7 @@
 	} \
 } while (0);
 
-#define calciBd(iB, l) do { \
+#define calciBd(iB, l, inv_exp_Kd) do { \
 	for (int i = 0; i < N; i++) { \
 		const double el = exp_lambda[i + N*hs[i + N*(l)]]; \
 		for (int j = 0; j < N; j++) \
@@ -73,11 +73,11 @@
 #define CHECKPOINT_FAIL 6
 
 /**
- * Core dqmc logic
+ * Core dqmc logic, using sim stucture loaded in RAM
  * @param  sim [description]
  * @return 0 on success
- *         1 on interrupt
- *         2 on checkpoint failure
+ *         INTERRUPTED on interrupt
+ *         CHECKPOINT_FAIL on checkpoint failure
  *         ?? TODO any other possibility?
  */
 static int dqmc(struct sim_data *sim) {
@@ -88,6 +88,7 @@ static int dqmc(struct sim_data *sim) {
 	const int n_matmul = sim->p.n_matmul;
 	const int n_delay = sim->p.n_delay;
 	const int F = sim->p.F;
+
 	const num *const restrict exp_Ku = sim->p.exp_Ku;
 	const num *const restrict exp_Kd = sim->p.exp_Kd;
 	const num *const restrict inv_exp_Ku = sim->p.inv_exp_Ku;
@@ -96,19 +97,32 @@ static int dqmc(struct sim_data *sim) {
 	const num *const restrict exp_halfKd = sim->p.exp_halfKd;
 	const num *const restrict inv_exp_halfKu = sim->p.inv_exp_halfKu;
 	const num *const restrict inv_exp_halfKd = sim->p.inv_exp_halfKd;
+
+	// for the first half of warmup sweeps, use warmup kinetic matrices,
+	// which allow for zeeman h_warm to precondition the Markov chain
+	const num *const restrict exp_Ku_warm = sim->p.exp_Ku_warm;
+	const num *const restrict exp_Kd_warm = sim->p.exp_Kd_warm;
+	const num *const restrict inv_exp_Ku_warm = sim->p.inv_exp_Ku_warm;
+	const num *const restrict inv_exp_Kd_warm = sim->p.inv_exp_Kd_warm;
+	const num *const restrict exp_halfKu_warm = sim->p.exp_halfKu_warm;
+	const num *const restrict exp_halfKd_warm = sim->p.exp_halfKd_warm;
+	const num *const restrict inv_exp_halfKu_warm = sim->p.inv_exp_halfKu_warm;
+	const num *const restrict inv_exp_halfKd_warm = sim->p.inv_exp_halfKd_warm;
+
 	const double *const restrict exp_lambda = sim->p.exp_lambda;
 	const double *const restrict del = sim->p.del;
 	uint64_t *const restrict rng = sim->s.rng;
 	int *const restrict hs = sim->s.hs;
 
+	/* Allocate work matrices on heap */
 	num *const Bu = my_calloc(N*N*L * sizeof(num));
 	num *const Bd = my_calloc(N*N*L * sizeof(num));
 	num *const iBu = my_calloc(N*N*L * sizeof(num));
 	num *const iBd = my_calloc(N*N*L * sizeof(num));
 	num *const Cu = my_calloc(N*N*F * sizeof(num));
 	num *const Cd = my_calloc(N*N*F * sizeof(num));
-	num *const restrict gu = my_calloc(N*N * sizeof(num));
-	num *const restrict gd = my_calloc(N*N * sizeof(num));
+	num *const restrict gu = my_calloc(N*N * sizeof(num)); 
+	num *const restrict gd = my_calloc(N*N * sizeof(num)); 
 	#ifdef CHECK_G_WRP
 	num *const restrict guwrp = my_calloc(N*N * sizeof(num));
 	num *const restrict gdwrp = my_calloc(N*N * sizeof(num));
@@ -152,6 +166,7 @@ static int dqmc(struct sim_data *sim) {
 	num *restrict taud = NULL;
 	num *restrict Qd = NULL;
 
+	// extra allocations if we are taking unequal time measurements
 	if (sim->p.period_uneqlt > 0) {
 		const int E = 1 + (F - 1) / N_MUL;
 
@@ -184,40 +199,75 @@ static int dqmc(struct sim_data *sim) {
 	num *const restrict worku = my_calloc(lwork * sizeof(num));
 	num *const restrict workd = my_calloc(lwork * sizeof(num));
 
-	{
+	/* Memory allocations done, calculations start here*/
+	// Always calculate the GF and phases from scratch here
 	num phaseu, phased;
-	#pragma omp parallel sections
-	{
-		#pragma omp section
+
+	if (sim->s.sweep < sim->p.n_sweep_warm/2) {
+		// printf("%d < %d, warmup! use h_warm here\n",sim->s.sweep,sim->p.n_sweep_warm/2);
+		#pragma omp parallel sections
 		{
-			if (sim->p.period_uneqlt > 0)
+			#pragma omp section
+			{
+				if (sim->p.period_uneqlt > 0)
+					for (int l = 0; l < L; l++)
+						calciBu(iBu + N*N*l, l, inv_exp_Ku_warm);
 				for (int l = 0; l < L; l++)
-					calciBu(iBu + N*N*l, l);
-			for (int l = 0; l < L; l++)
-				calcBu(Bu + N*N*l, l);
-			for (int f = 0; f < F; f++)
-				mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L, 1.0,
-				        Bu, Cu + N*N*f, N, tmpNN1u);
-			phaseu = calc_eq_g(0, N, F, N_MUL, Cu, gu, tmpNN1u, tmpNN2u,
-			                  tmpN1u, tmpN2u, tmpN3u, pvtu, worku, lwork);
+					calcBu(Bu + N*N*l, l, exp_Ku_warm);
+				for (int f = 0; f < F; f++)
+					mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L, 1.0,
+					        Bu, Cu + N*N*f, N, tmpNN1u);
+				phaseu = calc_eq_g(0, N, F, N_MUL, Cu, gu, tmpNN1u, tmpNN2u,
+				                  tmpN1u, tmpN2u, tmpN3u, pvtu, worku, lwork);
+			}
+			#pragma omp section
+			{
+				if (sim->p.period_uneqlt > 0)
+					for (int l = 0; l < L; l++)
+						calciBd(iBd + N*N*l, l, inv_exp_Kd_warm);
+				for (int l = 0; l < L; l++)
+					calcBd(Bd + N*N*l, l, exp_Kd_warm);
+				for (int f = 0; f < F; f++)
+					mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L, 1.0,
+					        Bd, Cd + N*N*f, N, tmpNN1d);
+				phased = calc_eq_g(0, N, F, N_MUL, Cd, gd, tmpNN1d, tmpNN2d,
+				                  tmpN1d, tmpN2d, tmpN3d, pvtd, workd, lwork);
+			}
 		}
-		#pragma omp section
+	} else {
+		#pragma omp parallel sections
 		{
-			if (sim->p.period_uneqlt > 0)
+			#pragma omp section
+			{
+				if (sim->p.period_uneqlt > 0)
+					for (int l = 0; l < L; l++)
+						calciBu(iBu + N*N*l, l, inv_exp_Ku);
 				for (int l = 0; l < L; l++)
-					calciBd(iBd + N*N*l, l);
-			for (int l = 0; l < L; l++)
-				calcBd(Bd + N*N*l, l);
-			for (int f = 0; f < F; f++)
-				mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L, 1.0,
-				        Bd, Cd + N*N*f, N, tmpNN1d);
-			phased = calc_eq_g(0, N, F, N_MUL, Cd, gd, tmpNN1d, tmpNN2d,
-			                  tmpN1d, tmpN2d, tmpN3d, pvtd, workd, lwork);
+					calcBu(Bu + N*N*l, l, exp_Ku);
+				for (int f = 0; f < F; f++)
+					mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L, 1.0,
+					        Bu, Cu + N*N*f, N, tmpNN1u);
+				phaseu = calc_eq_g(0, N, F, N_MUL, Cu, gu, tmpNN1u, tmpNN2u,
+				                  tmpN1u, tmpN2u, tmpN3u, pvtu, worku, lwork);
+			}
+			#pragma omp section
+			{
+				if (sim->p.period_uneqlt > 0)
+					for (int l = 0; l < L; l++)
+						calciBd(iBd + N*N*l, l, inv_exp_Kd);
+				for (int l = 0; l < L; l++)
+					calcBd(Bd + N*N*l, l, exp_Kd);
+				for (int f = 0; f < F; f++)
+					mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L, 1.0,
+					        Bd, Cd + N*N*f, N, tmpNN1d);
+				phased = calc_eq_g(0, N, F, N_MUL, Cd, gd, tmpNN1d, tmpNN2d,
+				                  tmpN1d, tmpN2d, tmpN3d, pvtd, workd, lwork);
+			}
 		}
 	}
 	phase = phaseu*phased;
-	}
 
+	// now have initial phase, gu, gd ready, proceed with simulation
 	for (; sim->s.sweep < sim->p.n_sweep; sim->s.sweep++) {
 		// check for signal at every full H-S sweep
 		const int stop_flag = sig_check_state(sim->s.sweep, 
@@ -254,85 +304,171 @@ static int dqmc(struct sim_data *sim) {
 
 			const int f = l / n_matmul;
 			const int recalc = ((l + 1) % n_matmul == 0);
-			num phaseu, phased;
-			#pragma omp parallel sections
-			{
-				#pragma omp section
+			// TODO why declare these again when they have already been 
+			// declared outside the l loop?
+			num phaseu, phased; 
+
+			if (sim->s.sweep < sim->p.n_sweep_warm/2) {
+				// printf("%d < %d, warmup, progress! use h_warm here\n",sim->s.sweep,sim->p.n_sweep_warm/2);
+				#pragma omp parallel sections
 				{
-					num *const restrict Bul = Bu + N*N*l;
-					num *const restrict iBul = iBu + N*N*l;
-					num *const restrict Cuf = Cu + N*N*f;
-					profile_begin(calcb);
-					calcBu(Bul, l);
-					if (!recalc || sim->p.period_uneqlt > 0)
-						calciBu(iBul, l);
-					profile_end(calcb);
-					if (recalc) {
-						profile_begin(multb);
-						mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L,
-						        1.0, Bu, Cuf, N, tmpNN1u);
-						profile_end(multb);
-						profile_begin(recalc);
-						#ifdef CHECK_G_WRP
-						if (sim->p.period_uneqlt == 0)
-							calciBu(iBu + N*N*l, l);
-						matmul(tmpNN1u, gu, iBu + N*N*l);
-						matmul(guwrp, Bu + N*N*l, tmpNN1u);
-						#endif
-						#ifdef CHECK_G_ACC
-						calc_eq_g((l + 1) % L, N, L, 1, Bu, guacc,
-						          tmpNN1u, tmpNN2u, tmpN1u, tmpN2u,
-						          tmpN3u, pvtu, worku, lwork);
-						#endif
-						phaseu = calc_eq_g((f + 1) % F, N, F, N_MUL, Cu, gu,
-						                  tmpNN1u, tmpNN2u, tmpN1u, tmpN2u,
-						                  tmpN3u, pvtu, worku, lwork);
-						profile_end(recalc);
-					} else {
-						profile_begin(wrap);
-						matmul(tmpNN1u, gu, iBul);
-						matmul(gu, Bul, tmpNN1u);
-						profile_end(wrap);
+					#pragma omp section
+					{
+						num *const restrict Bul = Bu + N*N*l;
+						num *const restrict iBul = iBu + N*N*l;
+						num *const restrict Cuf = Cu + N*N*f;
+						profile_begin(calcb);
+						calcBu(Bul, l, exp_Ku_warm);
+						if (!recalc || sim->p.period_uneqlt > 0)
+							calciBu(iBul, l, inv_exp_Ku_warm);
+						profile_end(calcb);
+						if (recalc) {
+							profile_begin(multb);
+							mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L,
+							        1.0, Bu, Cuf, N, tmpNN1u);
+							profile_end(multb);
+							profile_begin(recalc);
+							#ifdef CHECK_G_WRP
+							if (sim->p.period_uneqlt == 0)
+								calciBu(iBu + N*N*l, l, inv_exp_Ku_warm);
+							matmul(tmpNN1u, gu, iBu + N*N*l);
+							matmul(guwrp, Bu + N*N*l, tmpNN1u);
+							#endif
+							#ifdef CHECK_G_ACC
+							calc_eq_g((l + 1) % L, N, L, 1, Bu, guacc,
+							          tmpNN1u, tmpNN2u, tmpN1u, tmpN2u,
+							          tmpN3u, pvtu, worku, lwork);
+							#endif
+							phaseu = calc_eq_g((f + 1) % F, N, F, N_MUL, Cu, gu,
+							                  tmpNN1u, tmpNN2u, tmpN1u, tmpN2u,
+							                  tmpN3u, pvtu, worku, lwork);
+							profile_end(recalc);
+						} else {
+							profile_begin(wrap);
+							matmul(tmpNN1u, gu, iBul);
+							matmul(gu, Bul, tmpNN1u);
+							profile_end(wrap);
+						}
+					}
+					#pragma omp section
+					{
+						num *const restrict Bdl = Bd + N*N*l;
+						num *const restrict iBdl = iBd + N*N*l;
+						num *const restrict Cdf = Cd + N*N*f;
+						profile_begin(calcb);
+						calcBd(Bdl, l, exp_Kd_warm);
+						if (!recalc || sim->p.period_uneqlt > 0)
+							calciBd(iBdl, l, inv_exp_Kd_warm);
+						profile_end(calcb);
+						if (recalc) {
+							profile_begin(multb);
+							mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L,
+							        1.0, Bd, Cdf, N, tmpNN1d);
+							profile_end(multb);
+							profile_begin(recalc);
+							#ifdef CHECK_G_WRP
+							if (sim->p.period_uneqlt == 0)
+								calciBd(iBd + N*N*l, l, inv_exp_Kd_warm);
+							matmul(tmpNN1d, gd, iBd + N*N*l);
+							matmul(gdwrp, Bd + N*N*l, tmpNN1d);
+							#endif
+							#ifdef CHECK_G_ACC
+							calc_eq_g((l + 1) % L, N, L, 1, Bd, gdacc,
+							          tmpNN1d, tmpNN2d, tmpN1d, tmpN2d,
+							          tmpN3d, pvtd, workd, lwork);
+							#endif
+							phased = calc_eq_g((f + 1) % F, N, F, N_MUL, Cd, gd,
+							                  tmpNN1d, tmpNN2d, tmpN1d, tmpN2d,
+							                  tmpN3d, pvtd, workd, lwork);
+							profile_end(recalc);
+						} else {
+							profile_begin(wrap);
+							matmul(tmpNN1d, gd, iBdl);
+							matmul(gd, Bdl, tmpNN1d);
+							profile_end(wrap);
+						}
 					}
 				}
-				#pragma omp section
+			} else {
+				#pragma omp parallel sections
 				{
-					num *const restrict Bdl = Bd + N*N*l;
-					num *const restrict iBdl = iBd + N*N*l;
-					num *const restrict Cdf = Cd + N*N*f;
-					profile_begin(calcb);
-					calcBd(Bdl, l);
-					if (!recalc || sim->p.period_uneqlt > 0)
-						calciBd(iBdl, l);
-					profile_end(calcb);
-					if (recalc) {
-						profile_begin(multb);
-						mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L,
-						        1.0, Bd, Cdf, N, tmpNN1d);
-						profile_end(multb);
-						profile_begin(recalc);
-						#ifdef CHECK_G_WRP
-						if (sim->p.period_uneqlt == 0)
-							calciBd(iBd + N*N*l, l);
-						matmul(tmpNN1d, gd, iBd + N*N*l);
-						matmul(gdwrp, Bd + N*N*l, tmpNN1d);
-						#endif
-						#ifdef CHECK_G_ACC
-						calc_eq_g((l + 1) % L, N, L, 1, Bd, gdacc,
-						          tmpNN1d, tmpNN2d, tmpN1d, tmpN2d,
-						          tmpN3d, pvtd, workd, lwork);
-						#endif
-						phased = calc_eq_g((f + 1) % F, N, F, N_MUL, Cd, gd,
-						                  tmpNN1d, tmpNN2d, tmpN1d, tmpN2d,
-						                  tmpN3d, pvtd, workd, lwork);
-						profile_end(recalc);
-					} else {
-						profile_begin(wrap);
-						matmul(tmpNN1d, gd, iBdl);
-						matmul(gd, Bdl, tmpNN1d);
-						profile_end(wrap);
+					#pragma omp section
+					{
+						num *const restrict Bul = Bu + N*N*l;
+						num *const restrict iBul = iBu + N*N*l;
+						num *const restrict Cuf = Cu + N*N*f;
+						profile_begin(calcb);
+						calcBu(Bul, l, exp_Ku);
+						if (!recalc || sim->p.period_uneqlt > 0)
+							calciBu(iBul, l, inv_exp_Ku);
+						profile_end(calcb);
+						if (recalc) {
+							profile_begin(multb);
+							mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L,
+							        1.0, Bu, Cuf, N, tmpNN1u);
+							profile_end(multb);
+							profile_begin(recalc);
+							#ifdef CHECK_G_WRP
+							if (sim->p.period_uneqlt == 0)
+								calciBu(iBu + N*N*l, l, inv_exp_Ku);
+							matmul(tmpNN1u, gu, iBu + N*N*l);
+							matmul(guwrp, Bu + N*N*l, tmpNN1u);
+							#endif
+							#ifdef CHECK_G_ACC
+							calc_eq_g((l + 1) % L, N, L, 1, Bu, guacc,
+							          tmpNN1u, tmpNN2u, tmpN1u, tmpN2u,
+							          tmpN3u, pvtu, worku, lwork);
+							#endif
+							phaseu = calc_eq_g((f + 1) % F, N, F, N_MUL, Cu, gu,
+							                  tmpNN1u, tmpNN2u, tmpN1u, tmpN2u,
+							                  tmpN3u, pvtu, worku, lwork);
+							profile_end(recalc);
+						} else {
+							profile_begin(wrap);
+							matmul(tmpNN1u, gu, iBul);
+							matmul(gu, Bul, tmpNN1u);
+							profile_end(wrap);
+						}
 					}
-				}
+					#pragma omp section
+					{
+						num *const restrict Bdl = Bd + N*N*l;
+						num *const restrict iBdl = iBd + N*N*l;
+						num *const restrict Cdf = Cd + N*N*f;
+						profile_begin(calcb);
+						calcBd(Bdl, l, exp_Kd);
+						if (!recalc || sim->p.period_uneqlt > 0)
+							calciBd(iBdl, l, inv_exp_Kd);
+						profile_end(calcb);
+						if (recalc) {
+							profile_begin(multb);
+							mul_seq(N, L, f*n_matmul, ((f + 1)*n_matmul) % L,
+							        1.0, Bd, Cdf, N, tmpNN1d);
+							profile_end(multb);
+							profile_begin(recalc);
+							#ifdef CHECK_G_WRP
+							if (sim->p.period_uneqlt == 0)
+								calciBd(iBd + N*N*l, l, inv_exp_Kd);
+							matmul(tmpNN1d, gd, iBd + N*N*l);
+							matmul(gdwrp, Bd + N*N*l, tmpNN1d);
+							#endif
+							#ifdef CHECK_G_ACC
+							calc_eq_g((l + 1) % L, N, L, 1, Bd, gdacc,
+							          tmpNN1d, tmpNN2d, tmpN1d, tmpN2d,
+							          tmpN3d, pvtd, workd, lwork);
+							#endif
+							phased = calc_eq_g((f + 1) % F, N, F, N_MUL, Cd, gd,
+							                  tmpNN1d, tmpNN2d, tmpN1d, tmpN2d,
+							                  tmpN3d, pvtd, workd, lwork);
+							profile_end(recalc);
+						} else {
+							profile_begin(wrap);
+							matmul(tmpNN1d, gd, iBdl);
+							matmul(gd, Bdl, tmpNN1d);
+							profile_end(wrap);
+						}
+					}
+				}		
 			}
 
 			#ifdef CHECK_G_WRP
@@ -362,20 +498,20 @@ static int dqmc(struct sim_data *sim) {
 					(l + 1) % sim->p.period_eqlt == 0) {
 				#pragma omp parallel sections
 				{
-				#pragma omp section
-				{
-				profile_begin(half_wrap);
-				matmul(tmpNN1u, gu, exp_halfKu);
-				matmul(tmpNN2u, inv_exp_halfKu, tmpNN1u);
-				profile_end(half_wrap);
-				}
-				#pragma omp section
-				{
-				profile_begin(half_wrap);
-				matmul(tmpNN1d, gd, exp_halfKd);
-				matmul(tmpNN2d, inv_exp_halfKd, tmpNN1d);
-				profile_end(half_wrap);
-				}
+					#pragma omp section
+					{
+						profile_begin(half_wrap);
+						matmul(tmpNN1u, gu, exp_halfKu);
+						matmul(tmpNN2u, inv_exp_halfKu, tmpNN1u);
+						profile_end(half_wrap);
+					}
+					#pragma omp section
+					{
+						profile_begin(half_wrap);
+						matmul(tmpNN1d, gd, exp_halfKd);
+						matmul(tmpNN2d, inv_exp_halfKd, tmpNN1d);
+						profile_end(half_wrap);
+					}
 				}
 
 				profile_begin(meas_eq);
@@ -393,12 +529,12 @@ static int dqmc(struct sim_data *sim) {
 			// Each G object is size N x N x L
 			#pragma omp parallel sections
 			{
-			#pragma omp section
-			calc_ue_g(N, L, F, N_MUL, Bu, iBu, Cu, Gu0t, Gutt, Gut0,
-			          Gredu, tauu, Qu, worku, lwork);
-			#pragma omp section
-			calc_ue_g(N, L, F, N_MUL, Bd, iBd, Cd, Gd0t, Gdtt, Gdt0,
-			          Gredd, taud, Qd, workd, lwork);
+				#pragma omp section
+				calc_ue_g(N, L, F, N_MUL, Bu, iBu, Cu, Gu0t, Gutt, Gut0,
+				          Gredu, tauu, Qu, worku, lwork);
+				#pragma omp section
+				calc_ue_g(N, L, F, N_MUL, Bd, iBd, Cd, Gd0t, Gdtt, Gdt0,
+				          Gredd, taud, Qd, workd, lwork);
 			}
 
 			#ifdef CHECK_G_UE
@@ -410,43 +546,42 @@ static int dqmc(struct sim_data *sim) {
 			matdiff(N, N, Gdtt, N, gdacc, N);
 			#endif
 
-			// TODO: why do we need to half wrap before measuring here?
 			#pragma omp parallel sections
 			{
-			#pragma omp section
-			{
-			profile_begin(half_wrap);
-			for (int l = 0; l < L; l++) {
-				matmul(tmpNN1u, Gu0t + N*N*l, exp_halfKu);
-				matmul(Gu0t + N*N*l, inv_exp_halfKu, tmpNN1u);
-			}
-			for (int l = 0; l < L; l++) {
-				matmul(tmpNN1u, Gutt + N*N*l, exp_halfKu);
-				matmul(Gutt + N*N*l, inv_exp_halfKu, tmpNN1u);
-			}
-			for (int l = 0; l < L; l++) {
-				matmul(tmpNN1u, Gut0 + N*N*l, exp_halfKu);
-				matmul(Gut0 + N*N*l, inv_exp_halfKu, tmpNN1u);
-			}
-			profile_end(half_wrap);
-			}
-			#pragma omp section
-			{
-			profile_begin(half_wrap);
-			for (int l = 0; l < L; l++) {
-				matmul(tmpNN1d, Gd0t + N*N*l, exp_halfKd);
-				matmul(Gd0t + N*N*l, inv_exp_halfKd, tmpNN1d);
-			}
-			for (int l = 0; l < L; l++) {
-				matmul(tmpNN1d, Gdtt + N*N*l, exp_halfKd);
-				matmul(Gdtt + N*N*l, inv_exp_halfKd, tmpNN1d);
-			}
-			for (int l = 0; l < L; l++) {
-				matmul(tmpNN1d, Gdt0 + N*N*l, exp_halfKd);
-				matmul(Gdt0 + N*N*l, inv_exp_halfKd, tmpNN1d);
-			}
-			profile_end(half_wrap);
-			}
+				#pragma omp section
+				{
+					profile_begin(half_wrap);
+					for (int l = 0; l < L; l++) {
+						matmul(tmpNN1u, Gu0t + N*N*l, exp_halfKu);
+						matmul(Gu0t + N*N*l, inv_exp_halfKu, tmpNN1u);
+					}
+					for (int l = 0; l < L; l++) {
+						matmul(tmpNN1u, Gutt + N*N*l, exp_halfKu);
+						matmul(Gutt + N*N*l, inv_exp_halfKu, tmpNN1u);
+					}
+					for (int l = 0; l < L; l++) {
+						matmul(tmpNN1u, Gut0 + N*N*l, exp_halfKu);
+						matmul(Gut0 + N*N*l, inv_exp_halfKu, tmpNN1u);
+					}
+					profile_end(half_wrap);
+				}
+				#pragma omp section
+				{
+					profile_begin(half_wrap);
+					for (int l = 0; l < L; l++) {
+						matmul(tmpNN1d, Gd0t + N*N*l, exp_halfKd);
+						matmul(Gd0t + N*N*l, inv_exp_halfKd, tmpNN1d);
+					}
+					for (int l = 0; l < L; l++) {
+						matmul(tmpNN1d, Gdtt + N*N*l, exp_halfKd);
+						matmul(Gdtt + N*N*l, inv_exp_halfKd, tmpNN1d);
+					}
+					for (int l = 0; l < L; l++) {
+						matmul(tmpNN1d, Gdt0 + N*N*l, exp_halfKd);
+						matmul(Gdt0 + N*N*l, inv_exp_halfKd, tmpNN1d);
+					}
+					profile_end(half_wrap);
+				}
 			}
 
 			profile_begin(meas_uneq);
