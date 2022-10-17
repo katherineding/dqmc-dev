@@ -716,6 +716,8 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["meas_eqlt"]["density_u"] = np.zeros(num_i, dtype=dtype_num)
         f["meas_eqlt"]["density_d"] = np.zeros(num_i, dtype=dtype_num)
         f["meas_eqlt"]["double_occ"] = np.zeros(num_i, dtype=dtype_num)
+        f["meas_eqlt"]["sx"] = np.zeros(num_i, dtype=dtype_num)
+        f["meas_eqlt"]["sy"] = np.zeros(num_i, dtype=dtype_num)
         f["meas_eqlt"]["g00"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["g00_u"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["g00_d"] = np.zeros(num_ij, dtype=dtype_num)
