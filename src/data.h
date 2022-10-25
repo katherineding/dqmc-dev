@@ -49,9 +49,6 @@ struct meas_eqlt {
 	num *density_d;
 	num *double_occ;
 
-	num *sx;
-	num *sy;
-
 	num *g00;
 	num *g00_u;
 	num *g00_d;

@@ -426,8 +426,6 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	sim->m_eq.density_u  = my_calloc(num_i    * sizeof(num));
 	sim->m_eq.density_d  = my_calloc(num_i    * sizeof(num));
 	sim->m_eq.double_occ = my_calloc(num_i    * sizeof(num));
-	sim->m_eq.sx         = my_calloc(num_i    * sizeof(num));
-	sim->m_eq.sy         = my_calloc(num_i    * sizeof(num));
 	sim->m_eq.g00        = my_calloc(num_ij   * sizeof(num));
 	sim->m_eq.g00_u      = my_calloc(num_ij   * sizeof(num));
 	sim->m_eq.g00_d      = my_calloc(num_ij   * sizeof(num));
@@ -562,8 +560,6 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	my_read( , "/meas_eqlt/density_u",   num_h5t, sim->m_eq.density_u);
 	my_read( , "/meas_eqlt/density_d",   num_h5t, sim->m_eq.density_d);
 	my_read( , "/meas_eqlt/double_occ",  num_h5t, sim->m_eq.double_occ);
-	my_read( , "/meas_eqlt/sx",          num_h5t, sim->m_eq.sx);
-	my_read( , "/meas_eqlt/sy",          num_h5t, sim->m_eq.sy);
 	my_read( , "/meas_eqlt/g00",         num_h5t, sim->m_eq.g00);
 	my_read( , "/meas_eqlt/g00_u",       num_h5t, sim->m_eq.g00_u);
 	my_read( , "/meas_eqlt/g00_d",       num_h5t, sim->m_eq.g00_d);
@@ -673,8 +669,6 @@ int sim_data_save(const struct sim_data *sim) {
 	my_write("/meas_eqlt/density_u",  num_h5t,  sim->m_eq.density_u);
 	my_write("/meas_eqlt/density_d",  num_h5t,  sim->m_eq.density_d);
 	my_write("/meas_eqlt/double_occ", num_h5t,  sim->m_eq.double_occ);
-	my_write("/meas_eqlt/sx",         num_h5t,  sim->m_eq.sx);
-	my_write("/meas_eqlt/sy",         num_h5t,  sim->m_eq.sy);
 	my_write("/meas_eqlt/g00",        num_h5t,  sim->m_eq.g00);
 	my_write("/meas_eqlt/g00_u",      num_h5t,  sim->m_eq.g00_u);
 	my_write("/meas_eqlt/g00_d",      num_h5t,  sim->m_eq.g00_d);
@@ -819,8 +813,6 @@ void sim_data_free(const struct sim_data *sim) {
 	my_free(sim->m_eq.density);
 	my_free(sim->m_eq.density_u);
 	my_free(sim->m_eq.density_d);
-	my_free(sim->m_eq.sx);
-	my_free(sim->m_eq.sy);
 	my_free(sim->s.hs);
 	my_free(sim->p.del);
 	my_free(sim->p.exp_lambda);
