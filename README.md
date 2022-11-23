@@ -1,7 +1,7 @@
 # Complex-capable DQMC
 
 This DQMC code is for single-band Hubbard model, allowing kinetic hopping to be modified by Peierl's phase (which requires complexifying the entire simulation).
-Simulation parameters (including geometry and potentially multiple orbitals) are controlled by a python utility script in `util/`. The goal was to make the C code as "model parameter agnostic" as possible. Whether this is achieved is debatable -- it is usually still necessary to manually modify the C source code when we want to study a slightly different model, or add new measurements.
+Simulation parameters (including geometry and potentially multiple orbitals) are controlled by python utility script in  `gen_1band[_geometry]_hub.py` in `util/`. The default geometry is square. The goal was to make the C code as "model parameter agnostic" as possible. Whether this is achieved is debatable -- it is usually still necessary to manually modify the C source code when we want to study a slightly different model, or add new measurements.
 
 The source code is in C and uses idioms like `goto`, `restrict`, and implicit casting of `void *`pointers into other pointer types, which are not consistent with C++ standards. So if you try to compile the code with a C++ compiler, you'll likely get compilation errors.
 
@@ -20,6 +20,7 @@ Unfortunately, as we are dealing with a variety of computing environments, both 
 	- Intel compiler `icc`
 	- `imkl` headers and library `>= 2019`
 	- `hdf5` headers and library `>= 1.10`
+	To get correct paths to these headers and libraries, add `module load hdf5/1.10.2 icc/2019 imkl/2019` to your .bashrc.
 2. Perlmutter, CPU only: `perlmt-cpu` branch
 *Note: this branch may be modified to use the AOCC compiler and AOCL math libraries when it becomes supported in the future*
 	- GNU Compiler `gcc`
@@ -39,6 +40,9 @@ Unfortunately, as we are dealing with a variety of computing environments, both 
 - `scipy`
 
 You can get these via miniconda/anaconda.
+
+On sherlock, do `pip3 install --user gitpython h5py` once. Add `module load python/3.6.1 py-scipy/1.1.0_py36 py-numpy/1.14.3_py36 viz py-matplotlib/3.1.1_py36` to your .bashrc.
+
 
 ## Compilation
 
@@ -98,7 +102,7 @@ A catastropic failure mode that is NOT safeguarded against is if the same file i
 
 Unix system signals SIGINT, SIGTERM, SIGHUP, SIGUSR1 are caught by signal handlers and used to set a stop flag. The dqmc() loop checks for the stop flag every full H-S sweep. Upon reaching time limit or receiving an interrupt signal, simulation stops and throws away all unsaved data. We essentially regress to the last valid checkpoint.
 
-Checkpointing (save current simulation state and measurements to disk) is by default performed every 1000 full H-S sweeps. This is probably too frequent, so it's user adjustable in simulation file generation. If `checkpoint_every=0`, no checkpointing is performed at all (so upon any interrupt, all working data is lost).
+Checkpointing (save current simulation state and measurements to disk) is by default performed every 10000 full H-S sweeps. This may still be too frequent, so it's user adjustable in simulation file generation. If `checkpoint_every=0`, no checkpointing is performed at all (so upon any interrupt, all working data is lost).
 
 To have true benchmarking mode, where you never save any data to disk, genereate simulation file with `checkpoint_every=0` and run dqmc with `./<executable> -b`.
 
@@ -106,7 +110,7 @@ A crude mechanism for detecting hdf5 file corruption is implemented by setting a
 
 ## Differences from Edwin's Code
 
-This version of the DQMC code is based on edwnh/dqmc commit c91ba61. Divergence from Edwin's code as of 09/2022 at this point include:
+This version of the DQMC code is based on edwnh/dqmc commit c91ba61. Divergence from Edwin's code as of 11/2022 at this point include:
 
 - Removed `tick_t` alias
 
@@ -114,28 +118,28 @@ This version of the DQMC code is based on edwnh/dqmc commit c91ba61. Divergence 
 
 - Added consistency check between hdf5 simulation file generation script and compiled dqmc executable. Inconsistent versions do not necessarily indicate a problem.
 
-- Changed checkpoint behavior to be more conservative, as desrived above.
+- Changed checkpoint behavior to be more conservative, as described above.
 
 - Added `partial_write` file corruption check. 
 
 - More verbose log information.
 
-- Different return flags for functions. Most notably nonzero return codes for main() functions. This may trigger unexpected SLURM behavior. Needs testing.
+- ~~Different return flags for functions. Most notably nonzero return codes for main() functions. This may trigger unexpected SLURM behavior. Needs testing.~~
 
 - Removed unused python dqmc source code.
 
 - Added thermal phases, thermal, 2bond measurements. 
 
-- Added triangular lattice python generation script.
+- Added triangular lattice python generation script, but the bond definitions required for e.g. transport measurements are not implemented.
 
 ## TODOs
 
-- Add profiling for how much overhead regular checkpoints add.
+- ~~Add profiling for how much overhead regular checkpoints add.~~
 - Make `double` vs `complex double` a runtime choice, so we don't have to do separate compilations
 - Make dry run completely side-effect-free
 - Improve stack mechanism to reduce competition and wait times -- double ended queue? process private queues? But this is not the main bottleneck right now.
-- Add safeguards for simultaneous hdf5 file RW failure mode
-- BUGFIX for thermal phase `#define`s b/c of premature optimization.
+- ~~Add safeguards for simultaneous hdf5 file RW failure mode~~
+- ~~BUGFIX for thermal phase `#define`s b/c of premature optimization.~~
 - Add check for consistency between C standard `double _Complex` and whatever idiosyncratic complex type (probably a struct) the math library (AOCL, cray-libsci, IMKL, cuBLAS) is using, to make sure they are both 16 bytes.
 - Add a last_modified field to keep hdf5 files refreshed and always in $SCRATCH dir?
 - my_calloc() might no longer be the most optimal thing to do on AMD CPUs. It also may be less important to worry about memory alignment if matrix operations are offloaded to GPUs. 
