@@ -12,7 +12,8 @@
 #define NEM_BONDS 2
 
 // Number of OpenMP threads used for expensive unequal time measurements.
-// This overrides the omp_set_num_threads() function called by main
+// This overrides the omp_set_num_threads() function called by main if 
+// OMP_MEAS_NUM_THREADS is not specified during compilation.
 #ifndef OMP_MEAS_NUM_THREADS
 	#define OMP_MEAS_NUM_THREADS 2
 #endif
