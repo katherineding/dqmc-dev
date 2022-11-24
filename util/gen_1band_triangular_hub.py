@@ -370,48 +370,6 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     #     bond_hop_dict[10] = [26]
     #     bond_hop_dict[11] = [27]
 
-    # # 2-hop 2-hop mapping
-    # num_hop2_hop2 = hop2ps*hop2ps*N if trans_sym else num_hop2*num_hop2
-    # map_hop2_hop2 = np.zeros((num_hop2, num_hop2), dtype=np.int32)
-    # degen_hop2_hop2 = np.zeros(num_hop2_hop2, dtype = np.int32)
-    # for j in range(N):
-    #     for i in range(N):
-    #         k = map_ij[j, i]
-    #         for jb in range(hop2ps):
-    #             for ib in range(hop2ps):
-    #                 kk = k + num_ij*(ib + hop2ps*jb)
-    #                 map_hop2_hop2[j + N*jb, i + N*ib] = kk
-    #                 degen_hop2_hop2[kk] += 1
-    # assert num_hop2_hop2 == map_hop2_hop2.max() + 1
-
-    # # bond 2-hop mapping
-    # num_b_hop2 = bps*hop2ps*N if trans_sym else num_b*num_hop2
-    # map_b_hop2 = np.zeros((num_hop2, num_b), dtype=np.int32)
-    # degen_b_hop2 = np.zeros(num_b_hop2, dtype = np.int32)
-    # for j in range(N):
-    #     for i in range(N):
-    #         k = map_ij[j, i]
-    #         for jb in range(hop2ps):
-    #             for ib in range(bps):
-    #                 kk = k + num_ij*(ib + bps*jb)
-    #                 map_b_hop2[j + N*jb, i + N*ib] = kk
-    #                 degen_b_hop2[kk] += 1
-    # assert num_b_hop2 == map_b_hop2.max() + 1
-
-    # # 2-hop bond mapping
-    # num_hop2_b = hop2ps*bps*N if trans_sym else num_hop2*num_b
-    # map_hop2_b = np.zeros((num_b, num_hop2), dtype=np.int32)
-    # degen_hop2_b = np.zeros(num_hop2_b, dtype = np.int32)
-    # for j in range(N):
-    #     for i in range(N):
-    #         k = map_ij[j, i]
-    #         for jb in range(bps):
-    #             for ib in range(hop2ps):
-    #                 kk = k + num_ij*(ib + hop2ps*jb)
-    #                 map_hop2_b[j + N*jb, i + N*ib] = kk
-    #                 degen_hop2_b[kk] += 1
-    # assert num_hop2_b == map_hop2_b.max() + 1
-
 
     # 2 2-bond mapping
     num_b2b2 = b2ps*b2ps*N if trans_sym else num_b2*num_b2
@@ -659,7 +617,6 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["metadata"]["Ny"] = Ny
         f["metadata"]["bps"] = bps
         f["metadata"]["b2ps"] = b2ps
-        # f["metadata"]["hop2ps"] = hop2ps
         f["metadata"]["U"] = U
         f["metadata"]["t'"] = tp
         f["metadata"]["nflux"] = nflux
@@ -675,15 +632,11 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["map_ij"] = map_ij
         f["params"]["bonds"] = bonds
         f["params"]["bond2s"] = bond2s
-        # f["params"]["hop2s"] = hop2s
         f["params"]["map_bs"] = map_bs
         f["params"]["map_bb"] = map_bb
         f["params"]["map_b2b"] = map_b2b
         f["params"]["map_bb2"] = map_bb2
         f["params"]["map_b2b2"] = map_b2b2
-        # f["params"]["map_hop2_b"] = map_hop2_b
-        # f["params"]["map_b_hop2"] = map_b_hop2
-        # f["params"]["map_hop2_hop2"] = map_hop2_hop2
         f["params"]["peierlsu"] = peierls
         f["params"]["peierlsd"] = f["params"]["peierlsu"]
         f["params"]["pp_u"] = thermal_phases.conj()
@@ -705,7 +658,6 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["meas_bond_corr"] = meas_bond_corr
         f["params"]["meas_thermal"] = meas_thermal
         f["params"]["meas_2bond_corr"] = meas_2bond_corr
-        # f["params"]["meas_hop2_corr"] = meas_hop2_corr
         f["params"]["meas_energy_corr"] = meas_energy_corr
         f["params"]["meas_nematic_corr"] = meas_nematic_corr
         f["params"]["checkpoint_every"] = checkpoint_every
@@ -715,15 +667,11 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["num_ij"] = num_ij
         f["params"]["num_b"] = num_b
         f["params"]["num_b2"] = num_b2
-        # f["params"]["num_hop2"] = num_hop2
         f["params"]["num_bs"] = num_bs
         f["params"]["num_bb"] = num_bb
         f["params"]["num_b2b"] = num_b2b
         f["params"]["num_bb2"] = num_bb2
         f["params"]["num_b2b2"] = num_b2b2
-        # f["params"]["num_hop2_b"] = num_hop2_b
-        # f["params"]["num_b_hop2"] = num_b_hop2
-        # f["params"]["num_hop2_hop2"] = num_hop2_hop2
         f["params"]["degen_i"] = degen_i
         f["params"]["degen_ij"] = degen_ij
         f["params"]["degen_bs"] = degen_bs
@@ -731,9 +679,6 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["degen_bb2"] = degen_bb2
         f["params"]["degen_b2b"] = degen_b2b
         f["params"]["degen_b2b2"] = degen_b2b2
-        # f["params"]["degen_b_hop2"] = degen_b_hop2
-        # f["params"]["degen_hop2_b"] = degen_hop2_b
-        # f["params"]["degen_hop2_hop2"] = degen_hop2_hop2
         f["params"]["exp_Ku"] = exp_Ku
         f["params"]["exp_Kd"] = f["params"]["exp_Ku"]
         f["params"]["inv_exp_Ku"] = inv_exp_Ku
@@ -816,16 +761,6 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                 # f["meas_uneqlt"]["js2js2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
                 # f["meas_uneqlt"]["k2k2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
                 # f["meas_uneqlt"]["ks2ks2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
-            #currently this toggles 2hop-2hop (4 phase), bond-2hop and 
-            #2hop-bond (3 phase) type measurements. May be smart to separate based on 
-            #number of fermion operators or based on number of phase factors to 
-            #reduce unnecessary measurements
-            # if meas_hop2_corr:
-            #     f["meas_uneqlt"]["J2J2"] = np.zeros(num_hop2_hop2*L, dtype=dtype_num)
-            #     f["meas_uneqlt"]["J2jn"] = np.zeros(num_hop2_b*L, dtype=dtype_num)
-            #     f["meas_uneqlt"]["J2j"] = np.zeros(num_hop2_b*L, dtype=dtype_num)
-            #     f["meas_uneqlt"]["jnJ2"] = np.zeros(num_b_hop2*L, dtype=dtype_num)
-            #     f["meas_uneqlt"]["jJ2"] = np.zeros(num_b_hop2*L, dtype=dtype_num)
             if meas_energy_corr:
                 f["meas_uneqlt"]["kv"] = np.zeros(num_bs*L, dtype=dtype_num)
                 f["meas_uneqlt"]["kn"] = np.zeros(num_bs*L, dtype=dtype_num)

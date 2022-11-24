@@ -243,7 +243,6 @@ void measure_uneqlt(const struct params *const restrict p,
 	const int num_b2b = p->num_b2b, num_bb2 = p->num_bb2;
 	const int meas_bond_corr = p->meas_bond_corr;
 	const int meas_2bond_corr = p->meas_2bond_corr;
-	// const int meas_hop2_corr = p->meas_hop2_corr;
 	const int meas_energy_corr = p->meas_energy_corr;
 	const int meas_nematic_corr = p->meas_nematic_corr;
 	const int meas_thermal = p->meas_thermal;
