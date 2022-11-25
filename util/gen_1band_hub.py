@@ -651,12 +651,11 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
                 f["meas_uneqlt"]["ksks"] = np.zeros(num_bb*L, dtype=dtype_num)
             #thermal is subset of bond-bond type measurements
             if meas_thermal:
-                f["meas_uneqlt"]["j2jn"] = np.zeros(num_b2b*L, dtype=dtype_num) #new
-                f["meas_uneqlt"]["jnj2"] = np.zeros(num_bb2*L, dtype=dtype_num) #new
+                f["meas_uneqlt"]["j2jn"] = np.zeros(num_b2b*L, dtype=dtype_num) 
+                f["meas_uneqlt"]["jnj2"] = np.zeros(num_bb2*L, dtype=dtype_num) 
                 f["meas_uneqlt"]["jnjn"] = np.zeros(num_bb*L, dtype=dtype_num)
-                #had to name things "new_" since wen already used jjn, jnj name 
-                f["meas_uneqlt"]["new_jjn"] = np.zeros(num_bb*L, dtype=dtype_num)
-                f["meas_uneqlt"]["new_jnj"] = np.zeros(num_bb*L, dtype=dtype_num)
+                f["meas_uneqlt"]["jjn"] = np.zeros(num_bb*L, dtype=dtype_num)
+                f["meas_uneqlt"]["jnj"] = np.zeros(num_bb*L, dtype=dtype_num)
             if meas_2bond_corr:
                 #use j2j2 should correspond to J2J2 results after summation
                 f["meas_uneqlt"]["j2j2"] = np.zeros(num_b2b2*L, dtype=dtype_num)

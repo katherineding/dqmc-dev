@@ -489,7 +489,7 @@ void measure_uneqlt(const struct params *const restrict p,
 						 -pui1i0 * puj0j1 * (delta_i1j1 - guj1i1) * gui0j0
 						 +pui1i0 * puj1j0 * (delta_i1j0 - guj0i1) * gui0j1);
 
-					m->new_jnj[bb] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
+					m->jnj[bb] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
 
 					//j(i0i1)jn(j0j1), 6 fermion product, 2 phases, t = 0
 					_wick_j = - pui1i0*gui0i1 + pui0i1*gui1i0 - pdi1i0*gdi0i1 + pdi0i1*gdi1i0;
@@ -517,7 +517,7 @@ void measure_uneqlt(const struct params *const restrict p,
 					t4 = ( (delta_i1j0 - gdj0i1) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi0j1 ) * 
 						pdi1i0 * (puj0j1 * guj1j0 - puj1j0 * guj0j1);
 
-					m->new_jjn[bb] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
+					m->jjn[bb] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
 			
 					//TODO further simplify this expression for faster measurements?
 					//TODO: declare these constant earlier?
@@ -1084,7 +1084,7 @@ void measure_uneqlt(const struct params *const restrict p,
 							 +pui1i0 * puj1j0 * (delta_i1j0 - guj0i1) * gui0j1);
 
 						//j(i0i1)jn(j0j1), 6 fermion product, 2 phases, t > 0
-						m->new_jnj[bb + num_bb*t] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
+						m->jnj[bb + num_bb*t] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
 
 						_wick_jn = (2 - guj0j0 - guj1j1) * (pdj0j1 * gdj1j0 - pdj1j0 * gdj0j1) + 
 						 		   (2 - gdj0j0 - gdj1j1) * (puj0j1 * guj1j0 - puj1j0 * guj0j1);
@@ -1111,7 +1111,7 @@ void measure_uneqlt(const struct params *const restrict p,
 							pdi1i0 * (puj0j1 * guj1j0 - puj1j0 * guj0j1);
 
 
-						m->new_jjn[bb + num_bb*t] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
+						m->jjn[bb + num_bb*t] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
 
 						// thermal: jnjn, t > 0. TODO: simplify this expression for faster measurements
 						const num _wick_jn_i = (2 - gui0i0 - gui1i1) * (pdi0i1 * gdi1i0 - pdi1i0 * gdi0i1) + 

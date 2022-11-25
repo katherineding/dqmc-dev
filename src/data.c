@@ -427,8 +427,8 @@ int sim_data_read_alloc(struct sim_data *sim) {
 			sim->m_ue.j2jn = my_calloc(num_b2b*L * sizeof(num));
 			sim->m_ue.jnj2 = my_calloc(num_bb2*L * sizeof(num));
 			sim->m_ue.jnjn= my_calloc(num_bb*L * sizeof(num));
-			sim->m_ue.new_jnj= my_calloc(num_bb*L * sizeof(num));
-			sim->m_ue.new_jjn= my_calloc(num_bb*L * sizeof(num));
+			sim->m_ue.jnj= my_calloc(num_bb*L * sizeof(num));
+			sim->m_ue.jjn= my_calloc(num_bb*L * sizeof(num));
 		}
 		if (sim->p.meas_2bond_corr) {
 			// sim->m_ue.pair_b2b2= my_calloc(num_b2b2*L * sizeof(num));
@@ -530,8 +530,8 @@ int sim_data_read_alloc(struct sim_data *sim) {
 			my_read( , "/meas_uneqlt/j2jn",     num_h5t, sim->m_ue.j2jn);
 			my_read( , "/meas_uneqlt/jnj2",     num_h5t, sim->m_ue.jnj2);
 			my_read( , "/meas_uneqlt/jnjn",     num_h5t, sim->m_ue.jnjn);
-			my_read( , "/meas_uneqlt/new_jnj",    num_h5t, sim->m_ue.new_jnj);
-			my_read( , "/meas_uneqlt/new_jjn",    num_h5t, sim->m_ue.new_jjn);
+			my_read( , "/meas_uneqlt/jnj",    num_h5t, sim->m_ue.jnj);
+			my_read( , "/meas_uneqlt/jjn",    num_h5t, sim->m_ue.jjn);
 		}
 		if (sim->p.meas_2bond_corr) {
 			// my_read( , "/meas_uneqlt/pair_b2b2", num_h5t, sim->m_ue.pair_b2b2);
@@ -626,8 +626,8 @@ int sim_data_save(const struct sim_data *sim) {
 			my_write("/meas_uneqlt/j2jn",     num_h5t, sim->m_ue.j2jn);
 			my_write("/meas_uneqlt/jnj2",     num_h5t, sim->m_ue.jnj2);
 			my_write("/meas_uneqlt/jnjn",    num_h5t, sim->m_ue.jnjn);
-			my_write("/meas_uneqlt/new_jnj",    num_h5t, sim->m_ue.new_jnj);
-			my_write("/meas_uneqlt/new_jjn",    num_h5t, sim->m_ue.new_jjn);
+			my_write("/meas_uneqlt/jnj",    num_h5t, sim->m_ue.jnj);
+			my_write("/meas_uneqlt/jjn",    num_h5t, sim->m_ue.jjn);
 		}
 		if (sim->p.meas_2bond_corr) {
 			// my_write("/meas_uneqlt/pair_b2b2", num_h5t, sim->m_ue.pair_b2b2);
@@ -674,8 +674,8 @@ void sim_data_free(const struct sim_data *sim) {
 		}
 		if (sim->p.meas_thermal) {
 			my_free(sim->m_ue.jnjn);
-			my_free(sim->m_ue.new_jnj);
-			my_free(sim->m_ue.new_jjn);
+			my_free(sim->m_ue.jnj);
+			my_free(sim->m_ue.jjn);
 			my_free(sim->m_ue.jnj2);
 			my_free(sim->m_ue.j2jn);
 		}

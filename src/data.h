@@ -65,7 +65,7 @@ struct meas_uneqlt {
 	num *j2j,  *jj2;
 	num *j2j2;//, *js2js2;
 	// num *k2k2, *ks2ks2;
-	num *new_jnj, *new_jjn;
+	num *jnj, *jjn;
 	num *kv, *kn, *vv, *vn;
 	num *nem_nnnn, *nem_ssss;
 };
