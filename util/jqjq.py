@@ -39,7 +39,8 @@ def get_component(path,name="j2j2"):
     elif name == "j2j" or name == "j2jn":
         # three phases
         correlator.shape = -1, L, bps, b2ps, Ny, Nx
-    elif name == "jnj" or name == "jjn" or name == "jnjn" or name == "jj":
+    elif name == "jnj" or name == "jjn" or name == "jnjn" or name == "jj" \
+    or name == "new_jnj" or name == "new_jjn":
         # two phases
         correlator.shape = -1, L, bps, bps, Ny, Nx
     else:
@@ -76,15 +77,14 @@ def thermal_sum(path,q0_corrs):
     jjn_q0, jnj_q0,\
     jnjn_q0,jj_q0 = q0_corrs
 
-    # 2bond type t factors
-    # # have different t2_arr for ZF and FF because as of commit 7d986ee, 
-    # # there are still wrong defines for thermal phases in meas.c
-    # if nflux == 0:
-    #     t2_arr= [1+2*tp**2,1+2*tp**2,2,2,2*tp,2*tp,2*tp,2*tp,4*tp,4*tp, tp**2,tp**2]
     # bond type t factors
     t_arr = [1,1,tp,tp]
     # 2bond type t factors
-    t2_arr = [1,1,1,1,tp,tp,tp,tp,tp,tp,tp**2,tp**2]
+    if "half-fill-tp" in path and nflux == 0:
+        print("using legacy t2_arr!")
+        t2_arr= [1+2*tp**2,1+2*tp**2,2,2,2*tp,2*tp,2*tp,2*tp,4*tp,4*tp, tp**2,tp**2]
+    else:
+        t2_arr = [1,1,1,1,tp,tp,tp,tp,tp,tp,tp**2,tp**2]
     # my two-hop bond dx,dy distances
     dx2_arr = [2,0,1,-1,2,1,-2,-1,0,1,2,-2]
     dy2_arr = [0,2,1, 1,1,2, 1, 2,1,0,2, 2]
@@ -294,15 +294,21 @@ def my_correlators(path):
         util.load_firstfile(path,"metadata/U","metadata/mu","metadata/beta",\
             "metadata/Nx","metadata/Ny","metadata/bps",\
             "metadata/b2ps", "metadata/nflux",\
-            "metadata/t'","params/N","params/L","params/dt")    
+            "metadata/t'","params/N","params/L","params/dt")
+
+    if "half-fill-tp" in path:
+        print("[janky workaround] using legacy analysis!")
+        jjn_q0  = get_component(path,'new_jjn')
+        jnj_q0  = get_component(path,'new_jnj')
+    else:
+        jjn_q0  = get_component(path,'jjn')
+        jnj_q0  = get_component(path,'jnj')
     
     j2j2_q0 = get_component(path,'j2j2')
     j2j_q0  = get_component(path,'j2j')
     jj2_q0  = get_component(path,'jj2')
     j2jn_q0 = get_component(path,'j2jn')
     jnj2_q0 = get_component(path,'jnj2')
-    jjn_q0  = get_component(path,'jjn')
-    jnj_q0  = get_component(path,'jnj')
     jnjn_q0 = get_component(path,'jnjn')
     jj_q0   = get_component(path,'jj')
 
