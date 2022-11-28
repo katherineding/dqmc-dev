@@ -89,6 +89,8 @@ def thermal_sum(path,q0_corrs):
     dx2_arr = [2,0,1,-1,2,1,-2,-1,0,1,2,-2]
     dy2_arr = [0,2,1, 1,1,2, 1, 2,1,0,2, 2]
 
+    result_dict = {}
+
     #bond-bond types: jj, jnj, jjn, jnjn
     jj_xx   =   jj_yy = 0;
     jnjn_xx = jnjn_yy = 0;
@@ -134,6 +136,8 @@ def thermal_sum(path,q0_corrs):
             jjn_yx += t_arr[itype] *t_arr[jtype]*dy_arr[itype]*dx_arr[jtype]*\
                 jjn_q0[:,:,itype,jtype]
 
+    #Note: this is the JNJN correlator with (-i)^2 factor!
+    result_dict["JNJN"] = (-1) * np.stack((jj_xx, jj_yy, jj_xy, jj_yx),axis=0)
 
     #==========================================================================
     # 2bond-2bond types: j2j2
@@ -202,8 +206,11 @@ def thermal_sum(path,q0_corrs):
 
     #==========================================================================
     # prefactors required to actually form JQ(tau)JQ(0) operator
-    # see manuscript supplement notes section 7.2
-    pre_arr = 1/16*np.outer([1,-U,U+2*mu],[1,-U,U+2*mu])
+    # see transport notes for detailed derivation
+    # NOTE: the prefactor is 1/4, not 1/16, because in DQMC measurements,
+    # each bond is only counted once. In notes, each bond is counted twice.
+    # Extra (-1) factor due to (i)^2
+    pre_arr = 1/4*np.outer([1,-U,U+2*mu],[1,-U,U+2*mu]) * (-1)
     xx = pre_arr[0,0]*j2j2_xx + pre_arr[0,1]*j2jn_xx + pre_arr[0,2]*j2j_xx + \
          pre_arr[1,0]*jnj2_xx + pre_arr[1,1]*jnjn_xx + pre_arr[1,2]*jnj_xx + \
          pre_arr[2,0]*jj2_xx  + pre_arr[2,1]*jjn_xx  + pre_arr[2,2]*jj_xx 
@@ -220,30 +227,30 @@ def thermal_sum(path,q0_corrs):
          pre_arr[1,0]*jnj2_yx + pre_arr[1,1]*jnjn_yx + pre_arr[1,2]*jnj_yx + \
          pre_arr[2,0]*jj2_yx  + pre_arr[2,1]*jjn_yx  + pre_arr[2,2]*jj_yx 
 
-    jqjq_dict = {}
-    jqjq_dict["j2j2"] = np.stack((j2j2_xx, j2j2_yy, j2j2_xy, j2j2_yx),axis=0)
-    jqjq_dict["j2jn"] = np.stack((j2jn_xx, j2jn_yy, j2jn_xy, j2jn_yx),axis=0)
-    jqjq_dict["j2j"] =  np.stack((j2j_xx,   j2j_yy,  j2j_xy,  j2j_yx),axis=0)
-    jqjq_dict["jnj2"] = np.stack((jnj2_xx, jnj2_yy, jnj2_xy, jnj2_yx),axis=0)
-    jqjq_dict["jnjn"] = np.stack((jnjn_xx, jnjn_yy, jnjn_xy, jnjn_yx),axis=0)
-    jqjq_dict["jnj"] =  np.stack((jnj_xx,  jnj_yy,   jnj_xy,  jnj_yx),axis=0)
-    jqjq_dict["jj2"] =  np.stack((jj2_xx,  jj2_yy,   jj2_xy,  jj2_yx),axis=0)
-    jqjq_dict["jjn"] =  np.stack((jjn_xx,  jjn_yy,   jjn_xy,  jjn_yx),axis=0)
-    jqjq_dict["jj"] =   np.stack((jj_xx,    jj_yy,    jj_xy,   jj_yx),axis=0)
-    jqjq_dict["JQJQ"] = np.stack((   xx,       yy,       xy,      yx),axis=0)
-    jqjq_dict['metadata'] = (L,dt)
+    result_dict["j2j2"] = np.stack((j2j2_xx, j2j2_yy, j2j2_xy, j2j2_yx),axis=0)
+    result_dict["j2jn"] = np.stack((j2jn_xx, j2jn_yy, j2jn_xy, j2jn_yx),axis=0)
+    result_dict["j2j"] =  np.stack((j2j_xx,   j2j_yy,  j2j_xy,  j2j_yx),axis=0)
+    result_dict["jnj2"] = np.stack((jnj2_xx, jnj2_yy, jnj2_xy, jnj2_yx),axis=0)
+    result_dict["jnjn"] = np.stack((jnjn_xx, jnjn_yy, jnjn_xy, jnjn_yx),axis=0)
+    result_dict["jnj"] =  np.stack((jnj_xx,  jnj_yy,   jnj_xy,  jnj_yx),axis=0)
+    result_dict["jj2"] =  np.stack((jj2_xx,  jj2_yy,   jj2_xy,  jj2_yx),axis=0)
+    result_dict["jjn"] =  np.stack((jjn_xx,  jjn_yy,   jjn_xy,  jjn_yx),axis=0)
+    result_dict["jj"] =   np.stack((jj_xx,    jj_yy,    jj_xy,   jj_yx),axis=0)
+    result_dict["JQJQ"] = np.stack((   xx,       yy,       xy,      yx),axis=0)
+    result_dict['metadata'] = (L,dt)
 
     #==========================================================================
-    #prefactors same for all three methods for JQ(tau)J(0),J(tau)JQ(0)
+    #prefactors same for JQ(tau)JN(0),JN(tau)JQ(0)
     #TODO: check if this is actually consistent with bond, map definitions
     #JQJ and JJQ might be flipped around
-    pre_arr = np.array([1,-U,U+2*mu]) * 1/4
+    #NOTE: No (-e) factor here, because using the particle-current J_N
+    pre_arr = np.array([1,-U,U+2*mu]) * 1/2 
     xx = pre_arr[0]*j2j_xx + pre_arr[1]*jnj_xx + pre_arr[2]*jj_xx
     yy = pre_arr[0]*j2j_yy + pre_arr[1]*jnj_yy + pre_arr[2]*jj_yy
     xy = pre_arr[0]*j2j_xy + pre_arr[1]*jnj_xy + pre_arr[2]*jj_xy
     yx = pre_arr[0]*j2j_yx + pre_arr[1]*jnj_yx + pre_arr[2]*jj_yx
 
-    jqjq_dict["JQJ"] =  np.stack((   xx,     yy,      xy,     yx),axis=0)
+    result_dict["JQJN"] =  np.stack((   xx,     yy,      xy,     yx),axis=0)
 
     #==========================================================================
     xx = pre_arr[0]*jj2_xx + pre_arr[1]*jjn_xx + pre_arr[2]*jj_xx
@@ -251,14 +258,14 @@ def thermal_sum(path,q0_corrs):
     xy = pre_arr[0]*jj2_xy + pre_arr[1]*jjn_xy + pre_arr[2]*jj_xy
     yx = pre_arr[0]*jj2_yx + pre_arr[1]*jjn_yx + pre_arr[2]*jj_yx
 
-    jqjq_dict["JJQ"] =  np.stack((   xx,     yy,      xy,     yx), axis=0)
+    result_dict["JNJQ"] =  np.stack((   xx,     yy,      xy,     yx), axis=0)
     # jjq_dict['metadata'] = (L,dt)
-    return jqjq_dict
+    return result_dict
 
-def plot_components(jqjq_dict):
-    L, dt = jqjq_dict["metadata"] 
+def plot_components(result_dict):
+    L, dt = result_dict["metadata"] 
     taus = range(L)*dt
-    for k,v in jqjq_dict.items():
+    for k,v in result_dict.items():
         if k == "metadata": continue
         else:
             xx,yy = v[0],v[1];
