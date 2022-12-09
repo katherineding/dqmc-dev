@@ -69,8 +69,10 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
              n_delay=16, n_matmul=8, n_sweep_warm=200, n_sweep_meas=2000,
              period_eqlt=8, period_uneqlt=0,
              meas_bond_corr=1, meas_energy_corr=0, meas_nematic_corr=0,
-             meas_thermal=0, meas_2bond_corr=0, 
+             meas_thermal=0, meas_2bond_corr=0, meas_chiral=0,
              trans_sym=1, checkpoint_every=10000):
+    if meas_chiral:
+        raise NotImplementedError
     assert L % n_matmul == 0 and L % period_eqlt == 0
     N = Nx * Ny
 
