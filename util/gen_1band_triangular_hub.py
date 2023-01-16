@@ -76,7 +76,8 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         raise NotImplementedError
 
     assert L % n_matmul == 0 and L % period_eqlt == 0
-    N = Nx * Ny
+    Norb = 1
+    N = Norb * Nx * Ny
 
     if nflux != 0:
         dtype_num = np.complex128
@@ -415,124 +416,9 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     #                 map_b2b[j + N*jb, i + N*ib] = kk
     #                 degen_b2b[kk] += 1
     # assert num_b2b == map_b2b.max() + 1
-
-    # First: hopping (assuming periodic boundaries and no field)
-    kij = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex128)
-    for iy in range(Ny):
-        for ix in range(Nx):
-            iy1 = (iy + 1) % Ny
-            iyn = (iy - 1) % Ny
-            ix1 = (ix + 1) % Nx
-            ixn = (ix - 1) % Nx
-                #jx      jy    jo     ix       iy    io
-            kij[ix1+Nx*iy , ix +Nx*iy ] += -1
-            kij[ix +Nx*iy , ix1+Nx*iy ] += -1
-            kij[ix +Nx*iy1, ix +Nx*iy ] += -1
-            kij[ix +Nx*iy , ix +Nx*iy1] += -1
-            kij[ix1+Nx*iy , ix +Nx*iy1] += -1
-            kij[ix +Nx*iy1, ix1+Nx*iy ] += -1
-
-    # Next: phases accumulated by single-hop processes
-    # "a1" primitive vector: (1/2, sqrt(3)/2)
-    # "a2" primitive vector: (-1/2, sqrt(3)/2)
-    # phi[i,j] = path integral det by (j-i) * A(mid) = 
-    # hopping phase in j -> i hop
-    alpha = 0.5  # gauge choice. 0.5 for symmetric gauge.
-    beta = 1 - alpha
-    phi = np.zeros((Ny*Nx, Ny*Nx))
-
-    phi2 = np.zeros((Ny*Nx, Ny*Nx))
-    # path is straight line
-    # if Ny is even, prefer dy - -Ny/2 over Ny/2. likewise for even Nx
-    const = np.sqrt(3)
-    prefactor = 2*np.pi*2*nflux/(const*Nx*Ny)
-    #displacement vector: d
-    for dy in range((1-Ny)//2, (1+Ny)//2):
-        for dx in range((1-Nx)//2, (1+Nx)//2):
-            for iy in range(Ny):
-                for ix in range(Nx):
-                    #start site: j
-                    jy = iy + dy
-                    jjy = jy % Ny
-                    jx = ix + dx
-                    jjx = jx % Nx
-
-                    #index offset = \pm Nx, \pm Ny
-                    offset_a1 = jx - jjx
-                    offset_a2 = jy - jjy
-
-                    #true spatial location R_i
-                    irx = (ix - iy)/2
-                    iry = const * (ix + iy)/2
-
-                    #true spatial location R_j
-                    jrx = (jx - jy)/2
-                    jry = const * (jx + jy)/2
-
-                    # wrapped spatial location R_j
-                    jjrx = (jjx - jjy)/2
-                    jjry = const * (jjx + jjy)/2
-                    
-                    #true displacement distance R_d
-                    drx = (dx - dy)/2
-                    dry = const * (dx + dy)/2
-
-                    # true displacement mid point    
-                    mrx = (irx + jrx)/2
-                    mry = (iry + jry)/2
-
-                    #indices are opposite edwin's code, but 
-                    # results should be equivalent, 
-                    # since phi_ij sign also flipped?
-                    # NOTE This is important: How to get this boundary phase?
-                    # 
-                    #True spatial offset: wrap along a1 direction
-                    offset_a1_rx = offset_a1 / 2
-                    offset_a1_ry = offset_a1 * const / 2
-
-                    #True spatial offset: wrap along a2 direction
-                    offset_a2_rx = - offset_a2 / 2
-                    offset_a2_ry = offset_a2 * const / 2
-
-                    xwrap_phase = (+alpha) * offset_a1_ry * jjrx \
-                                    - beta * offset_a1_rx * jjry
-                    ywrap_phase = (+alpha) * offset_a2_ry * jjrx \
-                                    - beta * offset_a2_rx * jjry
-
-                    #either choice of xywrap or yxwrap phase should lead to \
-                    #the correct Hamiltonian
-                    xywrap_phase = alpha * offset_a2_ry * offset_a1_rx \
-                                   -beta * offset_a2_rx * offset_a1_ry
-
-
-                    yxwrap_phase = alpha * offset_a1_ry * offset_a2_rx \
-                                   -beta * offset_a1_rx * offset_a2_ry
-
-                    # if not np.isclose(0,xywrap_phase):
-                    #     print(prefactor*xywrap_phase, prefactor*yxwrap_phase)
-
-                    # Field quantization condition due to finite lattice
-                    corner_diff = prefactor*(xywrap_phase - yxwrap_phase)/(2*np.pi)
-                    #assert np.isclose(corner_diff,0) or np.isclose(np.abs(corner_diff),nflux)
-                    #print("nflux",nflux,corner_diff)
-                    
-                    phi2[jjx + Nx*jjy,ix + Nx*iy] = - alpha*mry*drx + beta*mrx*dry \
-                        + xwrap_phase + ywrap_phase + xywrap_phase
-
-                    phi[jjx + Nx*jjy,ix + Nx*iy] = \
-                        - alpha*mry*drx + beta*mrx*dry + \
-                        - ((-alpha*offset_a1*jrx*const/2+beta*offset_a1*jry/2) + \
-                        (-alpha*offset_a2*jrx*const/2-beta*offset_a2*jry/2) - \
-                        alpha*offset_a1*offset_a2*const/2 )
-
-    #Lattice total area = Nx * Ny * sqrt(3) * a^2 / 2
-    #prefactor = 2*np.pi*2*nflux/(const*Nx*Ny)
-    peierls = np.exp(1j*prefactor*phi)
-
-    peierls2 = np.exp(1j*prefactor*phi2)
-
-    # print(np.allclose(peierls,peierls2))
-
+    
+    kij,peierls = tight_binding.H_periodic_triangular(Nx,Ny,t=1,tp=tp,nflux=nflux,alpha=1/2)
+    
     #phases accumulated by two-hop processes
     #Here: types 0,1 include t' factors
     #   Types 2-7: sum of two paths
@@ -563,35 +449,14 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     #                 i1 = hop2s[1, i + i1type*N]
     #                 pp += peierls[i0,i1] * peierls[i1,i2]
     #         thermal_phases[btype,i] = pp
-    #         
-                
-    if dtype_num == np.complex128:
-        Ku = kij * peierls
-        Ku2 = kij * peierls2
-
-
-        # plt.figure()
-        # plt.matshow(Ku.real)
-        # plt.colorbar()
-
-        # plt.figure()
-        # plt.matshow(Ku2.real)
-        # plt.colorbar()
-
-        # print(np.linalg.norm(Ku-Ku2))
-
-        assert np.linalg.norm(Ku - Ku.T.conj()) < 1e-10, f"max diff {np.linalg.norm(Ku - Ku.T.conj())}"
-    else:
-        Ku = kij.real
-        assert np.max(np.abs(peierls.imag)) < 1e-10
-        peierls = peierls.real
-        assert np.max(np.abs(thermal_phases.imag)) < 1e-10
-        thermal_phases = thermal_phases.real
-    #print(thermal_phases.dtype,thermal_phases.shape)
     #
+                
+    #account for different data type when nflux=0
+    Ku = kij if nflux != 0 else kij.real
+    peierls = peierls if nflux !=0 else peierls.real
     
 
-    for i in range(Ny*Nx):
+    for i in range(N):
         Ku[i, i] -= mu
 
     exp_Ku = expm(-dt * Ku)
@@ -618,6 +483,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
             "Hubbard (complex)" if dtype_num == np.complex128 else "Hubbard"
         f["metadata"]["Nx"] = Nx
         f["metadata"]["Ny"] = Ny
+        f["metadata"]["Norb"] = Norb
         f["metadata"]["bps"] = bps
         f["metadata"]["b2ps"] = b2ps
         f["metadata"]["U"] = U
@@ -625,6 +491,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["metadata"]["nflux"] = nflux
         f["metadata"]["mu"] = mu
         f["metadata"]["beta"] = L*dt
+        f["metadata"]["trans_sym"] = trans_sym
 
         # parameters used by dqmc code
         f.create_group("params")
