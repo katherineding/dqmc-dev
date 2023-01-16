@@ -1,6 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.sparse import diags,coo_matrix
 
 
 #by periodic, I really mean modified periodic BC consistent with applied 

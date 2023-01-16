@@ -1,7 +1,6 @@
 import os
 import shutil
 import sys
-import matplotlib.pyplot as plt
 import tight_binding
 
 import h5py
