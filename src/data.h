@@ -8,6 +8,8 @@ struct params {
 	int N, L;
 	int *map_i, *map_ij;
 	int *bonds, *bond2s, *map_bs, *map_bb, *map_b2b, *map_bb2, *map_b2b2;
+	int *plaqs;
+	int *map_plaq;
 	num *peierlsu, *peierlsd;
 	num *pp_u, *pp_d, *ppr_u, *ppr_d;
 //	double dt;
@@ -16,10 +18,13 @@ struct params {
 	int n_sweep_warm, n_sweep_meas;
 	int period_eqlt, period_uneqlt;
 	int meas_bond_corr, meas_thermal, meas_2bond_corr, meas_energy_corr, meas_nematic_corr;
+	int meas_chiral;
 	int checkpoint_every;
 
 	int num_i, num_ij;
+	int num_plaq_accum, num_plaq;
 	int num_b, num_b2, num_bs, num_bb, num_bb2, num_b2b, num_b2b2;
+	int *degen_plaq;
 	int *degen_i, *degen_ij, *degen_bs, *degen_bb, *degen_b2b2, *degen_b2b, *degen_bb2;
 	num *exp_Ku, *exp_Kd, *inv_exp_Ku, *inv_exp_Kd;
 	num *exp_halfKu, *exp_halfKd, *inv_exp_halfKu, *inv_exp_halfKd;
@@ -40,6 +45,7 @@ struct meas_eqlt {
 	num *density;
 	num *double_occ;
 
+	num *chi;
 	num *g00;
 	num *nn;
 	num *xx;

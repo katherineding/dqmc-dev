@@ -110,7 +110,45 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     num_i = map_i.max() + 1
     assert num_i == degen_i.size
 
-    # 2 site mapping
+    print("Trans sym = ",trans_sym)
+    # print("map",map_i,"degen",degen_i,"num",num_i)
+
+    # plaquette definitions NOTE: only valid for t' = 0
+    plaq_per_site = 2
+    num_plaq = plaq_per_site * N
+    plaqs = np.zeros((3, num_plaq), dtype=np.int32)
+    for iy in range(Ny):
+        for ix in range(Nx):
+            i = ix + Nx*iy
+            iy1 = (iy + 1) % Ny
+            ix1 = (ix + 1) % Nx
+            plaqs[0, i] = i             # i0 = i
+            plaqs[1, i] = ix1 + Nx*iy   # i1 = i + x
+            plaqs[2, i] = ix  + Nx*iy1  # i2 = i + y // counterclockwise
+            plaqs[0, i + N] = ix1 + Nx*iy   # i0 = i + x
+            plaqs[1, i + N] = ix1 + Nx*iy1  # i1 = i + x + y
+            plaqs[2, i + N] = ix  + Nx*iy1  # i2 = i + x //counterclockwise
+
+
+    #print("total number of triangular plaqs:",num_plaq)
+    # 1 plaquette mapping
+    if trans_sym:
+        #first Nx*Ny gioes to slot 0, second Nx*Ny goes to slot 1
+        map_plaq = np.zeros(num_plaq, dtype=np.int32)
+        map_plaq[N:] = 1
+        degen_plaq = np.array((N,N), dtype=np.int32)
+    else:
+        map_plaq = np.arange(num_plaq, dtype=np.int32)
+        degen_plaq = np.ones(num_plaq, dtype=np.int32)
+    
+    num_plaq_accum = map_plaq.max() + 1
+    
+    assert num_plaq_accum == degen_plaq.size
+    # print("map:",map_plaq)
+    # print("degen:",degen_plaq, degen_plaq.size)
+    # print("save slots:",num_plaq_accum)
+
+    # 2 site mapping 
     map_ij = np.zeros((N, N), dtype=np.int32)
     num_ij = N if trans_sym else N*N
     degen_ij = np.zeros(num_ij, dtype=np.int32)
@@ -173,6 +211,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
 
     # NOTE: placeholder
     thermal_phases = np.ones((b2ps, N),dtype=np.complex128)
+    thermal_phases = thermal_phases if nflux !=0 else thermal_phases.real
     
 
     kij,peierls = tight_binding.H_periodic_triangular(Nx,Ny,t=1,tp=tp,nflux=nflux,alpha=1/2)
@@ -208,6 +247,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["metadata"]["Norb"] = Norb
         f["metadata"]["bps"] = bps
         f["metadata"]["b2ps"] = b2ps
+        f["metadata"]["plaq_per_site"] = plaq_per_site
         f["metadata"]["U"] = U
         f["metadata"]["t'"] = tp
         f["metadata"]["nflux"] = nflux
@@ -224,6 +264,8 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["map_ij"] = map_ij
         f["params"]["bonds"] = bonds
         f["params"]["bond2s"] = bond2s
+        f["params"]["plaqs"] = plaqs #OK
+        f["params"]["map_plaq"] = map_plaq #OK
         f["params"]["map_bs"] = map_bs
         f["params"]["map_bb"] = map_bb
         f["params"]["map_b2b"] = map_b2b
@@ -252,11 +294,14 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["meas_2bond_corr"] = meas_2bond_corr
         f["params"]["meas_energy_corr"] = meas_energy_corr
         f["params"]["meas_nematic_corr"] = meas_nematic_corr
+        f["params"]["meas_chiral"] = meas_chiral #OK
         f["params"]["checkpoint_every"] = checkpoint_every
 
         # precalculated stuff
         f["params"]["num_i"] = num_i
         f["params"]["num_ij"] = num_ij
+        f["params"]["num_plaq_accum"] = num_plaq_accum #OK
+        f["params"]["num_plaq"] = num_plaq #OK
         f["params"]["num_b"] = num_b
         f["params"]["num_b2"] = num_b2
         f["params"]["num_bs"] = num_bs
@@ -266,6 +311,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["num_b2b2"] = num_b2b2
         f["params"]["degen_i"] = degen_i
         f["params"]["degen_ij"] = degen_ij
+        f["params"]["degen_plaq"] = degen_plaq #OK
         f["params"]["degen_bs"] = degen_bs
         f["params"]["degen_bb"] = degen_bb
         f["params"]["degen_bb2"] = degen_bb2
@@ -311,6 +357,9 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["meas_eqlt"]["xx"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["zz"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["pair_sw"] = np.zeros(num_ij, dtype=dtype_num)
+        if meas_chiral:
+            f["meas_eqlt"]["chi"] = np.zeros(num_plaq_accum, dtype=dtype_num)
+
         if meas_energy_corr:
             f["meas_eqlt"]["kk"] = np.zeros(num_bb, dtype=dtype_num)
             f["meas_eqlt"]["kv"] = np.zeros(num_bs, dtype=dtype_num)

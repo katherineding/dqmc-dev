@@ -102,6 +102,7 @@ int consistency_check(const char *file, FILE * log){
  * if we are to run DQMC against this file. This is an estimate and doesn't 
  * account for -DCHECK_G_WRP, -DCHECK_G_ACC -DCHECK_G_UE
  * TODO: separate the sim vs calculation components?
+ * TODO: this function is now outdated after new measurements
  * @param  char*  file_name of form <name>.h5
  * @return size_t heap memory requirement
  *         -1 if H5Fopen() failed
@@ -341,6 +342,8 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	my_read(_int, "/params/L",      &sim->p.L);
 	my_read(_int, "/params/num_i",  &sim->p.num_i);
 	my_read(_int, "/params/num_ij", &sim->p.num_ij);
+	my_read(_int, "/params/num_plaq_accum",  &sim->p.num_plaq_accum);
+	my_read(_int, "/params/num_plaq",&sim->p.num_plaq);
 	my_read(_int, "/params/num_b", &sim->p.num_b);
 	my_read(_int, "/params/num_b2", &sim->p.num_b2);
 	my_read(_int, "/params/num_bs", &sim->p.num_bs);
@@ -354,10 +357,13 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	my_read(_int, "/params/meas_2bond_corr", &sim->p.meas_2bond_corr);
 	my_read(_int, "/params/meas_energy_corr", &sim->p.meas_energy_corr);
 	my_read(_int, "/params/meas_nematic_corr", &sim->p.meas_nematic_corr);
+	my_read(_int, "/params/meas_chiral", &sim->p.meas_chiral);
 	my_read(_int, "/params/checkpoint_every", &sim->p.checkpoint_every);
 
 	const int N = sim->p.N, L = sim->p.L;
 	const int num_i = sim->p.num_i, num_ij = sim->p.num_ij;
+	const int num_plaq_accum = sim->p.num_plaq_accum;
+	const int num_plaq       = sim->p.num_plaq;
 	const int num_b = sim->p.num_b, num_bs = sim->p.num_bs, num_bb = sim->p.num_bb;
 	const int num_b2 = sim->p.num_b2, num_b2b2 = sim->p.num_b2b2, 
 	          num_b2b = sim->p.num_b2b, num_bb2 = sim->p.num_bb2;
@@ -367,6 +373,9 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	sim->p.map_ij        = my_calloc(N*N      * sizeof(int));
 	sim->p.bonds         = my_calloc(num_b*2  * sizeof(int));
 	sim->p.bond2s        = my_calloc(num_b2*2  * sizeof(int));
+	sim->p.plaqs         = my_calloc(num_plaq*3 * sizeof(int));
+	sim->p.map_plaq      = my_calloc(num_plaq * sizeof(int));
+
 	sim->p.map_bs        = my_calloc(num_b*N  * sizeof(int));
 	sim->p.map_bb        = my_calloc(num_b*num_b * sizeof(int));
 	sim->p.map_b2b2      = my_calloc(num_b2*num_b2 * sizeof(int));
@@ -379,6 +388,7 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	sim->p.ppr_u      = my_calloc(N*num_b2/N * sizeof(num));
 	sim->p.ppr_d      = my_calloc(N*num_b2/N * sizeof(num));
 	sim->p.degen_i       = my_calloc(num_i    * sizeof(int));
+	sim->p.degen_plaq    = my_calloc(num_plaq_accum * sizeof(int));
 	sim->p.degen_ij      = my_calloc(num_ij   * sizeof(int));
 	sim->p.degen_bs      = my_calloc(num_bs   * sizeof(int));
 	sim->p.degen_bb      = my_calloc(num_bb   * sizeof(int));
@@ -403,6 +413,9 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	sim->m_eq.xx         = my_calloc(num_ij   * sizeof(num));
 	sim->m_eq.zz         = my_calloc(num_ij   * sizeof(num));
 	sim->m_eq.pair_sw    = my_calloc(num_ij   * sizeof(num));
+	if (sim->p.meas_chiral) {
+		sim->m_eq.chi = my_calloc(num_plaq_accum * sizeof(num));
+	}
 	if (sim->p.meas_energy_corr) {
 		sim->m_eq.kk = my_calloc(num_bb * sizeof(num));
 		sim->m_eq.kv = my_calloc(num_bs * sizeof(num));
@@ -454,6 +467,8 @@ int sim_data_read_alloc(struct sim_data *sim) {
 
 	my_read(_int,    "/params/map_i",          sim->p.map_i);
 	my_read(_int,    "/params/map_ij",         sim->p.map_ij);
+	my_read(_int,    "/params/map_plaq",       sim->p.map_plaq);
+	my_read(_int,    "/params/plaqs",          sim->p.plaqs);
 	my_read(_int,    "/params/bonds",          sim->p.bonds);
 	my_read(_int,    "/params/bond2s",          sim->p.bond2s);
 	my_read(_int,    "/params/map_bs",         sim->p.map_bs);
@@ -475,6 +490,7 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	my_read(_int,    "/params/period_eqlt",   &sim->p.period_eqlt);
 	my_read(_int,    "/params/degen_i",        sim->p.degen_i);
 	my_read(_int,    "/params/degen_ij",       sim->p.degen_ij);
+	my_read(_int,    "/params/degen_plaq",     sim->p.degen_plaq);
 	my_read(_int,    "/params/degen_bs",       sim->p.degen_bs);
 	my_read(_int,    "/params/degen_bb",       sim->p.degen_bb);
 	my_read(_int,    "/params/degen_b2b",       sim->p.degen_b2b);
@@ -504,6 +520,9 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	my_read( , "/meas_eqlt/xx",          num_h5t, sim->m_eq.xx);
 	my_read( , "/meas_eqlt/zz",          num_h5t, sim->m_eq.zz);
 	my_read( , "/meas_eqlt/pair_sw",     num_h5t, sim->m_eq.pair_sw);
+	if (sim->p.meas_chiral) {
+		my_read( , "/meas_eqlt/chi", num_h5t, sim->m_eq.chi);
+	}
 	if (sim->p.meas_energy_corr) {
 		my_read( , "/meas_eqlt/kk", num_h5t, sim->m_eq.kk);
 		my_read( , "/meas_eqlt/kv", num_h5t, sim->m_eq.kv);
@@ -600,6 +619,9 @@ int sim_data_save(const struct sim_data *sim) {
 	my_write("/meas_eqlt/xx",         num_h5t,  sim->m_eq.xx);
 	my_write("/meas_eqlt/zz",         num_h5t,  sim->m_eq.zz);
 	my_write("/meas_eqlt/pair_sw",    num_h5t,  sim->m_eq.pair_sw);
+	if (sim->p.meas_chiral) {
+		my_write("/meas_eqlt/chi", num_h5t, sim->m_eq.chi);
+	}
 	if (sim->p.meas_energy_corr) {
 		my_write("/meas_eqlt/kk", num_h5t, sim->m_eq.kk);
 		my_write("/meas_eqlt/kv", num_h5t, sim->m_eq.kv);
@@ -708,6 +730,10 @@ void sim_data_free(const struct sim_data *sim) {
 		my_free(sim->m_eq.kv);
 		my_free(sim->m_eq.kk);
 	}
+
+	if (sim->p.meas_chiral) {
+		my_free(sim->m_eq.chi);
+	}
 	my_free(sim->m_eq.pair_sw);
 	my_free(sim->m_eq.zz);
 	my_free(sim->m_eq.xx);
@@ -731,6 +757,7 @@ void sim_data_free(const struct sim_data *sim) {
 	my_free(sim->p.degen_bb2);
 	my_free(sim->p.degen_b2b);
 	my_free(sim->p.degen_bs);
+	my_free(sim->p.degen_plaq);
 	my_free(sim->p.degen_ij);
 	my_free(sim->p.degen_i);
 	my_free(sim->p.peierlsd);
@@ -746,6 +773,8 @@ void sim_data_free(const struct sim_data *sim) {
 	my_free(sim->p.map_bs);
 	my_free(sim->p.bond2s);
 	my_free(sim->p.bonds);
+	my_free(sim->p.plaqs);
+	my_free(sim->p.map_plaq);
 	my_free(sim->p.map_ij);
 	my_free(sim->p.map_i);
 }
