@@ -495,8 +495,6 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         peierls = peierls.real
         assert np.max(np.abs(thermal_phases.imag)) < 1e-10
         thermal_phases = thermal_phases.real
-    # print(thermal_phases.dtype,thermal_phases.shape)
-    # print(thermal_phases)
 
     for i in range(Ny*Nx):
         Ku[i, i] -= mu
@@ -505,14 +503,11 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     inv_exp_Ku = expm(dt * Ku)
     exp_halfKu = expm(-dt/2 * Ku)
     inv_exp_halfKu = expm(dt/2 * Ku)
-#   exp_K = np.array(mpm.expm(mpm.matrix(-dt * K)).tolist(), dtype=np.float64)
 
     U_i = U*np.ones_like(degen_i, dtype=np.float64)
     assert U_i.shape[0] == num_i
 
     exp_lmbd = np.exp(0.5*U_i*dt) + np.sqrt(np.expm1(U_i*dt))
-#    exp_lmbd = np.exp(np.arccosh(np.exp(0.5*U_i*dt)))
-#    exp_lmbd = float(mpm.exp(mpm.acosh(mpm.exp(0.5*float(U*dt)))))
     exp_lambda = np.array((exp_lmbd[map_i]**-1, exp_lmbd[map_i]))
     delll = np.array((exp_lmbd[map_i]**2 - 1, exp_lmbd[map_i]**-2 - 1))
 
