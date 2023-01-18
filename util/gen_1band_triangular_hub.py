@@ -110,7 +110,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     num_i = map_i.max() + 1
     assert num_i == degen_i.size
 
-    print("Trans sym = ",trans_sym)
+    # print("Trans sym = ",trans_sym)
     # print("map",map_i,"degen",degen_i,"num",num_i)
 
     # plaquette definitions NOTE: only valid for t' = 0
