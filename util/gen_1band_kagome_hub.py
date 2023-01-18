@@ -72,16 +72,15 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
              meas_bond_corr=0, meas_energy_corr=0, meas_nematic_corr=0,
              meas_thermal=0, meas_2bond_corr=0, meas_chiral=0,
              trans_sym=1, checkpoint_every=10000):
-    if (not np.isclose(tp,0.0)) or period_uneqlt or meas_energy_corr or meas_chiral:
+    if (not np.isclose(tp,0.0)) or period_uneqlt or meas_energy_corr:
         raise NotImplementedError
 
     assert L % n_matmul == 0 and L % period_eqlt == 0
     Norb=3
     #NOTE: N = total number of orbitals, not total number of unit cells
-    N = Norb * Nx * Ny 
-
+    N = Norb * Nx*Ny 
     #location (ix, iy) orbital io is 3d matrix (ix,iy,io)
-    # with total index ix + Nx * iy + (Nx * Ny) * i0
+    # with total index ix + Nx * iy + (Nx*Ny) * i0
 
     if nflux != 0:
         dtype_num = np.complex128
@@ -107,7 +106,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     # 1 site mapping
     if trans_sym:
         map_i = np.zeros(N, dtype=np.int32)
-        map_i[Ny*Nx:] = 1 #second orbital
+        map_i[Ny*Nx:2*Ny*Nx] = 1 #second orbital
         map_i[2*Ny*Nx:] = 2 #third orbital
         degen_i = np.array((Ny*Nx, Ny*Nx, Ny*Nx), dtype=np.int32)
     else:
@@ -116,16 +115,28 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     num_i = map_i.max() + 1
     assert num_i == degen_i.size
 
-    # plaquette definitions NOTE: placeholder
-    plaq_per_site = 1
-    num_plaq = plaq_per_site * Nx * Ny
+    # plaquette definitions TODO: check correctness
+    plaq_per_cell = 2
+    num_plaq = plaq_per_cell * Nx*Ny
     plaqs = np.zeros((3, num_plaq), dtype=np.int32)
+    for iy in range(Ny):
+        for ix in range(Nx):
+            i = ix + Nx*iy 
+            iy1 = (iy + 1) % Ny
+            ix1 = (ix + 1) % Nx
+            plaqs[0, i] = i             # i0 = i(A)
+            plaqs[1, i] = i + Nx*Ny * 2 # i1 = i(C)
+            plaqs[2, i] = i + Nx*Ny * 1 # i2 = i(B) // counterclockwise
+            plaqs[0, i + Nx*Ny] = i                        # i0 = i(A)
+            plaqs[1, i + Nx*Ny] = ix1 + Nx*iy + Nx*Ny * 2  # i1 = i+x(C)
+            plaqs[2, i + Nx*Ny] = ix  + Nx*iy1 + Nx*Ny * 1 # i2 = i+y(B) //counterclockwise
 
     # 1 plaquette mapping NOTE: placeholder
     if trans_sym:
         #first Nx*Ny gioes to slot 0, second Nx*Ny goes to slot 1
         map_plaq = np.zeros(num_plaq, dtype=np.int32)
-        degen_plaq = np.array((Nx*Ny,), dtype=np.int32)
+        map_plaq[Nx*Ny:] = 1
+        degen_plaq = np.array((Nx*Ny,Nx*Ny), dtype=np.int32)
     else:
         map_plaq = np.arange(num_plaq, dtype=np.int32)
         degen_plaq = np.ones(num_plaq, dtype=np.int32)
@@ -135,7 +146,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     assert num_plaq_accum == degen_plaq.size
 
     # print("Trans sym = ",trans_sym)
-    # print("map",map_plaq,"degen",degen_plaq,"num",num_plaq)
+    # print("map",map_plaq,"degen",degen_plaq,"num",num_plaq_accum)
 
     # 2 site mapping
     map_ij = np.zeros((N, N), dtype=np.int32)
@@ -241,7 +252,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["metadata"]["Norb"] = Norb
         f["metadata"]["bps"] = bps
         f["metadata"]["b2ps"] = b2ps
-        f["metadata"]["plaq_per_site"] = plaq_per_site
+        f["metadata"]["plaq_per_site"] = plaq_per_cell
         f["metadata"]["U"] = U
         f["metadata"]["t'"] = tp
         f["metadata"]["nflux"] = nflux

@@ -115,7 +115,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
 
     # plaquette definitions NOTE: only valid for t' = 0
     plaq_per_site = 2
-    num_plaq = plaq_per_site * N
+    num_plaq = plaq_per_site * Nx*Ny
     plaqs = np.zeros((3, num_plaq), dtype=np.int32)
     for iy in range(Ny):
         for ix in range(Nx):
@@ -135,8 +135,8 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     if trans_sym:
         #first Nx*Ny gioes to slot 0, second Nx*Ny goes to slot 1
         map_plaq = np.zeros(num_plaq, dtype=np.int32)
-        map_plaq[N:] = 1
-        degen_plaq = np.array((N,N), dtype=np.int32)
+        map_plaq[Nx*Ny:] = 1
+        degen_plaq = np.array((Nx*Ny,Nx*Ny), dtype=np.int32)
     else:
         map_plaq = np.arange(num_plaq, dtype=np.int32)
         degen_plaq = np.ones(num_plaq, dtype=np.int32)
