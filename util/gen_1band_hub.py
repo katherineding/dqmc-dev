@@ -74,6 +74,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     if meas_chiral:
         raise NotImplementedError
     assert L % n_matmul == 0 and L % period_eqlt == 0
+    Norb = 1
     N = Nx * Ny
 
     if nflux != 0:
@@ -106,6 +107,27 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         degen_i = np.ones(N, dtype=np.int32)
     num_i = map_i.max() + 1
     assert num_i == degen_i.size
+
+    # plaquette definitions NOTE: placeholder
+    plaq_per_cell = 1
+    num_plaq = plaq_per_cell * Nx*Ny
+    plaqs = np.zeros((3, num_plaq), dtype=np.int32)
+
+    # 1 plaquette mapping NOTE: placeholder
+    if trans_sym:
+        #first Nx*Ny gioes to slot 0, second Nx*Ny goes to slot 1
+        map_plaq = np.zeros(num_plaq, dtype=np.int32)
+        degen_plaq = np.array((Nx*Ny,), dtype=np.int32)
+    else:
+        map_plaq = np.arange(num_plaq, dtype=np.int32)
+        degen_plaq = np.ones(num_plaq, dtype=np.int32)
+    
+    num_plaq_accum = map_plaq.max() + 1
+    
+    assert num_plaq_accum == degen_plaq.size
+
+    print("Trans sym = ",trans_sym)
+    print("map",map_plaq,"degen",degen_plaq,"num",num_plaq_accum)
 
     # 2 site mapping: site r = (x,y) has total (column order) index x + Nx * y
     map_ij = np.zeros((N, N), dtype=np.int32)
@@ -520,8 +542,10 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
             "Hubbard (complex)" if dtype_num == np.complex128 else "Hubbard"
         f["metadata"]["Nx"] = Nx
         f["metadata"]["Ny"] = Ny
+        f["metadata"]["Norb"] = Norb
         f["metadata"]["bps"] = bps
         f["metadata"]["b2ps"] = b2ps
+        f["metadata"]["plaq_per_site"] = plaq_per_cell
         f["metadata"]["U"] = U
         f["metadata"]["t'"] = tp
         f["metadata"]["nflux"] = nflux
@@ -538,6 +562,8 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["map_ij"] = map_ij
         f["params"]["bonds"] = bonds
         f["params"]["bond2s"] = bond2s
+        f["params"]["plaqs"] = plaqs
+        f["params"]["map_plaq"] = map_plaq
         f["params"]["map_bs"] = map_bs
         f["params"]["map_bb"] = map_bb
         f["params"]["map_b2b"] = map_b2b
@@ -566,11 +592,14 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["meas_2bond_corr"] = meas_2bond_corr
         f["params"]["meas_energy_corr"] = meas_energy_corr
         f["params"]["meas_nematic_corr"] = meas_nematic_corr
+        f["params"]["meas_chiral"] = meas_chiral
         f["params"]["checkpoint_every"] = checkpoint_every
 
         # precalculated stuff
         f["params"]["num_i"] = num_i
         f["params"]["num_ij"] = num_ij
+        f["params"]["num_plaq_accum"] = num_plaq_accum
+        f["params"]["num_plaq"] = num_plaq
         f["params"]["num_b"] = num_b
         f["params"]["num_b2"] = num_b2
         f["params"]["num_bs"] = num_bs
@@ -580,6 +609,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["num_b2b2"] = num_b2b2
         f["params"]["degen_i"] = degen_i
         f["params"]["degen_ij"] = degen_ij
+        f["params"]["degen_plaq"] = degen_plaq
         f["params"]["degen_bs"] = degen_bs
         f["params"]["degen_bb"] = degen_bb
         f["params"]["degen_bb2"] = degen_bb2
@@ -625,6 +655,9 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["meas_eqlt"]["xx"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["zz"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["pair_sw"] = np.zeros(num_ij, dtype=dtype_num)
+        if meas_chiral:
+            f["meas_eqlt"]["chi"] = np.zeros(num_plaq_accum, dtype=dtype_num)
+
         if meas_energy_corr:
             f["meas_eqlt"]["kk"] = np.zeros(num_bb, dtype=dtype_num)
             f["meas_eqlt"]["kv"] = np.zeros(num_bs, dtype=dtype_num)

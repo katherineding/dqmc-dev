@@ -131,7 +131,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
             plaqs[1, i + Nx*Ny] = ix1 + Nx*iy + Nx*Ny * 2  # i1 = i+x(C)
             plaqs[2, i + Nx*Ny] = ix  + Nx*iy1 + Nx*Ny * 1 # i2 = i+y(B) //counterclockwise
 
-    # 1 plaquette mapping NOTE: placeholder
+    # 1 plaquette mapping 
     if trans_sym:
         #first Nx*Ny gioes to slot 0, second Nx*Ny goes to slot 1
         map_plaq = np.zeros(num_plaq, dtype=np.int32)
