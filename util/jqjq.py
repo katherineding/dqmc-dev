@@ -303,13 +303,13 @@ def my_correlators(path):
             "metadata/b2ps", "metadata/nflux",\
             "metadata/t'","params/N","params/L","params/dt")
 
-    if "half-fill-tp" in path:
-        print("[janky workaround] using legacy analysis!")
-        jjn_q0  = get_component(path,'new_jjn')
-        jnj_q0  = get_component(path,'new_jnj')
-    else:
+    try:
         jjn_q0  = get_component(path,'jjn')
         jnj_q0  = get_component(path,'jnj')
+    except KeyError as e:
+        print(f"KeyError: {e}, using legacy names")
+        jjn_q0  = get_component(path,'new_jjn')
+        jnj_q0  = get_component(path,'new_jnj')
     
     j2j2_q0 = get_component(path,'j2j2')
     j2j_q0  = get_component(path,'j2j')
