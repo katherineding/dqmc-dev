@@ -452,7 +452,7 @@ int main(int argc, char **argv)
 		memcpy(log_file, sim_file, len_sim_file);
 		memcpy(log_file + len_sim_file, ".log", 5);
 
-		// my_printf("memory requirement: %zu bytes\n", get_memory_req(sim_file));
+		// my_printf("memory requirement: %d bytes\n", get_memory_req(sim_file));
 		my_printf("starting:   %s\n", sim_file);
 		my_printf("logging to: %s\n", log_file);
 		// run dqmc here 

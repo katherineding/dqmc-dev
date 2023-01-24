@@ -108,7 +108,7 @@ int consistency_check(const char *file, FILE * log){
  *         -3 if my_read failed
  *         -4 if H5Fclose() failed
  */
-size_t get_memory_req(const char *file) {
+int get_memory_req(const char *file) {
 	const hid_t file_id = H5Fopen(file, H5F_ACC_RDONLY, H5P_DEFAULT);
 	return_if(file_id < 0, OPEN_FAIL, "H5Fopen() failed for %s: %ld\n", 
 		file, file_id);
@@ -312,7 +312,7 @@ size_t get_memory_req(const char *file) {
 
 	const size_t total_mem = sim_alloc_in_bytes + compute_alloc_in_bytes;
 
-	return total_mem;
+	return (int) total_mem;
 }
 
 /**

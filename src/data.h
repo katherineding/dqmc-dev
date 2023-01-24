@@ -80,7 +80,7 @@ struct sim_data {
 
 int set_num_h5t(void);
 
-size_t get_memory_req(const char *file);
+int get_memory_req(const char *file);
 
 int consistency_check(const char *file, FILE * log);
 
