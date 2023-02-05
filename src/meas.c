@@ -76,7 +76,10 @@ void measure_eqlt(const struct params *const restrict p,
 		const int r = p->map_i[i];
 		const num pre = phase / p->degen_i[r];
 		const num guii = gu[i + i*N], gdii = gd[i + i*N];
+		// NOTE: density is *sum* of density_u and density_d
 		m->density[r] += pre*(2. - guii - gdii);
+		m->density_u[r] += pre*(1. - guii);
+		m->density_d[r] += pre*(1. - gdii);
 		m->double_occ[r] += pre*(1. - guii)*(1. - gdii);
 	}
 
@@ -90,10 +93,15 @@ void measure_eqlt(const struct params *const restrict p,
 			const num guij = gu[i + j*N], gdij = gd[i + j*N];
 			const num guji = gu[j + i*N], gdji = gd[j + i*N];
 			const num gujj = gu[j + j*N], gdjj = gd[j + j*N];
+			// NOTE: g00 is *average* of g00_u and g00_d
 			#ifdef USE_PEIERLS
 			m->g00[r] += 0.5*pre*(guij*p->peierlsu[j + i*N] + gdij*p->peierlsd[j + i*N]);
+			m->g00_u[r] += pre*(guij*p->peierlsu[j + i*N]);
+			m->g00_d[r] += pre*(gdij*p->peierlsd[j + i*N]);
 			#else
 			m->g00[r] += 0.5*pre*(guij + gdij);
+			m->g00_u[r] += pre*guij;
+			m->g00_d[r] += pre*gdij;
 			#endif
 			const num x = delta*(guii + gdii) - (guji*guij + gdji*gdij);
 			m->nn[r] += pre*((2. - guii - gdii)*(2. - gujj - gdjj) + x);
@@ -274,11 +282,16 @@ void measure_uneqlt(const struct params *const restrict p,
 				const num gdij = Gdt0_t[i + N*j];
 				const num gdji = Gd0t_t[j + N*i];
 				const num gdjj = Gd00[j + N*j];
+				// NOTE: gt0 is *average* of gt0_u and gt0_d
 					#ifdef USE_PEIERLS
 				m->gt0[r + num_ij*t] += 0.5*pre*(guij*p->peierlsu[j + i*N] + 
 												 gdij*p->peierlsd[j + i*N]);
+				m->gt0_u[r + num_ij*t] += pre*(guij*p->peierlsu[j + i*N]);
+				m->gt0_d[r + num_ij*t] += pre*(gdij*p->peierlsd[j + i*N]);
 					#else
 				m->gt0[r + num_ij*t] += 0.5*pre*(guij + gdij);
+				m->gt0_u[r + num_ij*t] += pre*guij;
+				m->gt0_d[r + num_ij*t] += pre*gdij;
 					#endif
 				const num x = delta_tij*(guii + gdii) - (guji*guij + gdji*gdij);
 				

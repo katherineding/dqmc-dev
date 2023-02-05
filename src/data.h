@@ -38,9 +38,13 @@ struct meas_eqlt {
 	num sign;
 
 	num *density;
+	num *density_u;
+	num *density_d;
 	num *double_occ;
 
 	num *g00;
+	num *g00_u;
+	num *g00_d;
 	num *nn;
 	num *xx;
 	num *zz;
@@ -53,6 +57,8 @@ struct meas_uneqlt {
 	num sign;
 
 	num *gt0;
+	num *gt0_u;
+	num *gt0_d;
 	num *nn;
 	num *xx;
 	num *zz;
