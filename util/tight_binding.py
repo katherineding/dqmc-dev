@@ -61,6 +61,38 @@ def make_peierls_mat(Nx, Ny, shape, nflux, alpha = 1/2, jr_orbit = np.array((0,0
 
     return peierls
 
+def H_periodic_square(Nx, Ny, t=1, tp = 0, nflux = 0, alpha = 1/2):
+    # This function is now consistent with existing DQMC simulations
+    # First: hopping (assuming periodic boundaries and no field)
+    tij = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex128)
+    for iy in range(Ny):
+        for ix in range(Nx):
+            iy1 = (iy + 1) % Ny
+            ix1 = (ix + 1) % Nx
+                #jx    jy    ix    iy 
+            tij[ix1+Nx*iy , ix +Nx*iy ] += -t
+            tij[ix +Nx*iy , ix1+Nx*iy ] += -t
+            tij[ix +Nx*iy1, ix +Nx*iy ] += -t
+            tij[ix +Nx*iy , ix +Nx*iy1] += -t
+
+            tij[ix +Nx*iy , ix1+Nx*iy1] += -tp
+            tij[ix1+Nx*iy1, ix +Nx*iy ] += -tp
+
+            tij[ix1+Nx*iy , ix +Nx*iy1] += -tp
+            tij[ix +Nx*iy1, ix1+Nx*iy ] += -tp
+
+    peierls = make_peierls_mat(Nx,Ny,'square',nflux,alpha,np.array((0,0)))
+
+    K = tij * peierls
+    # complex hopping matrix
+    if nflux > 0:
+        #assert np.linalg.norm(peierls - peierls.T.conj()) < 1e-10, "???"
+        assert np.linalg.norm(K - K.T.conj()) < 1e-10
+    else: #peierls = 1, hopping real
+        assert np.max(np.abs(peierls.imag)) < 1e-10
+        assert np.max(np.abs(K.imag)) < 1e-10
+    return K, peierls
+
 def H_periodic_triangular(Nx, Ny, t=1, tp = 0, nflux = 0, alpha = 1/2):
     """ TB model with Peierls phase:
     H = sum -t_ij exp[i phi_ij] c_i^dag c_j
@@ -104,7 +136,6 @@ def H_periodic_honeycomb(Nx, Ny, t=1, tp = 0, nflux = 0, alpha = 1/2):
     delta_2 = np.array((-1/2, 1/(2*np.sqrt(3)))) 
     delta_3 = np.array((0,-1/np.sqrt(3))) #offset of B relative to A
     
-    N = Nx*Ny
     tij = np.zeros((2*Ny*Nx, 2*Ny*Nx), dtype=np.complex128)
     for iy in range(Ny):
         for ix in range(Nx):
