@@ -2,6 +2,7 @@
 #include "data.h"
 #include "util.h"
 #include "prof.h"
+#include <unistd.h>
 // #include "omp.h"
 // #include <stdio.h>
 // #include <math.h>
@@ -117,6 +118,64 @@ void measure_eqlt(const struct params *const restrict p,
 		}
 	}
 
+	const int num_plaq_accum = p->num_plaq_accum;
+	const int num_plaq = p->num_plaq;
+	const int meas_chiral = p->meas_chiral;
+
+	//printf("num_plaq_accum = %d, num_plaq=%d, meas_chiral= %d\n",num_plaq_accum,num_plaq,meas_chiral);
+	if (meas_chiral) {
+		for (int a = 0; a < num_plaq; a++){
+			//printf("a=%d\n",a);
+			const int i0 = p->plaqs[a];
+			const int i1 = p->plaqs[a + 1*num_plaq];
+			const int i2 = p->plaqs[a + 2*num_plaq];
+
+			const num gui0i0 = gu[i0 + i0*N];
+			const num gui1i1 = gu[i1 + i1*N];
+			const num gui2i2 = gu[i2 + i2*N];
+			const num gdi0i0 = gd[i0 + i0*N];
+			const num gdi1i1 = gd[i1 + i1*N];
+			const num gdi2i2 = gd[i2 + i2*N];
+
+			const num gui0i1 = gu[i0 + N*i1];
+			const num gui1i0 = gu[i1 + N*i0];
+			const num gui0i2 = gu[i0 + N*i2];
+			const num gui2i0 = gu[i2 + N*i0];
+			const num gui1i2 = gu[i1 + N*i2];
+			const num gui2i1 = gu[i2 + N*i1];
+
+			const num gdi0i1 = gd[i0 + N*i1];
+			const num gdi1i0 = gd[i1 + N*i0];
+			const num gdi0i2 = gd[i0 + N*i2];
+			const num gdi2i0 = gd[i2 + N*i0];
+			const num gdi1i2 = gd[i1 + N*i2];
+			const num gdi2i1 = gd[i2 + N*i1];
+			
+			// printf(stderr,"a=%d\n",a);
+			// sleep(1);
+			const int r = p->map_plaq[a];
+			const num pre = phase / p->degen_plaq[r];
+			// this is obtained using edwin's wick script.
+			const num x = 
+				gdi1i1*gdi2i0*gui0i2 - gdi0i2*gdi2i1*gui1i0 + gdi0i1*gdi2i2*gui1i0 - gdi2i1*gui0i2*gui1i0 - 
+				gdi2i0*gui0i2*gui1i1 + gdi0i1*gdi2i0*gui1i2 - gdi0i0*gdi2i1*gui1i2 + gdi2i1*gui0i0*gui1i2 + 
+				gdi2i0*gui0i1*gui1i2 - gdi0i2*gdi1i1*gui2i0 + gdi0i2*gui1i1*gui2i0 + gdi0i1*gui1i2*gui2i0 - 
+				gdi0i2*gui1i0*gui2i1 + gdi1i2*(gdi2i0*gui0i1 + (gdi0i1 + gui0i1)*gui2i0 + (gdi0i0 - gui0i0)*gui2i1) - 
+				                       gdi1i0*(gdi2i1*gui0i2 + (gdi0i2 + gui0i2)*gui2i1 + gui0i1*(gdi2i2 - gui2i2)) - 
+				gdi0i1*gui1i0*gui2i2;
+
+			m->chi[r] += pre * x;
+
+			// if (a == 8 || a == 8+N){
+			// 	printf("degen=%d, r=%d, i0 = %d, i1=%d, i2= %d\n",p->degen_plaq[r], r, i0,i1,i2);
+			// }
+		}
+		
+	}
+	
+	// printf("total[0]: %f + i %f \n", creal(m->chi[0]), cimag(m->chi[0]));
+	// printf("total[1]: %f + i %f \n", creal(m->chi[1]), cimag(m->chi[1]));
+	// fflush(stdout);
 	if (!meas_energy_corr)
 		return;
 

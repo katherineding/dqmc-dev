@@ -66,18 +66,21 @@ def rand_jump(rng):
 
 def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
              Nx=16, Ny=4, mu=0.0, tp=0.0, U=6.0, dt=0.115, L=40,
-             nflux=0, h=0.0,
+             nflux=0,
              n_delay=16, n_matmul=8, n_sweep_warm=200, n_sweep_meas=2000,
              period_eqlt=8, period_uneqlt=0,
              meas_bond_corr=0, meas_energy_corr=0, meas_nematic_corr=0,
              meas_thermal=0, meas_2bond_corr=0, meas_chiral=0,
              trans_sym=1, checkpoint_every=10000):
-    if (not np.isclose(tp,0.0))  or meas_energy_corr:
+    if (not np.isclose(tp,0.0)) or meas_energy_corr:
         raise NotImplementedError
 
     assert L % n_matmul == 0 and L % period_eqlt == 0
-    Norb = 1
-    N = Norb * Nx * Ny
+    Norb=3
+    #NOTE: N = total number of orbitals, not total number of unit cells
+    N = Norb * Nx*Ny 
+    #location (ix, iy) orbital io is 3d matrix (ix,iy,io)
+    # with total index ix + Nx * iy + (Nx*Ny) * i0
 
     if nflux != 0:
         dtype_num = np.complex128
@@ -103,35 +106,32 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     # 1 site mapping
     if trans_sym:
         map_i = np.zeros(N, dtype=np.int32)
-        degen_i = np.array((N,), dtype=np.int32)
+        map_i[Ny*Nx:2*Ny*Nx] = 1 #second orbital
+        map_i[2*Ny*Nx:] = 2 #third orbital
+        degen_i = np.array((Ny*Nx, Ny*Nx, Ny*Nx), dtype=np.int32)
     else:
         map_i = np.arange(N, dtype=np.int32)
         degen_i = np.ones(N, dtype=np.int32)
     num_i = map_i.max() + 1
     assert num_i == degen_i.size
 
-    # print("Trans sym = ",trans_sym)
-    # print("map",map_i,"degen",degen_i,"num",num_i)
-
-    # plaquette definitions NOTE: only valid for t' = 0
-    plaq_per_site = 2
-    num_plaq = plaq_per_site * Nx*Ny
+    # plaquette definitions TODO: check correctness
+    plaq_per_cell = 2
+    num_plaq = plaq_per_cell * Nx*Ny
     plaqs = np.zeros((3, num_plaq), dtype=np.int32)
     for iy in range(Ny):
         for ix in range(Nx):
-            i = ix + Nx*iy
+            i = ix + Nx*iy 
             iy1 = (iy + 1) % Ny
             ix1 = (ix + 1) % Nx
-            plaqs[0, i] = i             # i0 = i
-            plaqs[1, i] = ix1 + Nx*iy   # i1 = i + x
-            plaqs[2, i] = ix  + Nx*iy1  # i2 = i + y // counterclockwise
-            plaqs[0, i + N] = ix1 + Nx*iy   # i0 = i + x
-            plaqs[1, i + N] = ix1 + Nx*iy1  # i1 = i + x + y
-            plaqs[2, i + N] = ix  + Nx*iy1  # i2 = i + x //counterclockwise
+            plaqs[0, i] = i             # i0 = i(A)
+            plaqs[1, i] = i + Nx*Ny * 2 # i1 = i(C)
+            plaqs[2, i] = i + Nx*Ny * 1 # i2 = i(B) // counterclockwise
+            plaqs[0, i + Nx*Ny] = i                        # i0 = i(A)
+            plaqs[1, i + Nx*Ny] = ix1 + Nx*iy + Nx*Ny * 2  # i1 = i+x(C)
+            plaqs[2, i + Nx*Ny] = ix  + Nx*iy1 + Nx*Ny * 1 # i2 = i+y(B) //counterclockwise
 
-
-    #print("total number of triangular plaqs:",num_plaq)
-    # 1 plaquette mapping
+    # 1 plaquette mapping 
     if trans_sym:
         #first Nx*Ny gioes to slot 0, second Nx*Ny goes to slot 1
         map_plaq = np.zeros(num_plaq, dtype=np.int32)
@@ -144,30 +144,34 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     num_plaq_accum = map_plaq.max() + 1
     
     assert num_plaq_accum == degen_plaq.size
-    # print("map:",map_plaq)
-    # print("degen:",degen_plaq, degen_plaq.size)
-    # print("save slots:",num_plaq_accum)
 
-    # 2 site mapping 
+    # print("Trans sym = ",trans_sym)
+    # print("map",map_plaq,"degen",degen_plaq,"num",num_plaq_accum)
+
+    # 2 site mapping
     map_ij = np.zeros((N, N), dtype=np.int32)
-    num_ij = N if trans_sym else N*N
+    num_ij = Norb*Norb*Ny*Nx if trans_sym else N*N
     degen_ij = np.zeros(num_ij, dtype=np.int32)
-    for jy in range(Ny):
-        for jx in range(Nx):
-            for iy in range(Ny):
-                for ix in range(Nx):
-                    if trans_sym:
-                        ky = (iy - jy) % Ny
-                        kx = (ix - jx) % Nx
-                        k = kx + Nx*ky
-                    else:
-                        k = (ix + Nx*iy) + N*(jx + Nx*jy)
-                    map_ij[jx + Nx*jy, ix + Nx*iy] = k
-                    degen_ij[k] += 1
+    for jo in range(Norb):
+        for jy in range(Ny):
+            for jx in range(Nx):
+                for io in range(Norb):
+                    for iy in range(Ny):
+                        for ix in range(Nx):
+                            if trans_sym:
+                                ky = (iy - jy) % Ny
+                                kx = (ix - jx) % Nx
+                                #total column index of matrix index [kx,ky,io,jo]
+                                k = kx + Nx*ky + Nx*Ny*io + Nx*Ny*Norb*jo
+                            else:
+                                #total column index of matrix index [ix,iy,io,jx,jy,jo]
+                                k = (ix + Nx*iy + Nx*Ny*io) + N*(jx + Nx*jy + Nx*Ny*jo)
+                            map_ij[jx + Nx*jy + Nx*Ny*jo, ix + Nx*iy + Nx*Ny*io] = k
+                            degen_ij[k] += 1
     assert num_ij == map_ij.max() + 1
 
     # bond definitions: defined by one hopping step NOTE: placeholder
-    bps = 6 if tp != 0.0 else 3  # bonds per site
+    bps = 2 if tp != 0.0 else 4  # bonds per site
     num_b = bps*N  # total bonds in cluster
     bonds = np.zeros((2, num_b), dtype=np.int32)
 
@@ -209,36 +213,30 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     map_b2b = np.zeros((num_b2, num_b), dtype=np.int32)
     degen_b2b = np.zeros(num_b2b, dtype = np.int32)
 
-    # NOTE: placeholder
+    #phases accumulated by two-hop processes NOTE: placeholder
     thermal_phases = np.ones((b2ps, N),dtype=np.complex128)
     thermal_phases = thermal_phases if nflux !=0 else thermal_phases.real
     
-    kij,peierls = tight_binding.H_periodic_triangular(Nx,Ny,t=1,tp=tp,nflux=nflux,alpha=1/2)
+    kij,peierls = tight_binding.H_periodic_kagome(Nx,Ny,t=1,tp=tp,nflux=nflux,alpha=1/2)
     #account for different data type when nflux=0
     Ku = kij if nflux != 0 else kij.real
-    Kd = Ku.copy()
     peierls = peierls if nflux !=0 else peierls.real
 
-    #chemical potential and Zeeman together
-    for i in range(Ny*Nx):
-        Ku[i, i] -= (mu - h)
-        Kd[i, i] -= (mu + h)
+    for i in range(N):
+        Ku[i, i] -= mu
 
     exp_Ku = expm(-dt * Ku)
     inv_exp_Ku = expm(dt * Ku)
     exp_halfKu = expm(-dt/2 * Ku)
     inv_exp_halfKu = expm(dt/2 * Ku)
-
-    exp_Kd = expm(-dt * Kd)
-    inv_exp_Kd = expm(dt * Kd)
-    exp_halfKd = expm(-dt/2 * Kd)
-    inv_exp_halfKd = expm(dt/2 * Kd)
 #   exp_K = np.array(mpm.expm(mpm.matrix(-dt * K)).tolist(), dtype=np.float64)
 
     U_i = U*np.ones_like(degen_i, dtype=np.float64)
     assert U_i.shape[0] == num_i
 
     exp_lmbd = np.exp(0.5*U_i*dt) + np.sqrt(np.expm1(U_i*dt))
+#    exp_lmbd = np.exp(np.arccosh(np.exp(0.5*U_i*dt)))
+#    exp_lmbd = float(mpm.exp(mpm.acosh(mpm.exp(0.5*float(U*dt)))))
     exp_lambda = np.array((exp_lmbd[map_i]**-1, exp_lmbd[map_i]))
     delll = np.array((exp_lmbd[map_i]**2 - 1, exp_lmbd[map_i]**-2 - 1))
 
@@ -254,12 +252,11 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["metadata"]["Norb"] = Norb
         f["metadata"]["bps"] = bps
         f["metadata"]["b2ps"] = b2ps
-        f["metadata"]["plaq_per_site"] = plaq_per_site
+        f["metadata"]["plaq_per_site"] = plaq_per_cell
         f["metadata"]["U"] = U
         f["metadata"]["t'"] = tp
         f["metadata"]["nflux"] = nflux
         f["metadata"]["mu"] = mu
-        f["metadata"]["h"] = h
         f["metadata"]["beta"] = L*dt
         f["metadata"]["trans_sym"] = trans_sym
 
@@ -272,8 +269,8 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["map_ij"] = map_ij
         f["params"]["bonds"] = bonds
         f["params"]["bond2s"] = bond2s
-        f["params"]["plaqs"] = plaqs #OK
-        f["params"]["map_plaq"] = map_plaq #OK
+        f["params"]["plaqs"] = plaqs
+        f["params"]["map_plaq"] = map_plaq
         f["params"]["map_bs"] = map_bs
         f["params"]["map_bb"] = map_bb
         f["params"]["map_b2b"] = map_b2b
@@ -286,7 +283,7 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["ppr_u"] = thermal_phases
         f["params"]["ppr_d"] = thermal_phases
         f["params"]["Ku"] = Ku
-        f["params"]["Kd"] = Kd
+        f["params"]["Kd"] = f["params"]["Ku"]
         f["params"]["U"] = U_i
         f["params"]["dt"] = np.array(dt, dtype=np.float64)
 
@@ -302,14 +299,14 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["meas_2bond_corr"] = meas_2bond_corr
         f["params"]["meas_energy_corr"] = meas_energy_corr
         f["params"]["meas_nematic_corr"] = meas_nematic_corr
-        f["params"]["meas_chiral"] = meas_chiral #OK
+        f["params"]["meas_chiral"] = meas_chiral
         f["params"]["checkpoint_every"] = checkpoint_every
 
         # precalculated stuff
         f["params"]["num_i"] = num_i
         f["params"]["num_ij"] = num_ij
-        f["params"]["num_plaq_accum"] = num_plaq_accum #OK
-        f["params"]["num_plaq"] = num_plaq #OK
+        f["params"]["num_plaq_accum"] = num_plaq_accum
+        f["params"]["num_plaq"] = num_plaq
         f["params"]["num_b"] = num_b
         f["params"]["num_b2"] = num_b2
         f["params"]["num_bs"] = num_bs
@@ -319,20 +316,20 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["params"]["num_b2b2"] = num_b2b2
         f["params"]["degen_i"] = degen_i
         f["params"]["degen_ij"] = degen_ij
-        f["params"]["degen_plaq"] = degen_plaq #OK
+        f["params"]["degen_plaq"] = degen_plaq
         f["params"]["degen_bs"] = degen_bs
         f["params"]["degen_bb"] = degen_bb
         f["params"]["degen_bb2"] = degen_bb2
         f["params"]["degen_b2b"] = degen_b2b
         f["params"]["degen_b2b2"] = degen_b2b2
         f["params"]["exp_Ku"] = exp_Ku
-        f["params"]["exp_Kd"] = exp_Kd
+        f["params"]["exp_Kd"] = f["params"]["exp_Ku"]
         f["params"]["inv_exp_Ku"] = inv_exp_Ku
-        f["params"]["inv_exp_Kd"] = inv_exp_Kd
+        f["params"]["inv_exp_Kd"] = f["params"]["inv_exp_Ku"]
         f["params"]["exp_halfKu"] = exp_halfKu
-        f["params"]["exp_halfKd"] = exp_halfKd
+        f["params"]["exp_halfKd"] = f["params"]["exp_halfKu"]
         f["params"]["inv_exp_halfKu"] = inv_exp_halfKu
-        f["params"]["inv_exp_halfKd"] = inv_exp_halfKd
+        f["params"]["inv_exp_halfKd"] = f["params"]["inv_exp_halfKu"]
         f["params"]["exp_lambda"] = exp_lambda
         f["params"]["del"] = delll
         f["params"]["F"] = np.array(L//n_matmul, dtype=np.int32)
@@ -359,12 +356,8 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
         f["meas_eqlt"]["n_sample"] = np.array(0, dtype=np.int32)
         f["meas_eqlt"]["sign"] = np.array(0.0, dtype=dtype_num)
         f["meas_eqlt"]["density"] = np.zeros(num_i, dtype=dtype_num)
-        f["meas_eqlt"]["density_u"] = np.zeros(num_i, dtype=dtype_num)
-        f["meas_eqlt"]["density_d"] = np.zeros(num_i, dtype=dtype_num)
         f["meas_eqlt"]["double_occ"] = np.zeros(num_i, dtype=dtype_num)
         f["meas_eqlt"]["g00"] = np.zeros(num_ij, dtype=dtype_num)
-        f["meas_eqlt"]["g00_u"] = np.zeros(num_ij, dtype=dtype_num)
-        f["meas_eqlt"]["g00_d"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["nn"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["xx"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["zz"] = np.zeros(num_ij, dtype=dtype_num)
@@ -384,8 +377,6 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
             f["meas_uneqlt"]["n_sample"] = np.array(0, dtype=np.int32)
             f["meas_uneqlt"]["sign"] = np.array(0.0, dtype=dtype_num)
             f["meas_uneqlt"]["gt0"] = np.zeros(num_ij*L, dtype=dtype_num)
-            f["meas_uneqlt"]["gt0_u"] = np.zeros(num_ij*L, dtype=dtype_num)
-            f["meas_uneqlt"]["gt0_d"] = np.zeros(num_ij*L, dtype=dtype_num)
             f["meas_uneqlt"]["nn"] = np.zeros(num_ij*L, dtype=dtype_num)
             f["meas_uneqlt"]["xx"] = np.zeros(num_ij*L, dtype=dtype_num)
             f["meas_uneqlt"]["zz"] = np.zeros(num_ij*L, dtype=dtype_num)
