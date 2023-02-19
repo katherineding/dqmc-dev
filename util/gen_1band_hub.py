@@ -126,8 +126,8 @@ def create_1(file_sim=None, file_params=None, overwrite=False, init_rng=None,
     
     assert num_plaq_accum == degen_plaq.size
 
-    print("Trans sym = ",trans_sym)
-    print("map",map_plaq,"degen",degen_plaq,"num",num_plaq_accum)
+    # print("Trans sym = ",trans_sym)
+    # print("map",map_plaq,"degen",degen_plaq,"num",num_plaq_accum)
 
     # 2 site mapping: site r = (x,y) has total (column order) index x + Nx * y
     map_ij = np.zeros((N, N), dtype=np.int32)
