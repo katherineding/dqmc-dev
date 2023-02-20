@@ -72,20 +72,13 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
     period_eqlt=8, period_uneqlt=0,trans_sym=1, checkpoint_every=10000,
     meas_bond_corr=0, meas_energy_corr=0, meas_nematic_corr=0,
     meas_thermal=0, meas_2bond_corr=0, meas_chiral=0):
-    # if meas_chiral:
-    #     raise NotImplementedError
-    #     
+
     assert L % n_matmul == 0 and L % period_eqlt == 0
-    if nflux != 0:
-        dtype_num = np.complex128
-    else:
-        dtype_num = np.float64
+    if nflux != 0: dtype_num = np.complex128
+    else:          dtype_num = np.float64
 
-
-    if file_sim is None:
-        file_sim = "sim.h5"
-    if file_params is None:
-        file_params = file_sim
+    if file_sim is None:    file_sim = "sim.h5"
+    if file_params is None: file_params = file_sim
     
     one_file = (os.path.abspath(file_sim) == os.path.abspath(file_params))
 
@@ -93,7 +86,10 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         init_rng = rand_seed_urandom()
     rng = init_rng.copy()
 
+    Ncell = Nx*Ny
+
     if geometry == "square":
+        
         Norb = 1
         N = Norb * Nx * Ny
 
@@ -102,7 +98,7 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
             for i in range(N):
                 init_hs[l, i] = rand_uint(rng) >> np.uint64(63)
 
-        # 1 site mapping
+        # Norb site mapping
         if trans_sym:
             map_i = np.zeros(N, dtype=np.int32)
             degen_i = np.array((N,), dtype=np.int32)
@@ -117,9 +113,9 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         num_plaq = plaq_per_cell * Nx*Ny
         plaqs = np.zeros((3, num_plaq), dtype=np.int32)
 
-        # 1 plaquette mapping NOTE: placeholder
+        # plaq_per_cell slot mapping NOTE: placeholder
         if trans_sym:
-            #first Nx*Ny gioes to slot 0, second Nx*Ny goes to slot 1
+            #first Nx*Ny goes to slot 0, second Nx*Ny goes to slot 1
             map_plaq = np.zeros(num_plaq, dtype=np.int32)
             degen_plaq = np.array((Nx*Ny,), dtype=np.int32)
         else:
@@ -129,9 +125,6 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         num_plaq_accum = map_plaq.max() + 1
         
         assert num_plaq_accum == degen_plaq.size
-
-        # print("Trans sym = ",trans_sym)
-        # print("map",map_plaq,"degen",degen_plaq,"num",num_plaq_accum)
 
         # 2 site mapping: site r = (x,y) has total (column order) index x + Nx * y
         map_ij = np.zeros((N, N), dtype=np.int32)
@@ -472,12 +465,7 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
                         i1 = hop2s[1, i + i1type*N]
                         pp += peierls[i0,i1] * peierls[i1,i2]
                 thermal_phases[btype,i] = pp
-                    
-        #account for different data type when nflux=0
-        thermal_phases = thermal_phases if nflux !=0 else thermal_phases.real
-        Ku = kij if nflux != 0 else kij.real
-        Kd = Ku.copy()
-        peierls = peierls if nflux !=0 else peierls.real
+
     elif geometry == "triangular":
         Norb = 1
         N = Norb * Nx * Ny
@@ -512,15 +500,15 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
                 plaqs[0, i] = i             # i0 = i
                 plaqs[1, i] = ix1 + Nx*iy   # i1 = i + x
                 plaqs[2, i] = ix  + Nx*iy1  # i2 = i + y // counterclockwise
-                plaqs[0, i + N] = ix1 + Nx*iy   # i0 = i + x
-                plaqs[1, i + N] = ix1 + Nx*iy1  # i1 = i + x + y
-                plaqs[2, i + N] = ix  + Nx*iy1  # i2 = i + x //counterclockwise
+                plaqs[0, i + Nx*Ny] = ix1 + Nx*iy   # i0 = i + x
+                plaqs[1, i + Nx*Ny] = ix1 + Nx*iy1  # i1 = i + x + y
+                plaqs[2, i + Nx*Ny] = ix  + Nx*iy1  # i2 = i + x //counterclockwise
 
 
         #print("total number of triangular plaqs:",num_plaq)
         # 1 plaquette mapping
         if trans_sym:
-            #first Nx*Ny gioes to slot 0, second Nx*Ny goes to slot 1
+            #first Nx*Ny goes to slot 0, second Nx*Ny goes to slot 1
             map_plaq = np.zeros(num_plaq, dtype=np.int32)
             map_plaq[Nx*Ny:] = 1
             degen_plaq = np.array((Nx*Ny,Nx*Ny), dtype=np.int32)
@@ -596,15 +584,11 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         map_b2b = np.zeros((num_b2, num_b), dtype=np.int32)
         degen_b2b = np.zeros(num_b2b, dtype = np.int32)
 
+        kij,peierls = tight_binding.H_periodic_triangular(Nx,Ny,t=1,tp=tp,nflux=nflux,alpha=1/2)
+
         # NOTE: placeholder
         thermal_phases = np.ones((b2ps, N),dtype=np.complex128)
-        thermal_phases = thermal_phases if nflux !=0 else thermal_phases.real
-        
-        kij,peierls = tight_binding.H_periodic_triangular(Nx,Ny,t=1,tp=tp,nflux=nflux,alpha=1/2)
-        #account for different data type when nflux=0
-        Ku = kij if nflux != 0 else kij.real
-        Kd = Ku.copy()
-        peierls = peierls if nflux !=0 else peierls.real
+
     elif geometry == "honeycomb":
         Norb = 2
         #NOTE: N = total number of orbitals, not total number of unit cells
@@ -718,15 +702,11 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         map_b2b = np.zeros((num_b2, num_b), dtype=np.int32)
         degen_b2b = np.zeros(num_b2b, dtype = np.int32)
 
+        kij,peierls = tight_binding.H_periodic_honeycomb(Nx,Ny,t=1,tp=tp,nflux=nflux,alpha=1/2)
+        
         #phases accumulated by two-hop processes NOTE: placeholder
         thermal_phases = np.ones((b2ps, N),dtype=np.complex128)
-        thermal_phases = thermal_phases if nflux !=0 else thermal_phases.real
-        
-        kij,peierls = tight_binding.H_periodic_honeycomb(Nx,Ny,t=1,tp=tp,nflux=nflux,alpha=1/2)
-        #account for different data type when nflux=0
-        Ku = kij if nflux != 0 else kij.real
-        Kd = Ku.copy()
-        peierls = peierls if nflux !=0 else peierls.real
+
     elif geometry == "kagome":
         Norb=3
         #NOTE: N = total number of orbitals, not total number of unit cells
@@ -848,16 +828,19 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         map_b2b = np.zeros((num_b2, num_b), dtype=np.int32)
         degen_b2b = np.zeros(num_b2b, dtype = np.int32)
 
+        kij,peierls = tight_binding.H_periodic_kagome(Nx,Ny,t=1,tp=tp,nflux=nflux,alpha=1/2)
+
         #phases accumulated by two-hop processes NOTE: placeholder
         thermal_phases = np.ones((b2ps, N),dtype=np.complex128)
-        thermal_phases = thermal_phases if nflux !=0 else thermal_phases.real
-        
-        kij,peierls = tight_binding.H_periodic_kagome(Nx,Ny,t=1,tp=tp,nflux=nflux,alpha=1/2)
-        #account for different data type when nflux=0
-        Ku = kij if nflux != 0 else kij.real
-        Kd = Ku.copy()
-        peierls = peierls if nflux !=0 else peierls.real
 
+        
+    #account for different data type when nflux=0
+    thermal_phases = thermal_phases if nflux !=0 else thermal_phases.real
+    Ku = kij if nflux != 0 else kij.real
+    peierls = peierls if nflux !=0 else peierls.real
+    
+    #Zeeman interaction
+    Kd = Ku.copy()
     for i in range(Ny*Nx):
         Ku[i, i] -= (mu - h)
         Kd[i, i] -= (mu + h)
@@ -871,7 +854,6 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
     inv_exp_Kd = expm(dt * Kd)
     exp_halfKd = expm(-dt/2 * Kd)
     inv_exp_halfKd = expm(dt/2 * Kd)
-#   exp_K = np.array(mpm.expm(mpm.matrix(-dt * K)).tolist(), dtype=np.float64)
 
     U_i = U*np.ones_like(degen_i, dtype=np.float64)
     assert U_i.shape[0] == num_i
@@ -1035,7 +1017,6 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
                 f["meas_uneqlt"]["jsjs"] = np.zeros(num_bb*L, dtype=dtype_num)
                 f["meas_uneqlt"]["kk"] = np.zeros(num_bb*L, dtype=dtype_num)
                 f["meas_uneqlt"]["ksks"] = np.zeros(num_bb*L, dtype=dtype_num)
-            #thermal is subset of bond-bond type measurements
             if meas_thermal:
                 f["meas_uneqlt"]["j2jn"] = np.zeros(num_b2b*L, dtype=dtype_num) 
                 f["meas_uneqlt"]["jnj2"] = np.zeros(num_bb2*L, dtype=dtype_num) 
@@ -1126,70 +1107,56 @@ def create_batch(Nfiles=1, prefix=None, seed=None, **kwargs):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate .h5 files for dqmc simulation")
+    parser = argparse.ArgumentParser(description="Generate .h5 files for dqmc simulation",\
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('--version', action='version', version=hash_short)
+    parser.add_argument('-V','--version', action='version', version=hash_short)
 
     group1 = parser.add_argument_group('Physics parameters')
-    group1.add_argument('geometry', choices=['square', 'triangular', 'honeycomb', 'kagome'],
-        type=str, default="square");
-    group1.add_argument('--Nx',    type=int,   default = 4, \
-        help="Number of lattice sites along x direction");
-    group1.add_argument('--Ny',    type=int,   default = 4, \
-        help="Number of lattice sites along y direction");
-    group1.add_argument('--tp',    type=float, default = 0.0, \
-        help="Next nearest hopping integral");
-    group1.add_argument('--nflux', type=int,   default = 0, \
-        help="Number of flux threading the cluster");
-    group1.add_argument('--U',     type=float, default = 6.0, \
-        help="On-site Hubbard repulsion strength");
+    group1.add_argument('--geometry', choices=['square', 'triangular', 'honeycomb', 'kagome'], type=str, default="square");
+    group1.add_argument('--Nx',    type=int,   default = 4,   metavar='X',help="Number of lattice sites along x direction");
+    group1.add_argument('--Ny',    type=int,   default = 4,   metavar='X',help="Number of lattice sites along y direction");
+    group1.add_argument('--tp',    type=float, default = 0.0, metavar='X',help="Next nearest hopping integral");
+    group1.add_argument('--nflux', type=int,   default = 0,   metavar='X',help="Number of flux threading the cluster");
+    group1.add_argument('--U',     type=float, default = 6.0, metavar='X',help="On-site Hubbard repulsion strength");
 
-    group1.add_argument('--dt',    type=float, default = 6.0, \
-        help="Imaginary time discretization interval");
-    group1.add_argument('--L',     type=int,   default = 40, \
-        help="Number of imaginary time steps");
+    group1.add_argument('--dt',    type=float, default = 0.1, metavar='X',help="Imaginary time discretization interval");
+    group1.add_argument('--L',     type=int,   default = 40,  metavar='X',help="Number of imaginary time steps");
     
-    group1.add_argument('--mu',    type=float, default = 0.0, \
-        help="chemical potential");
-    group1.add_argument('--h',     type=float, default = 0.0, \
-        help="Zeeman field strength. Down electrons feel net (mu+h) chemical potential");
+    group1.add_argument('--mu',    type=float, default = 0.0, metavar='X',help="chemical potential");
+    group1.add_argument('--h',     type=float, default = 0.0, metavar='X',help="Zeeman field strength. Down electrons feel net (mu+h) chemical potential");
 
     group2 = parser.add_argument_group('Simulation file settings')
-    group2.add_argument('--prefix',type=str);
-    group2.add_argument('--seed',  type=int);
-    group2.add_argument('--Nfiles',type=int);
+    group2.add_argument('--prefix',type=str, default=None,metavar='X',help="Prefix for the name of each simulation file");
+    group2.add_argument('--seed',  type=int, default=None,metavar='X',help="User-defined RNG seed");
+    group2.add_argument('--Nfiles',type=int, default=1,   metavar='X',help="Number of simulation files to generate");
 
-    group2.add_argument('--overwrite',       type=int,  default=0);
-    group2.add_argument('--n_delay',         type=int,  default=16);
-    group2.add_argument('--n_matmul',        type=int,  default=8);
-    group2.add_argument('--n_sweep_warm',    type=int,  default=200);
-    group2.add_argument('--n_sweep_meas',    type=int,  default=2000);
-    group2.add_argument('--period_eqlt',     type=int,  default=8);
-    group2.add_argument('--period_uneqlt',   type=int,  default=8);
-    group2.add_argument('--trans_sym',       type=bool, default=True);
-    group2.add_argument('--checkpoint_every',type=int,  default=10000);
+    group2.add_argument('--overwrite',       type=int,  default=0,    metavar='X',help="Whether to overwrite existing files");
+    group2.add_argument('--n_delay',         type=int,  default=16,   metavar='X',help="Number of updates to group together in the delayed update scheme");
+    group2.add_argument('--n_matmul',        type=int,  default=8,    metavar='X',help="Half the maximum number of direct matrix multiplications before applying a QR decomposition"); 
+    group2.add_argument('--n_sweep_warm',    type=int,  default=200,  metavar='X',help="Number of warmup sweeps"); 
+    group2.add_argument('--n_sweep_meas',    type=int,  default=2000, metavar='X',help="Number of measurement sweeps"); 
+    group2.add_argument('--period_eqlt',     type=int,  default=8,    metavar='X',help="Period of equal-time measurements in units of single-site updates"); 
+    group2.add_argument('--period_uneqlt',   type=int,  default=0,    metavar='X',help="Period of unequal-time measurements in units of full H-S sweeps. 0 means disabled"); 
+    group2.add_argument('--trans_sym',       type=int,  default=1,    metavar='X',help="Whether to apply translational symmetry to compress measurement data"); 
+    group2.add_argument('--checkpoint_every',type=int,  default=10000,metavar='X',help="Number of full H-S sweeps between checkpoints. 0 means disabled"); 
 
     group3 = parser.add_argument_group('Expensive measurement toggles')
 
-    group3.add_argument('--meas_bond_corr',   type=int,  default=0);
-    group3.add_argument('--meas_energy_corr', type=int,  default=0);
-    group3.add_argument('--meas_nematic_corr',type=int,  default=0);
-    group3.add_argument('--meas_thermal',     type=int,  default=0);
-    group3.add_argument('--meas_2bond_corr',  type=int,  default=0);
-    group3.add_argument('--meas_chiral',      type=int,  default=0);
+    group3.add_argument('--meas_bond_corr',   type=int,  default=0, metavar='X',help="Whether to measure bond-bond correlations (current, kinetic energy, bond singlets)"); 
+    group3.add_argument('--meas_energy_corr', type=int,  default=0, metavar='X',help="Whether to measure energy-energy correlations."); 
+    group3.add_argument('--meas_nematic_corr',type=int,  default=0, metavar='X',help="Whether to measure spin and charge nematic correlations"); 
+    group3.add_argument('--meas_thermal',     type=int,  default=0, metavar='X',help="Whether to measure extra jnj(2) type correlations for themal conductivity"); 
+    group3.add_argument('--meas_2bond_corr',  type=int,  default=0, metavar='X',help="Whether to measure extra jj(2) type correlations for themal conductivity"); 
+    group3.add_argument('--meas_chiral',      type=int,  default=0, metavar='X',help="Whether to measure scalar spin chirality");
 
     # parser.add_argument
     args = parser.parse_args()
 
-    #sanitize argdict to use create_batch function defaults
     argdict = vars(args)
-    if args.prefix is None:
-        del argdict['prefix']
-    if args.seed is None:
-        del argdict['seed']
-    if args.Nfiles is None:
-        del argdict['Nfiles']
 
-    print(argdict)
-    create_batch(**argdict)
+    for (k,v) in argdict.items():
+        print(k,v)
+
+    create_batch(**vars(args))
 

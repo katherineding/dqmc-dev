@@ -104,7 +104,7 @@ int consistency_check(const char *file, FILE * log){
  * TODO: separate the sim vs calculation components?
  * TODO: this function is now outdated after new measurements
  * @param  char*  file_name of form <name>.h5
- * @return size_t heap memory requirement
+ * @return int heap memory requirement
  *         -1 if H5Fopen() failed
  *         -3 if my_read failed
  *         -4 if H5Fclose() failed
