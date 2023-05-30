@@ -71,10 +71,10 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
     overwrite=0, n_delay=16, n_matmul=8, n_sweep_warm=200, n_sweep_meas=2000,
     period_eqlt=8, period_uneqlt=0,trans_sym=1, checkpoint_every=10000,
     meas_bond_corr=0, meas_energy_corr=0, meas_nematic_corr=0,
-    meas_thermal=0, meas_2bond_corr=0, meas_chiral=0):
+    meas_thermal=0, meas_2bond_corr=0, meas_chiral=0, twistx=0, twisty=0):
 
     assert L % n_matmul == 0 and L % period_eqlt == 0
-    if nflux != 0: dtype_num = np.complex128
+    if nflux != 0 or twistx !=0 or twisty !=0: dtype_num = np.complex128
     else:          dtype_num = np.float64
 
     if file_sim is None:    file_sim = "sim.h5"
@@ -433,8 +433,8 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
                         map_b2b[j + N*jb, i + N*ib] = kk
                         degen_b2b[kk] += 1
         assert num_b2b == map_b2b.max() + 1
-
-        kij,peierls = tight_binding.H_periodic_square(Nx,Ny,t=1,tp=tp,nflux=nflux,alpha=1/2)
+        
+        kij,peierls = tight_binding.H_periodic_square(Nx,Ny,t=1,tp=tp,nflux=nflux,alpha=1/2,twistx=twistx,twisty=twisty)
         #phases accumulated by two-hop processes
         #Here: types 0,1 include t' factors
         #   Types 2-7: sum of two paths
@@ -835,9 +835,9 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
 
         
     #account for different data type when nflux=0
-    thermal_phases = thermal_phases if nflux !=0 else thermal_phases.real
-    Ku = kij if nflux != 0 else kij.real
-    peierls = peierls if nflux !=0 else peierls.real
+    thermal_phases = thermal_phases if (nflux !=0 or twistx !=0 or twisty !=0) else thermal_phases.real
+    Ku = kij if (nflux !=0 or twistx !=0 or twisty !=0) else kij.real
+    peierls = peierls if (nflux !=0 or twistx !=0 or twisty !=0) else peierls.real
     
     #Zeeman interaction
     Kd = Ku.copy()
@@ -878,6 +878,8 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         f["metadata"]["U"] = U
         f["metadata"]["t'"] = tp
         f["metadata"]["nflux"] = nflux
+        f["metadata"]["twistx"] = twistx
+        f["metadata"]["twisty"] = twisty
         f["metadata"]["mu"] = mu
         f["metadata"]["h"] = h
         f["metadata"]["beta"] = L*dt
@@ -1031,10 +1033,10 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
                 #use jj2 should correspond to jJ2 results after summation
                 f["meas_uneqlt"]["jj2"] = np.zeros(num_bb2*L, dtype=dtype_num) #new
                 #these below are not implemented with phases currently
-                # f["meas_uneqlt"]["pair_b2b2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
-                # f["meas_uneqlt"]["js2js2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
-                # f["meas_uneqlt"]["k2k2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
-                # f["meas_uneqlt"]["ks2ks2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
+                f["meas_uneqlt"]["pair_b2b2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
+                f["meas_uneqlt"]["js2js2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
+                f["meas_uneqlt"]["k2k2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
+                f["meas_uneqlt"]["ks2ks2"] = np.zeros(num_b2b2*L, dtype=dtype_num)
             if meas_energy_corr:
                 f["meas_uneqlt"]["kv"] = np.zeros(num_bs*L, dtype=dtype_num)
                 f["meas_uneqlt"]["kn"] = np.zeros(num_bs*L, dtype=dtype_num)
@@ -1045,7 +1047,7 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
                 f["meas_uneqlt"]["nem_ssss"] = np.zeros(num_bb*L, dtype=dtype_num)
 
 
-def create_batch(Nfiles=1, prefix=None, seed=None, **kwargs):
+def create_batch(Nfiles=1, printout=1, prefix=None, seed=None, **kwargs):
     if seed is None:
         init_rng = rand_seed_urandom()
     else:
@@ -1130,6 +1132,7 @@ if __name__ == "__main__":
     group2.add_argument('--prefix',type=str, default=None,metavar='X',help="Prefix for the name of each simulation file");
     group2.add_argument('--seed',  type=int, default=None,metavar='X',help="User-defined RNG seed");
     group2.add_argument('--Nfiles',type=int, default=1,   metavar='X',help="Number of simulation files to generate");
+    group2.add_argument('--printout',type=int, default=1,   metavar='X',help="whether to print out the argument terms");
 
     group2.add_argument('--overwrite',       type=int,  default=0,    metavar='X',help="Whether to overwrite existing files");
     group2.add_argument('--n_delay',         type=int,  default=16,   metavar='X',help="Number of updates to group together in the delayed update scheme");
@@ -1140,6 +1143,8 @@ if __name__ == "__main__":
     group2.add_argument('--period_uneqlt',   type=int,  default=0,    metavar='X',help="Period of unequal-time measurements in units of full H-S sweeps. 0 means disabled"); 
     group2.add_argument('--trans_sym',       type=int,  default=1,    metavar='X',help="Whether to apply translational symmetry to compress measurement data"); 
     group2.add_argument('--checkpoint_every',type=int,  default=10000,metavar='X',help="Number of full H-S sweeps between checkpoints. 0 means disabled"); 
+    group2.add_argument('--twistx',type=float,  default=0,metavar='X',help="twist phase on the x direction");
+    group2.add_argument('--twisty',type=float,  default=0,metavar='X',help="twist phase on the y direction");
 
     group3 = parser.add_argument_group('Expensive measurement toggles')
 
@@ -1155,8 +1160,9 @@ if __name__ == "__main__":
 
     argdict = vars(args)
 
-    for (k,v) in argdict.items():
-        print(k,v)
+    if args.printout==1:
+        for (k,v) in argdict.items():
+            print(k,v)
 
     create_batch(**vars(args))
 
