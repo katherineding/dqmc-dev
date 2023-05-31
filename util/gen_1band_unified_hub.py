@@ -71,7 +71,8 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
     overwrite=0, n_delay=16, n_matmul=8, n_sweep_warm=200, n_sweep_meas=2000,
     period_eqlt=8, period_uneqlt=0,trans_sym=1, checkpoint_every=10000,
     meas_bond_corr=0, meas_energy_corr=0, meas_nematic_corr=0,
-    meas_thermal=0, meas_2bond_corr=0, meas_chiral=0):
+    meas_thermal=0, meas_2bond_corr=0, meas_chiral=0,
+    meas_local_JQ=0):
 
     assert L % n_matmul == 0 and L % period_eqlt == 0
     if nflux != 0: dtype_num = np.complex128
@@ -163,6 +164,18 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
                     bonds[0, i + 3*N] = ix1 + Nx*iy   # i0 = i + x
                     bonds[1, i + 3*N] = ix + Nx*iy1   # i1 = i + y
 
+        # 1 bond mapping
+        if trans_sym:
+            # maps bond to degenerate bond type 
+            # note that map_b only maps to the first four elements of degen_b, but for 
+            # the sake of not having to define a new num_b vairable and allocating different amounts of
+            # memory for degen_b in data.c, I'm making degen_b the same size 
+            map_b = np.tile(np.arange(bps, dtype=np.int32), (N,1)).T.flatten() # N*bps 
+            degen_b = np.ones(num_b, dtype=np.int32) * N  # length N*bps
+        else:
+            map_b = np.arange(num_b, dtype=np.int32)    # N*bps 
+            degen_b = np.ones(num_b, dtype=np.int32)    # length N*bps 
+
         # 1 bond 1 site mapping
         # Translated to fortran order: [j,istuff] -> [istuff + num_b * j] -> [istuff,j]
         map_bs = np.zeros((N, num_b), dtype=np.int32)
@@ -241,6 +254,17 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
                     #one t'^2 path [27]
                     bond2s[0, i + 11*N] = ix2 + Nx*iy   # i0 = i + 2x   \
                     bond2s[1, i + 11*N] = ix + Nx*iy2   # i1 = i + 2y    \
+
+        # 2 bond mapping
+        if trans_sym:
+            # note that map_b only maps to the first four elements of degen_b, but for 
+            # the sake of not having to define a new num_b vairable and allocating different amounts of
+            # memory for degen_b in data.c, I'm making degen_b the same size 
+            map_b2 = np.tile(np.arange(b2ps, dtype=np.int32), (N,1)).T.flatten() #length N*b2ps
+            degen_b2 = np.ones(num_b2, dtype=np.int32) * N  # length N*b2ps
+        else:
+            map_b2 = np.arange(num_b2, dtype=np.int32)    # length N*b2ps
+            degen_b2 = np.ones(num_b2, dtype=np.int32)    # length N*b2ps 
 
         # my definition: Bonds defined by two hopping steps
         # Keep track of intermediate point!
@@ -546,6 +570,10 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         num_b = bps*N  # total bonds in cluster
         bonds = np.zeros((2, num_b), dtype=np.int32)
 
+        # 1 bond mapping NOTE: placeholder
+        map_b = np.zeros(num_b, dtype=np.int32)    # N*bps 
+        degen_b = np.zeros(num_b, dtype=np.int32)    # length N*bps 
+
         # 1 bond 1 site mapping NOTE: placeholder
         map_bs = np.zeros((N, num_b), dtype=np.int32)
         num_bs = bps*N if trans_sym else num_b*N
@@ -562,6 +590,10 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         b2ps = 12 if tp != 0.0 else 4  # 2-bonds per site
         num_b2 = b2ps*N  # total 2-bonds in cluster
         bond2s = np.zeros((2, num_b2), dtype=np.int32)
+
+        # 2 bond mapping NOTE: placeholder
+        map_b2 = np.zeros(num_b2, dtype=np.int32)    # N*b2ps 
+        degen_b2 = np.zeros(num_b2, dtype=np.int32)    # length N*b2ps 
 
         # my definition: Bonds defined by two hopping steps
         # NOTE: placeholder
@@ -664,6 +696,10 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         num_b = bps*Nx*Ny  # total bonds in cluster
         bonds = np.zeros((2, num_b), dtype=np.int32)
 
+        # 1 bond mapping NOTE: placeholder
+        map_b = np.zeros(num_b, dtype=np.int32)    # N*bps 
+        degen_b = np.zeros(num_b, dtype=np.int32)    # length N*bps 
+
         # 1 bond 1 site mapping NOTE: placeholder
         map_bs = np.zeros((N, num_b), dtype=np.int32)
         num_bs = bps*N if trans_sym else num_b*N
@@ -680,6 +716,10 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         b2ps = 12 if tp != 0.0 else 4  # 2-bonds per site
         num_b2 = b2ps*N  # total 2-bonds in cluster
         bond2s = np.zeros((2, num_b2), dtype=np.int32)
+
+        # 2 bond mapping NOTE: placeholder
+        map_b2 = np.zeros(num_b2, dtype=np.int32)    # N*b2ps 
+        degen_b2 = np.zeros(num_b2, dtype=np.int32)    # length N*b2ps 
 
         # my definition: Bonds defined by two hopping steps
         # NOTE: placeholder
@@ -790,6 +830,10 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         num_b = bps*N  # total bonds in cluster
         bonds = np.zeros((2, num_b), dtype=np.int32)
 
+        # 1 bond mapping NOTE: placeholder
+        map_b = np.zeros(num_b, dtype=np.int32)    # N*bps 
+        degen_b = np.zeros(num_b, dtype=np.int32)    # length N*bps 
+
         # 1 bond 1 site mapping NOTE: placeholder
         map_bs = np.zeros((N, num_b), dtype=np.int32)
         num_bs = bps*N if trans_sym else num_b*N
@@ -806,6 +850,10 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         b2ps = 12 if tp != 0.0 else 4  # 2-bonds per site
         num_b2 = b2ps*N  # total 2-bonds in cluster
         bond2s = np.zeros((2, num_b2), dtype=np.int32)
+
+        # 2 bond mapping NOTE: placeholder
+        map_b2 = np.zeros(num_b2, dtype=np.int32)    # N*b2ps 
+        degen_b2 = np.zeros(num_b2, dtype=np.int32)    # length N*b2ps 
 
         # my definition: Bonds defined by two hopping steps
         # NOTE: placeholder
@@ -895,8 +943,10 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         f["params"]["bond2s"] = bond2s
         f["params"]["plaqs"] = plaqs
         f["params"]["map_plaq"] = map_plaq
+        f["params"]["map_b"] = map_b
         f["params"]["map_bs"] = map_bs
         f["params"]["map_bb"] = map_bb
+        f["params"]["map_b2"] = map_b2
         f["params"]["map_b2b"] = map_b2b
         f["params"]["map_bb2"] = map_bb2
         f["params"]["map_b2b2"] = map_b2b2
@@ -924,6 +974,7 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         f["params"]["meas_energy_corr"] = meas_energy_corr
         f["params"]["meas_nematic_corr"] = meas_nematic_corr
         f["params"]["meas_chiral"] = meas_chiral
+        f["params"]["meas_local_JQ"] = meas_local_JQ
         f["params"]["checkpoint_every"] = checkpoint_every
 
         # precalculated stuff
@@ -941,6 +992,8 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         f["params"]["degen_i"] = degen_i
         f["params"]["degen_ij"] = degen_ij
         f["params"]["degen_plaq"] = degen_plaq
+        f["params"]["degen_b"] = degen_b
+        f["params"]["degen_b2"] = degen_b2
         f["params"]["degen_bs"] = degen_bs
         f["params"]["degen_bb"] = degen_bb
         f["params"]["degen_bb2"] = degen_bb2
@@ -999,6 +1052,11 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
             f["meas_eqlt"]["kn"] = np.zeros(num_bs, dtype=dtype_num)
             f["meas_eqlt"]["vv"] = np.zeros(num_ij, dtype=dtype_num)
             f["meas_eqlt"]["vn"] = np.zeros(num_ij, dtype=dtype_num)
+        
+        if meas_local_JQ:
+            f["meas_eqlt"]["j"]  = np.zeros(num_b,  dtype=dtype_num)
+            f["meas_eqlt"]["jn"] = np.zeros(num_b,  dtype=dtype_num)
+            f["meas_eqlt"]["j2"] = np.zeros(num_b2, dtype=dtype_num)
 
         if period_uneqlt > 0:
             f.create_group("meas_uneqlt")
@@ -1149,6 +1207,7 @@ if __name__ == "__main__":
     group3.add_argument('--meas_thermal',     type=int,  default=0, metavar='X',help="Whether to measure extra jnj(2) type correlations for themal conductivity"); 
     group3.add_argument('--meas_2bond_corr',  type=int,  default=0, metavar='X',help="Whether to measure extra jj(2) type correlations for themal conductivity"); 
     group3.add_argument('--meas_chiral',      type=int,  default=0, metavar='X',help="Whether to measure scalar spin chirality");
+    group3.add_argument('--meas_local_JQ',    type=int,  default=0, metavar='X',help="Whether to measure local JQ for energy magnetization contribution to thermal Hall");
 
     # parser.add_argument
     args = parser.parse_args()
