@@ -12,6 +12,7 @@ struct params {
 	int *map_plaq;
 	num *peierlsu, *peierlsd;
 	num *pp_u, *pp_d, *ppr_u, *ppr_d;
+	int *map_b, *map_b2;
 //	double dt;
 
 	int n_matmul, n_delay;
@@ -19,6 +20,7 @@ struct params {
 	int period_eqlt, period_uneqlt;
 	int meas_bond_corr, meas_thermal, meas_2bond_corr, meas_energy_corr, meas_nematic_corr;
 	int meas_chiral;
+	int meas_local_JQ;
 	int checkpoint_every;
 
 	int num_i, num_ij;
@@ -30,6 +32,7 @@ struct params {
 	num *exp_halfKu, *exp_halfKd, *inv_exp_halfKu, *inv_exp_halfKd;
 	double *exp_lambda, *del;
 	int F, n_sweep;
+	int *degen_b, *degen_b2; 
 };
 
 struct state {
@@ -56,6 +59,7 @@ struct meas_eqlt {
 	num *zz;
 	num *pair_sw;
 	num *kk, *kv, *kn, *vv, *vn;
+	num *j, *j2, *jn;
 };
 
 struct meas_uneqlt {
