@@ -173,7 +173,89 @@ void measure_eqlt(const struct params *const restrict p,
 		}
 		
 	}
-	
+	// for calculating the energy magnetization current contribution
+	// meas_local_JQ => <j_i^Q> 
+	const int meas_local_JQ = p->meas_local_JQ;
+	// printf("num_b = %d, num_b2=%d, meas_local_JQ= %d\n",num_b, num_b2, meas_local_JQ);
+	if (meas_local_JQ){		
+		// 1 bond measurements 	
+		// sum over bonds for 1 phase terms jn, j
+		for (int c = 0; c < num_b; c++) {
+			const int i0 = p->bonds[c];
+			const int i1 = p->bonds[c + num_b];
+
+			// if use peirels 
+			#ifdef USE_PEIERLS
+			const num pui0i1 = p->peierlsu[i0 + N*i1];
+			const num pui1i0 = p->peierlsu[i1 + N*i0];
+			const num pdi0i1 = p->peierlsd[i0 + N*i1];
+			const num pdi1i0 = p->peierlsd[i1 + N*i0];
+			#endif
+
+			// delta functions 
+			const int delta_i0i1 = (i0 == i1);
+
+			// greens functions
+			const num gui0i1 = gu[i0 + N*i1];
+			const num gui1i0 = gu[i1 + N*i0];
+			const num gdi0i1 = gd[i0 + N*i1];
+			const num gdi1i0 = gd[i1 + N*i0];
+			const num gui0i0 = gu[i0 + N*i0];
+			const num gdi0i0 = gd[i0 + N*i0];
+			const num gui1i1 = gu[i1 + N*i1];
+			const num gdi1i1 = gd[i1 + N*i1];
+
+			// map sign prefactor 
+			const int b = p->map_b[c]; 
+			const num pre = phase / p->degen_b[b]; //DOUBLE CHECK
+
+			// jn measurements 
+			num _wick_jn = pui0i1*(1-gui0i0)*(delta_i0i1-gdi1i0) + pdi0i1*(1-gdi0i0)*(delta_i0i1-gui1i0)
+						 + pui0i1*(1-gui1i1)*(delta_i0i1-gdi1i0) + pdi0i1*(1-gdi1i1)*(delta_i0i1-gui1i0)
+						 - pui1i0*(1-gui0i0)*(delta_i0i1-gdi0i1) - pdi1i0*(1-gdi0i0)*(delta_i0i1-gui0i1)
+						 - pui1i0*(1-gui1i1)*(delta_i0i1-gdi0i1) - pdi1i0*(1-gdi1i1)*(delta_i0i1-gui0i1);
+			m->jn[c] += pre*_wick_jn;
+
+			// j measurements 
+			num t = pui0i1*(-gui1i0) + pdi0i1*(-gdi1i0)
+				  - pui1i0*(-gui0i1) + pdi1i0*(-gdi0i1); 
+			m->j[c] += pre*t;
+		}
+
+		// 2 bond measurements 
+		// sum over bond pairs with 2 phases for j2 
+		for (int c = 0; c < num_b2; c++){
+			const int itype = c / N; // DOUBLE CHECK 
+			const int i = c % N;
+
+			// products of Peierl's phases 
+			const num ppui0i2 = p->pp_u[ i + N*itype];
+			const num ppui2i0 = p->ppr_u[i + N*itype];
+			const num ppdi0i2 = p->pp_d[ i + N*itype];
+			const num ppdi2i0 = p->ppr_d[i + N*itype];
+
+			const int i0 = p->bond2s[c];
+			const int i2 = p->bond2s[c + num_b2];
+
+			// map sign prefactor 
+			const int b2 = p->map_b2[c];
+			const num pre = phase / p->degen_b2[b2]; //DOUBLE CHECK
+
+			// delta functions 
+			const int delta_i0i2 = (i0 == i2);
+
+			// greens functions
+			const num gui2i0 = gu[i2 + i0*N];
+			const num gui0i2 = gu[i0 + i2*N];
+			const num gdi2i0 = gd[i2 + i0*N];
+			const num gdi0i2 = gd[i0 + i2*N];
+
+			// j2 measurements
+			num tt = ppui0i2*(delta_i0i2-gui2i0) + ppdi0i2*(delta_i0i2-gdi2i0)
+				   - ppui2i0*(delta_i0i2-gui0i2) - ppdi2i0*(delta_i0i2-gdi0i2);
+			m->j2[c] += pre*tt;
+		}
+	}
 	// printf("total[0]: %f + i %f \n", creal(m->chi[0]), cimag(m->chi[0]));
 	// printf("total[1]: %f + i %f \n", creal(m->chi[1]), cimag(m->chi[1]));
 	// fflush(stdout);
@@ -276,89 +358,6 @@ void measure_eqlt(const struct params *const restrict p,
 			            + pdi0i1*pdj1j0*(delta_i0j0 - gdj0i0)*gdi1j1 + pdi1i0*pdj0j1*(delta_i1j1 - gdj1i1)*gdi0j0;
 			m->kk[bb] += pre*((pui1i0*gui0i1 + pui0i1*gui1i0 + pdi1i0*gdi0i1 + pdi0i1*gdi1i0)
 			                 *(puj1j0*guj0j1 + puj0j1*guj1j0 + pdj1j0*gdj0j1 + pdj0j1*gdj1j0) + x + y);
-		}
-	}
- 
-	// for calculating the energy magnetization current contribution
-	// meas_local_JQ => <j_i^Q> 
-	const int meas_local_JQ = p->meas_local_JQ;
-	if (meas_local_JQ){		
-		// 1 bond measurements 	
-		// sum over bonds for 1 phase terms jn, j
-		for (int c = 0; c < num_b; c++) {
-			const int i0 = p->bonds[c];
-			const int i1 = p->bonds[c + num_b];
-
-			// if use peirels 
-			#ifdef USE_PEIERLS
-			const num pui0i1 = p->peierlsu[i0 + N*i1];
-			const num pui1i0 = p->peierlsu[i1 + N*i0];
-			const num pdi0i1 = p->peierlsd[i0 + N*i1];
-			const num pdi1i0 = p->peierlsd[i1 + N*i0];
-			#endif
-
-			// delta functions 
-			const int delta_i0i1 = (i0 == i1);
-
-			// greens functions
-			const num gui0i1 = gu[i0 + N*i1];
-			const num gui1i0 = gu[i1 + N*i0];
-			const num gdi0i1 = gd[i0 + N*i1];
-			const num gdi1i0 = gd[i1 + N*i0];
-			const num gui0i0 = gu[i0 + N*i0];
-			const num gdi0i0 = gd[i0 + N*i0];
-			const num gui1i1 = gu[i1 + N*i1];
-			const num gdi1i1 = gd[i1 + N*i1];
-
-			// map sign prefactor 
-			const int b = p->map_b[c]; 
-			const num pre = phase / p->degen_b[b]; //DOUBLE CHECK
-
-			// jn measurements 
-			num _wick_jn = pui0i1*(1-gui0i0)*(delta_i0i1-gdi1i0) + pdi0i1*(1-gdi0i0)*(delta_i0i1-gui1i0)
-						 + pui0i1*(1-gui1i1)*(delta_i0i1-gdi1i0) + pdi0i1*(1-gdi1i1)*(delta_i0i1-gui1i0)
-						 - pui1i0*(1-gui0i0)*(delta_i0i1-gdi0i1) - pdi1i0*(1-gdi0i0)*(delta_i0i1-gui0i1)
-						 - pui1i0*(1-gui1i1)*(delta_i0i1-gdi0i1) - pdi1i0*(1-gdi1i1)*(delta_i0i1-gui0i1);
-			m->jn[c] += pre*_wick_jn;
-
-			// j measurements 
-			num t = pui0i1*(-gui1i0) + pdi0i1*(-gdi1i0)
-				  - pui1i0*(-gui0i1) + pdi1i0*(-gdi0i1); 
-			m->j[c] += pre*t;
-		}
-
-		// 2 bond measurements 
-		// sum over bond pairs with 2 phases for j2 
-		for (int c = 0; c < num_b2; c++){
-			const int itype = c / N; // DOUBLE CHECK 
-			const int i = c % N;
-
-			// products of Peierl's phases 
-			const num ppui0i2 = p->pp_u[ i + N*itype];
-			const num ppui2i0 = p->ppr_u[i + N*itype];
-			const num ppdi0i2 = p->pp_d[ i + N*itype];
-			const num ppdi2i0 = p->ppr_d[i + N*itype];
-
-			const int i0 = p->bond2s[c];
-			const int i2 = p->bond2s[c + num_b2];
-
-			// map sign prefactor 
-			const int b2 = p->map_b2[c];
-			const num pre = phase / p->degen_b2[b2]; //DOUBLE CHECK
-
-			// delta functions 
-			const int delta_i0i2 = (i0 == i2);
-
-			// greens functions
-			const num gui2i0 = gu[i2 + i0*N];
-			const num gui0i2 = gu[i0 + i2*N];
-			const num gdi2i0 = gd[i2 + i0*N];
-			const num gdi0i2 = gd[i0 + i2*N];
-
-			// j2 measurements
-			num tt = ppui0i2*(delta_i0i2-gui2i0) + ppdi0i2*(delta_i0i2-gdi2i0)
-				   - ppui2i0*(delta_i0i2-gui0i2) - ppdi2i0*(delta_i0i2-gdi0i2);
-			m->j2[c] += pre*tt;
 		}
 	}
 }
