@@ -93,6 +93,40 @@ def H_periodic_square(Nx, Ny, t=1, tp = 0, nflux = 0, alpha = 1/2):
         assert np.max(np.abs(K.imag)) < 1e-10
     return K, peierls
 
+def H_open_square(Nx, Ny, t=1, tp = 0, nflux = 0, alpha = 1/2):
+    """Square lattice with open BC in both directions
+    NOTE: Peierl's matrix is not modified for open bc but since it always appears with tij, the term goes to zero"""
+    tij = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex128)
+    for iy in range(Ny):
+        for ix in range(Nx):
+            iy1 = (iy + 1) 
+            ix1 = (ix + 1) 
+            if (ix1 > Nx-1) | (iy1 > Ny-1):
+                continue
+            #jx    jy    ix    iy 
+            tij[ix1+Nx*iy , ix +Nx*iy ] += -t
+            tij[ix +Nx*iy , ix1+Nx*iy ] += -t
+            tij[ix +Nx*iy1, ix +Nx*iy ] += -t
+            tij[ix +Nx*iy , ix +Nx*iy1] += -t
+ 
+            tij[ix +Nx*iy , ix1+Nx*iy1] += -tp
+            tij[ix1+Nx*iy1, ix +Nx*iy ] += -tp
+
+            tij[ix1+Nx*iy , ix +Nx*iy1] += -tp
+            tij[ix +Nx*iy1, ix1+Nx*iy ] += -tp
+
+    peierls = make_peierls_mat(Nx,Ny,'square',nflux,alpha,np.array((0,0)))
+
+    K = tij * peierls
+    # complex hopping matrix
+    if nflux > 0:
+        #assert np.linalg.norm(peierls - peierls.T.conj()) < 1e-10, "???"
+        assert np.linalg.norm(K - K.T.conj()) < 1e-10
+    else: #peierls = 1, hopping real
+        assert np.max(np.abs(peierls.imag)) < 1e-10
+        assert np.max(np.abs(K.imag)) < 1e-10
+    return K, peierls
+
 def H_periodic_triangular(Nx, Ny, t=1, tp = 0, nflux = 0, alpha = 1/2):
     """ TB model with Peierls phase:
     H = sum -t_ij exp[i phi_ij] c_i^dag c_j
