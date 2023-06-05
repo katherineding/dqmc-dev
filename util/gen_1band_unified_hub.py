@@ -2,6 +2,7 @@ import os
 import shutil
 import sys
 import argparse
+import warnings
 
 import h5py
 import numpy as np
@@ -67,7 +68,7 @@ def rand_jump(rng):
 
 
 def create_1(file_sim=None, file_params=None, init_rng=None,
-    geometry="square", Nx=4, Ny=4, mu=0.0, tp=0.0, U=6.0, dt=0.1, L=40, nflux=0, h=0.0,
+    geometry="square", bc=1, Nx=4, Ny=4, mu=0.0, tp=0.0, U=6.0, dt=0.1, L=40, nflux=0, h=0.0,
     overwrite=0, n_delay=16, n_matmul=8, n_sweep_warm=200, n_sweep_meas=2000,
     period_eqlt=8, period_uneqlt=0,trans_sym=1, checkpoint_every=10000,
     meas_bond_corr=0, meas_energy_corr=0, meas_nematic_corr=0,
@@ -88,6 +89,15 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
     rng = init_rng.copy()
 
     Ncell = Nx*Ny
+    
+    # placeholder until other boundaries implemented for non square lattices 
+    if (bc != 1) & (geometry != "square"):
+        raise NotImplementedError("Non-periodic boundaries only implemented for square lattice")
+    
+    # if non-periodic and trans_sym on, warn user that trans_sym will turn off 
+    if (bc != 1) & trans_sym:
+        warnings.warn("Non-periodic boundaries not translationally symmetric: turning off trans_sym")
+        trans_sym = 0
 
     if geometry == "square":
         
@@ -458,7 +468,12 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
                         degen_b2b[kk] += 1
         assert num_b2b == map_b2b.max() + 1
 
-        kij,peierls = tight_binding.H_periodic_square(Nx,Ny,t=1,tp=tp,nflux=nflux,alpha=1/2)
+        if bc == 1:
+            kij,peierls = tight_binding.H_periodic_square(Nx,Ny,t=1,tp=tp,nflux=nflux,alpha=1/2)
+        elif bc == 2:
+            kij,peierls = tight_binding.H_open_square(Nx,Ny,t=1,tp=tp,nflux=nflux,alpha=1/2)
+        else:
+            raise ValueError("Invalid bc choice, must be 1 for periodic or 2 for open")
         #phases accumulated by two-hop processes
         #Here: types 0,1 include t' factors
         #   Types 2-7: sum of two paths
@@ -931,6 +946,7 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
         f["metadata"]["beta"] = L*dt
         f["metadata"]["trans_sym"] = trans_sym
         f["metadata"]["geometry"] = geometry
+        f["metadata"]["bc"] = bc
 
         # parameters used by dqmc code
         f.create_group("params")
@@ -1177,6 +1193,7 @@ if __name__ == "__main__":
     group1.add_argument('--tp',    type=float, default = 0.0, metavar='X',help="Next nearest hopping integral");
     group1.add_argument('--nflux', type=int,   default = 0,   metavar='X',help="Number of flux threading the cluster");
     group1.add_argument('--U',     type=float, default = 6.0, metavar='X',help="On-site Hubbard repulsion strength");
+    group1.add_argument('--bc',    type=int,   default = 1,   metavar='X',help="Boundary conditions, 1 for periodic, 2 for open");
 
     group1.add_argument('--dt',    type=float, default = 0.1, metavar='X',help="Imaginary time discretization interval");
     group1.add_argument('--L',     type=int,   default = 40,  metavar='X',help="Number of imaginary time steps");
