@@ -101,17 +101,24 @@ def H_open_square(Nx, Ny, t=1, tp = 0, nflux = 0, alpha = 1/2):
         for ix in range(Nx):
             iy1 = (iy + 1) 
             ix1 = (ix + 1) 
-            if (ix1 > Nx-1) | (iy1 > Ny-1):
+             
+            if (ix1 > Nx-1) & (iy1 > Ny-1):
+                continue    
+            elif (ix1 > Nx-1) & (iy1 <= Ny-1):
+                tij[ix +Nx*iy1, ix +Nx*iy ] += -t
+                tij[ix +Nx*iy , ix +Nx*iy1] += -t
+                continue 
+            elif (iy1 > Ny-1) & (ix1 <= Nx-1):
+                tij[ix1+Nx*iy , ix +Nx*iy ] += -t
+                tij[ix +Nx*iy , ix1+Nx*iy ] += -t
                 continue
-            #jx    jy    ix    iy 
+
             tij[ix1+Nx*iy , ix +Nx*iy ] += -t
             tij[ix +Nx*iy , ix1+Nx*iy ] += -t
             tij[ix +Nx*iy1, ix +Nx*iy ] += -t
             tij[ix +Nx*iy , ix +Nx*iy1] += -t
- 
             tij[ix +Nx*iy , ix1+Nx*iy1] += -tp
             tij[ix1+Nx*iy1, ix +Nx*iy ] += -tp
-
             tij[ix1+Nx*iy , ix +Nx*iy1] += -tp
             tij[ix +Nx*iy1, ix1+Nx*iy ] += -tp
 
