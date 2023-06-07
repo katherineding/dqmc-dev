@@ -61,7 +61,7 @@ def make_peierls_mat(Nx, Ny, shape, nflux, alpha = 1/2, jr_orbit = np.array((0,0
 
     return peierls
 
-def H_periodic_square(Nx, Ny, t=1, tp = 0, nflux = 0, alpha = 1/2):
+def H_periodic_square(Nx, Ny, t=1, tp = 0, nflux = 0, alpha = 1/2, twistx=0, twisty=0):
     # This function is now consistent with existing DQMC simulations
     # First: hopping (assuming periodic boundaries and no field)
     tij = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex128)
@@ -70,22 +70,22 @@ def H_periodic_square(Nx, Ny, t=1, tp = 0, nflux = 0, alpha = 1/2):
             iy1 = (iy + 1) % Ny
             ix1 = (ix + 1) % Nx
                 #jx    jy    ix    iy 
-            tij[ix1+Nx*iy , ix +Nx*iy ] += -t
-            tij[ix +Nx*iy , ix1+Nx*iy ] += -t
-            tij[ix +Nx*iy1, ix +Nx*iy ] += -t
-            tij[ix +Nx*iy , ix +Nx*iy1] += -t
+            tij[ix1+Nx*iy , ix +Nx*iy ] += -t*np.exp( 1j*twistx)
+            tij[ix +Nx*iy , ix1+Nx*iy ] += -t*np.exp(-1j*twistx)
+            tij[ix +Nx*iy1, ix +Nx*iy ] += -t*np.exp( 1j*twisty)
+            tij[ix +Nx*iy , ix +Nx*iy1] += -t*np.exp(-1j*twisty)
 
-            tij[ix +Nx*iy , ix1+Nx*iy1] += -tp
-            tij[ix1+Nx*iy1, ix +Nx*iy ] += -tp
+            tij[ix +Nx*iy , ix1+Nx*iy1] += -tp*np.exp(-1j*twistx-1j*twisty)
+            tij[ix1+Nx*iy1, ix +Nx*iy ] += -tp*np.exp(+1j*twistx+1j*twisty)
 
-            tij[ix1+Nx*iy , ix +Nx*iy1] += -tp
-            tij[ix +Nx*iy1, ix1+Nx*iy ] += -tp
+            tij[ix1+Nx*iy , ix +Nx*iy1] += -tp*np.exp(+1j*twistx-1j*twisty)
+            tij[ix +Nx*iy1, ix1+Nx*iy ] += -tp*np.exp(-1j*twistx+1j*twisty)
 
     peierls = make_peierls_mat(Nx,Ny,'square',nflux,alpha,np.array((0,0)))
 
     K = tij * peierls
     # complex hopping matrix
-    if nflux > 0:
+    if nflux > 0 or twistx!=0 or twisty!=0:
         #assert np.linalg.norm(peierls - peierls.T.conj()) < 1e-10, "???"
         assert np.linalg.norm(K - K.T.conj()) < 1e-10
     else: #peierls = 1, hopping real

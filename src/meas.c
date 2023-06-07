@@ -708,7 +708,8 @@ void measure_uneqlt(const struct params *const restrict p,
 				const num gdj2i2 = Gd00[j2 + i2*N];
 				const num gdj2j0 = Gd00[j2 + j0*N];
 				const num gdj0j2 = Gd00[j0 + j2*N];
-
+                                
+                                m->pair_b2b2[bb] += 0.5*pre*(gui0j0*gdi2j2 + gui2j0*gdi0j2 + gui0j2*gdi2j0 + gui2j2*gdi0j0);
 				const num x = ppui0i2*ppuj0j2*(delta_i0j2 - guj2i0)*gui2j0 +
 							  ppui2i0*ppuj2j0*(delta_i2j0 - guj0i2)*gui0j2 +
 							  ppdi0i2*ppdj0j2*(delta_i0j2 - gdj2i0)*gdi2j0 +
@@ -720,7 +721,15 @@ void measure_uneqlt(const struct params *const restrict p,
 				m->j2j2[bb] += pre*((ppui2i0*gui0i2 - ppui0i2*gui2i0 + ppdi2i0*gdi0i2 - ppdi0i2*gdi2i0)
 				                   *(ppuj2j0*guj0j2 - ppuj0j2*guj2j0 + ppdj2j0*gdj0j2 - ppdj0j2*gdj2j0) 
 				                   + x - y);
-
+			      m->js2js2[bb] += pre*((ppui2i0*gui0i2 - ppui0i2*gui2i0 - ppdi2i0*gdi0i2 + ppdi0i2*gdi2i0)
+					           *(ppuj2j0*guj0j2 - ppuj0j2*guj2j0 - ppdj2j0*gdj0j2 + ppdj0j2*gdj2j0)
+                                      + x - y);
+			      m->k2k2[bb]  += pre*((ppui2i0*gui0i2 + ppui0i2*gui2i0 + ppdi2i0*gdi0i2 + ppdi0i2*gdi2i0)
+					           *(ppuj2j0*guj0j2 + ppuj0j2*guj2j0 + ppdj2j0*gdj0j2 + ppdj0j2*gdj2j0)
+                                      + x + y);
+			      m->ks2ks2[bb] += pre*((ppui2i0*gui0i2 + ppui0i2*gui2i0 - ppdi2i0*gdi0i2 - ppdi0i2*gdi2i0)
+					          *(ppuj2j0*guj0j2 + ppuj0j2*guj2j0 - ppdj2j0*gdj0j2 - ppdj0j2*gdj2j0)
+                                      + x + y);
 			}
 		}
 	}
@@ -1406,6 +1415,7 @@ void measure_uneqlt(const struct params *const restrict p,
 						const num gdj2j0 = Gd00[j2 + j0*N];
 						const num gdj0j2 = Gd00[j0 + j2*N];
 
+                                                m->pair_b2b2[bb + num_b2b2*t] += 0.5*pre*(gui0j0*gdi2j2 + gui2j0*gdi0j2 + gui0j2*gdi2j0 + gui2j2*gdi0j0);
 						const num x = ppui0i2*ppuj0j2*(delta_i0j2 - guj2i0)*gui2j0 +
 									  ppui2i0*ppuj2j0*(delta_i2j0 - guj0i2)*gui0j2 +
 									  ppdi0i2*ppdj0j2*(delta_i0j2 - gdj2i0)*gdi2j0 +
@@ -1418,6 +1428,18 @@ void measure_uneqlt(const struct params *const restrict p,
 							pre*((ppui2i0*gui0i2 - ppui0i2*gui2i0 + ppdi2i0*gdi0i2 - ppdi0i2*gdi2i0)
 						        *(ppuj2j0*guj0j2 - ppuj0j2*guj2j0 + ppdj2j0*gdj0j2 - ppdj0j2*gdj2j0) 
 						        + x - y);
+                                      m->js2js2[bb + num_b2b2*t] += 
+                                            pre*((ppui2i0*gui0i2 - ppui0i2*gui2i0 - ppdi2i0*gdi0i2 + ppdi0i2*gdi2i0)
+					              *(ppuj2j0*guj0j2 - ppuj0j2*guj2j0 - ppdj2j0*gdj0j2 + ppdj0j2*gdj2j0)
+                                              + x - y);
+			                   m->k2k2[bb + num_b2b2*t]  += 
+                                            pre*((ppui2i0*gui0i2 + ppui0i2*gui2i0 + ppdi2i0*gdi0i2 + ppdi0i2*gdi2i0)
+					             *(ppuj2j0*guj0j2 + ppuj0j2*guj2j0 + ppdj2j0*gdj0j2 + ppdj0j2*gdj2j0)
+                                             + x + y);
+			                   m->ks2ks2[bb + num_b2b2*t] += 
+                                             pre*((ppui2i0*gui0i2 + ppui0i2*gui2i0 - ppdi2i0*gdi0i2 - ppdi0i2*gdi2i0)
+					             *(ppuj2j0*guj0j2 + ppuj0j2*guj2j0 - ppdj2j0*gdj0j2 - ppdj0j2*gdj2j0)
+                                             + x + y);
 
 					}
 				}
