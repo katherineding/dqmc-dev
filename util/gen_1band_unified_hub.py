@@ -502,7 +502,7 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
                 plaqs[2, i] = ix  + Nx*iy1  # i2 = i + y // counterclockwise
                 plaqs[0, i + Nx*Ny] = ix1 + Nx*iy   # i0 = i + x
                 plaqs[1, i + Nx*Ny] = ix1 + Nx*iy1  # i1 = i + x + y
-                plaqs[2, i + Nx*Ny] = ix  + Nx*iy1  # i2 = i + x //counterclockwise
+                plaqs[2, i + Nx*Ny] = ix  + Nx*iy1  # i2 = i + y //counterclockwise
 
 
         #print("total number of triangular plaqs:",num_plaq)
