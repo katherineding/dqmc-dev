@@ -218,7 +218,7 @@ void measure_eqlt(const struct params *const restrict p,
 
 			// j measurements 
 			num t = pui0i1*(delta_i0i1-gui1i0) + pdi0i1*(delta_i0i1-gdi1i0)
-				  - pui1i0*(delta_i0i1-gui0i1) + pdi1i0*(delta_i0i1-gdi0i1); 
+				  - pui1i0*(delta_i0i1-gui0i1) - pdi1i0*(delta_i0i1-gdi0i1); 
 			m->j[b] += pre*t;
 		}
 
