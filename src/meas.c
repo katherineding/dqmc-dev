@@ -214,12 +214,12 @@ void measure_eqlt(const struct params *const restrict p,
 						 + pui0i1*(1-gui1i1)*(delta_i0i1-gdi1i0) + pdi0i1*(1-gdi1i1)*(delta_i0i1-gui1i0)
 						 - pui1i0*(1-gui0i0)*(delta_i0i1-gdi0i1) - pdi1i0*(1-gdi0i0)*(delta_i0i1-gui0i1)
 						 - pui1i0*(1-gui1i1)*(delta_i0i1-gdi0i1) - pdi1i0*(1-gdi1i1)*(delta_i0i1-gui0i1);
-			m->jn[c] += pre*_wick_jn;
+			m->jn[b] += pre*_wick_jn;
 
 			// j measurements 
-			num t = pui0i1*(-gui1i0) + pdi0i1*(-gdi1i0)
-				  - pui1i0*(-gui0i1) + pdi1i0*(-gdi0i1); 
-			m->j[c] += pre*t;
+			num t = pui0i1*(delta_i0i1-gui1i0) + pdi0i1*(delta_i0i1-gdi1i0)
+				  - pui1i0*(delta_i0i1-gui0i1) + pdi1i0*(delta_i0i1-gdi0i1); 
+			m->j[b] += pre*t;
 		}
 
 		// 2 bond measurements 
@@ -253,7 +253,7 @@ void measure_eqlt(const struct params *const restrict p,
 			// j2 measurements
 			num tt = ppui0i2*(delta_i0i2-gui2i0) + ppdi0i2*(delta_i0i2-gdi2i0)
 				   - ppui2i0*(delta_i0i2-gui0i2) - ppdi2i0*(delta_i0i2-gdi0i2);
-			m->j2[c] += pre*tt;
+			m->j2[b2] += pre*tt;
 		}
 	}
 	// printf("total[0]: %f + i %f \n", creal(m->chi[0]), cimag(m->chi[0]));
