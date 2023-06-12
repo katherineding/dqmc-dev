@@ -1169,5 +1169,7 @@ if __name__ == "__main__":
         for (k,v) in argdict.items():
             print(k,v)
 
+    delattr(args,'printout')
+
     create_batch(**vars(args))
 
