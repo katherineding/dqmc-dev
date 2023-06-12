@@ -1047,7 +1047,7 @@ def create_1(file_sim=None, file_params=None, init_rng=None,
                 f["meas_uneqlt"]["nem_ssss"] = np.zeros(num_bb*L, dtype=dtype_num)
 
 
-def create_batch(Nfiles=1, printout=1, prefix=None, seed=None, **kwargs):
+def create_batch(Nfiles=1, prefix=None, seed=None, **kwargs):
     if seed is None:
         init_rng = rand_seed_urandom()
     else:
@@ -1109,7 +1109,8 @@ def create_batch(Nfiles=1, printout=1, prefix=None, seed=None, **kwargs):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate .h5 files for dqmc simulation",\
+    parser = argparse.ArgumentParser(description="Generate .h5 files for dqmc simulation. "+\
+        "All parameters have defaults. Use arguments of form --name value or --name=value to override.",\
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument('-V','--version', action='version', version=hash_short)
@@ -1125,14 +1126,20 @@ if __name__ == "__main__":
     group1.add_argument('--dt',    type=float, default = 0.1, metavar='X',help="Imaginary time discretization interval");
     group1.add_argument('--L',     type=int,   default = 40,  metavar='X',help="Number of imaginary time steps");
     
-    group1.add_argument('--mu',    type=float, default = 0.0, metavar='X',help="chemical potential");
+    group1.add_argument('--mu',    type=float, default = 0.0, metavar='X',help="Chemical potential");
     group1.add_argument('--h',     type=float, default = 0.0, metavar='X',help="Zeeman field strength. Down electrons feel net (mu+h) chemical potential");
 
+
+    group1.add_argument('--twistx',type=float,  default=0.0,  metavar='X',\
+        help="Twist phase per bond along x. Equivalent to total twist Nx * twistx on boundary.");
+    group1.add_argument('--twisty',type=float,  default=0.0,  metavar='X',\
+        help="Twist phase per bond along y. Equivalent to total twist Ny * twisty on boundary.");
+
     group2 = parser.add_argument_group('Simulation file settings')
-    group2.add_argument('--prefix',type=str, default=None,metavar='X',help="Prefix for the name of each simulation file");
-    group2.add_argument('--seed',  type=int, default=None,metavar='X',help="User-defined RNG seed");
+    group2.add_argument('--prefix',type=str, default=None,metavar='X',help="Prefix for the name of each simulation file. If None, use \"sim\"");
+    group2.add_argument('--seed',  type=int, default=None,metavar='X',help="User-defined RNG seed. If None, use rand_seed_urandom()");
     group2.add_argument('--Nfiles',type=int, default=1,   metavar='X',help="Number of simulation files to generate");
-    group2.add_argument('--printout',type=int, default=1,   metavar='X',help="whether to print out the argument terms");
+    group2.add_argument('--printout',type=int, default=1,   metavar='X',help="Whether to print out parameter choices as .h5 files are created.");
 
     group2.add_argument('--overwrite',       type=int,  default=0,    metavar='X',help="Whether to overwrite existing files");
     group2.add_argument('--n_delay',         type=int,  default=16,   metavar='X',help="Number of updates to group together in the delayed update scheme");
@@ -1143,8 +1150,6 @@ if __name__ == "__main__":
     group2.add_argument('--period_uneqlt',   type=int,  default=0,    metavar='X',help="Period of unequal-time measurements in units of full H-S sweeps. 0 means disabled"); 
     group2.add_argument('--trans_sym',       type=int,  default=1,    metavar='X',help="Whether to apply translational symmetry to compress measurement data"); 
     group2.add_argument('--checkpoint_every',type=int,  default=10000,metavar='X',help="Number of full H-S sweeps between checkpoints. 0 means disabled"); 
-    group2.add_argument('--twistx',type=float,  default=0,metavar='X',help="twist phase on the x direction");
-    group2.add_argument('--twisty',type=float,  default=0,metavar='X',help="twist phase on the y direction");
 
     group3 = parser.add_argument_group('Expensive measurement toggles')
 
