@@ -19,6 +19,23 @@ repo = git.Repo(path, search_parent_directories=True)
 hash_short = repo.git.rev_parse(repo.head, short=True)
 
 
+# Set up geometry-specific parameters
+# FIXME: are plaquettes constrained by requiring nonzero hopping element
+# to connect sites, or can plaquettes be defined for arbitrary 3 sites?
+plaq_per_cell_dict = {}
+plaq_per_cell_dict["square"] = 1  # PLACEHOLDER
+plaq_per_cell_dict["triangular"] = 2
+plaq_per_cell_dict["honeycomb"] = 1  # PLACEHOLDER
+plaq_per_cell_dict["kagome"] = 2  # PLACEHOLDER
+
+
+Norb_per_cell_dict = {}
+Norb_per_cell_dict["square"] = 1
+Norb_per_cell_dict["triangular"] = 1
+Norb_per_cell_dict["honeycomb"] = 2
+Norb_per_cell_dict["kagome"] = 3
+
+
 def rand_seed_urandom():
     rng = np.zeros(17, dtype=np.uint64)
     rng[:16] = np.frombuffer(os.urandom(16 * 8), dtype=np.uint64)
@@ -87,33 +104,33 @@ def create_1(
     file_sim=None,
     file_params=None,
     init_rng=None,
-    geometry="square",
-    Nx=4,
-    Ny=4,
-    mu=0.0,
-    tp=0.0,
-    U=6.0,
-    dt=0.1,
-    L=40,
-    nflux=0,
-    h=0.0,
+    geometry: str = "square",
+    Nx: int = 4,
+    Ny: int = 4,
+    mu: float = 0.0,
+    tp: float = 0.0,
+    U: float = 6.0,
+    dt: float = 0.1,
+    L: int = 40,
+    nflux: int = 0,
+    h: float = 0.0,
     overwrite=0,
-    n_delay=16,
-    n_matmul=8,
-    n_sweep_warm=200,
-    n_sweep_meas=2000,
-    period_eqlt=8,
-    period_uneqlt=0,
-    trans_sym=1,
-    checkpoint_every=10000,
-    meas_bond_corr=0,
-    meas_energy_corr=0,
-    meas_nematic_corr=0,
-    meas_thermal=0,
-    meas_2bond_corr=0,
-    meas_chiral=0,
-    twistx=0,
-    twisty=0,
+    n_delay: int = 16,
+    n_matmul: int = 8,
+    n_sweep_warm: int = 200,
+    n_sweep_meas: int = 2000,
+    period_eqlt: int = 8,
+    period_uneqlt: int = 0,
+    trans_sym: int = 1,
+    checkpoint_every: int = 10000,
+    meas_bond_corr: int = 0,
+    meas_energy_corr: int = 0,
+    meas_nematic_corr: int = 0,
+    meas_thermal: int = 0,
+    meas_2bond_corr: int = 0,
+    meas_chiral: int = 0,
+    twistx: float = 0,
+    twisty: float = 0,
 ):
     assert L % n_matmul == 0 and L % period_eqlt == 0
     if nflux != 0 or twistx != 0 or twisty != 0:
@@ -133,43 +150,55 @@ def create_1(
     rng = init_rng.copy()
 
     Ncell = Nx * Ny
+    Norb = Norb_per_cell_dict[geometry]
+    N = Norb * Ncell
+
+    init_hs = np.zeros((L, N), dtype=np.int32)
+    for l in range(L):
+        for i in range(N):
+            init_hs[l, i] = rand_uint(rng) >> np.uint64(63)
+
+    # ------------------measurement maps----------------------
+    # per Norb (per site) measurement mapping
+    if trans_sym:
+        map_i = np.zeros(N, dtype=np.int32)
+        # translation average for each orbital
+        for orb in range(Norb):
+            map_i[Ncell * orb : Ncell * (orb + 1)] = orb  
+        degen_i = np.full(Norb, Ncell, dtype=np.int32)
+    else:
+        map_i = np.arange(N, dtype=np.int32)
+        degen_i = np.ones(N, dtype=np.int32)
+    num_i = map_i.max() + 1
+    assert num_i == degen_i.size
+
+    # print("num",num_i)
+    # print("degen",degen_i)
+    # print("map",map_i)
+
+    plaq_per_cell = plaq_per_cell_dict[geometry]
+    num_plaq_total = plaq_per_cell * Nx * Ny
+    # plaquette definitions 
+    plaqs = np.zeros((3, num_plaq_total), dtype=np.int32)  # NOTE: placeholder
+
+    # per plaquette (per site) measurement mapping
+    if trans_sym:
+        map_plaq = np.zeros(num_plaq_total, dtype=np.int32)
+        # translation average for each plaquette type
+        for p in range(plaq_per_cell):
+            map_plaq[Ncell * p : Ncell * (p + 1)] = p
+        degen_plaq = np.full(plaq_per_cell, Ncell, dtype=np.int32)
+    else:
+        map_plaq = np.arange(num_plaq_total, dtype=np.int32)
+        degen_plaq = np.ones(num_plaq_total, dtype=np.int32)
+
+    num_plaq_accum = map_plaq.max() + 1
+    # print("plaq_per_cell",plaq_per_cell)
+    # print("num_plaq_total",num_plaq_total)
+    # print("degen",degen_plaq)
+    # print("map",map_plaq)
 
     if geometry == "square":
-        Norb = 1
-        N = Norb * Nx * Ny
-
-        init_hs = np.zeros((L, N), dtype=np.int32)
-        for l in range(L):
-            for i in range(N):
-                init_hs[l, i] = rand_uint(rng) >> np.uint64(63)
-
-        # Norb site mapping
-        if trans_sym:
-            map_i = np.zeros(N, dtype=np.int32)
-            degen_i = np.array((N,), dtype=np.int32)
-        else:
-            map_i = np.arange(N, dtype=np.int32)
-            degen_i = np.ones(N, dtype=np.int32)
-        num_i = map_i.max() + 1
-        assert num_i == degen_i.size
-
-        # plaquette definitions NOTE: placeholder
-        plaq_per_cell = 1
-        num_plaq = plaq_per_cell * Nx * Ny
-        plaqs = np.zeros((3, num_plaq), dtype=np.int32)
-
-        # plaq_per_cell slot mapping NOTE: placeholder
-        if trans_sym:
-            # first Nx*Ny goes to slot 0, second Nx*Ny goes to slot 1
-            map_plaq = np.zeros(num_plaq, dtype=np.int32)
-            degen_plaq = np.array((Nx * Ny,), dtype=np.int32)
-        else:
-            map_plaq = np.arange(num_plaq, dtype=np.int32)
-            degen_plaq = np.ones(num_plaq, dtype=np.int32)
-
-        num_plaq_accum = map_plaq.max() + 1
-
-        assert num_plaq_accum == degen_plaq.size
 
         # 2 site mapping: site r = (x,y) has total (column order) index x + Nx * y
         map_ij = np.zeros((N, N), dtype=np.int32)
@@ -514,31 +543,8 @@ def create_1(
                 thermal_phases[btype, i] = pp
 
     elif geometry == "triangular":
-        Norb = 1
-        N = Norb * Nx * Ny
 
-        init_hs = np.zeros((L, N), dtype=np.int32)
-        for l in range(L):
-            for i in range(N):
-                init_hs[l, i] = rand_uint(rng) >> np.uint64(63)
-
-        # 1 site mapping
-        if trans_sym:
-            map_i = np.zeros(N, dtype=np.int32)
-            degen_i = np.array((N,), dtype=np.int32)
-        else:
-            map_i = np.arange(N, dtype=np.int32)
-            degen_i = np.ones(N, dtype=np.int32)
-        num_i = map_i.max() + 1
-        assert num_i == degen_i.size
-
-        # print("Trans sym = ",trans_sym)
-        # print("map",map_i,"degen",degen_i,"num",num_i)
-
-        # plaquette definitions NOTE: only valid for t' = 0
-        plaq_per_cell = 2
-        num_plaq = plaq_per_cell * Nx * Ny
-        plaqs = np.zeros((3, num_plaq), dtype=np.int32)
+        # fill in plaquette definition! TODO: check correctness
         for iy in range(Ny):
             for ix in range(Nx):
                 i = ix + Nx * iy
@@ -551,23 +557,7 @@ def create_1(
                 plaqs[1, i + Nx * Ny] = ix1 + Nx * iy1  # i1 = i + x + y
                 plaqs[2, i + Nx * Ny] = ix + Nx * iy1  # i2 = i + y //counterclockwise
 
-        # print("total number of triangular plaqs:",num_plaq)
-        # 1 plaquette mapping
-        if trans_sym:
-            # first Nx*Ny goes to slot 0, second Nx*Ny goes to slot 1
-            map_plaq = np.zeros(num_plaq, dtype=np.int32)
-            map_plaq[Nx * Ny :] = 1
-            degen_plaq = np.array((Nx * Ny, Nx * Ny), dtype=np.int32)
-        else:
-            map_plaq = np.arange(num_plaq, dtype=np.int32)
-            degen_plaq = np.ones(num_plaq, dtype=np.int32)
-
-        num_plaq_accum = map_plaq.max() + 1
-
-        assert num_plaq_accum == degen_plaq.size
-        # print("map:",map_plaq)
-        # print("degen:",degen_plaq, degen_plaq.size)
-        # print("save slots:",num_plaq_accum)
+        print(plaqs)
 
         # 2 site mapping
         map_ij = np.zeros((N, N), dtype=np.int32)
@@ -638,48 +628,6 @@ def create_1(
         thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
 
     elif geometry == "honeycomb":
-        Norb = 2
-        # NOTE: N = total number of orbitals, not total number of unit cells
-        N = Norb * Nx * Ny
-
-        # location (ix, iy) orbital io is 3d matrix (ix,iy,io)
-        # with total index ix + Nx * iy + (Nx * Ny) * i0
-        init_hs = np.zeros((L, N), dtype=np.int32)
-        for l in range(L):
-            for i in range(N):
-                init_hs[l, i] = rand_uint(rng) >> np.uint64(63)
-
-        # 1 site mapping
-        if trans_sym:
-            map_i = np.zeros(N, dtype=np.int32)
-            map_i[Ny * Nx :] = 1  # second orbital
-            degen_i = np.array((Ny * Nx, Ny * Nx), dtype=np.int32)
-        else:
-            map_i = np.arange(N, dtype=np.int32)
-            degen_i = np.ones(N, dtype=np.int32)
-        num_i = map_i.max() + 1
-        assert num_i == degen_i.size
-
-        # plaquette definitions NOTE: placeholder
-        plaq_per_cell = 1
-        num_plaq = plaq_per_cell * Nx * Ny
-        plaqs = np.zeros((3, num_plaq), dtype=np.int32)
-
-        # 1 plaquette mapping NOTE: placeholder
-        if trans_sym:
-            # first Nx*Ny gioes to slot 0, second Nx*Ny goes to slot 1
-            map_plaq = np.zeros(num_plaq, dtype=np.int32)
-            degen_plaq = np.array((Nx * Ny,), dtype=np.int32)
-        else:
-            map_plaq = np.arange(num_plaq, dtype=np.int32)
-            degen_plaq = np.ones(num_plaq, dtype=np.int32)
-
-        num_plaq_accum = map_plaq.max() + 1
-
-        assert num_plaq_accum == degen_plaq.size
-
-        # print("Trans sym = ",trans_sym)
-        # print("map",map_plaq,"degen",degen_plaq,"num",num_plaq_accum)
 
         # 2 site mapping
         map_ij = np.zeros((N, N), dtype=np.int32)
@@ -762,32 +710,8 @@ def create_1(
         thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
 
     elif geometry == "kagome":
-        Norb = 3
-        # NOTE: N = total number of orbitals, not total number of unit cells
-        N = Norb * Nx * Ny
-        # location (ix, iy) orbital io is 3d matrix (ix,iy,io)
-        # with total index ix + Nx * iy + (Nx*Ny) * i0
-        init_hs = np.zeros((L, N), dtype=np.int32)
-        for l in range(L):
-            for i in range(N):
-                init_hs[l, i] = rand_uint(rng) >> np.uint64(63)
-
-        # 1 site mapping
-        if trans_sym:
-            map_i = np.zeros(N, dtype=np.int32)
-            map_i[Ny * Nx : 2 * Ny * Nx] = 1  # second orbital
-            map_i[2 * Ny * Nx :] = 2  # third orbital
-            degen_i = np.array((Ny * Nx, Ny * Nx, Ny * Nx), dtype=np.int32)
-        else:
-            map_i = np.arange(N, dtype=np.int32)
-            degen_i = np.ones(N, dtype=np.int32)
-        num_i = map_i.max() + 1
-        assert num_i == degen_i.size
 
         # plaquette definitions TODO: check correctness
-        plaq_per_cell = 2
-        num_plaq = plaq_per_cell * Nx * Ny
-        plaqs = np.zeros((3, num_plaq), dtype=np.int32)
         for iy in range(Ny):
             for ix in range(Nx):
                 i = ix + Nx * iy
@@ -802,22 +726,6 @@ def create_1(
                     ix + Nx * iy1 + Nx * Ny * 1
                 )  # i2 = i+y(B) //counterclockwise
 
-        # 1 plaquette mapping
-        if trans_sym:
-            # first Nx*Ny gioes to slot 0, second Nx*Ny goes to slot 1
-            map_plaq = np.zeros(num_plaq, dtype=np.int32)
-            map_plaq[Nx * Ny :] = 1
-            degen_plaq = np.array((Nx * Ny, Nx * Ny), dtype=np.int32)
-        else:
-            map_plaq = np.arange(num_plaq, dtype=np.int32)
-            degen_plaq = np.ones(num_plaq, dtype=np.int32)
-
-        num_plaq_accum = map_plaq.max() + 1
-
-        assert num_plaq_accum == degen_plaq.size
-
-        # print("Trans sym = ",trans_sym)
-        # print("map",map_plaq,"degen",degen_plaq,"num",num_plaq_accum)
 
         # 2 site mapping
         map_ij = np.zeros((N, N), dtype=np.int32)
@@ -1004,7 +912,7 @@ def create_1(
         f["params"]["num_i"] = num_i
         f["params"]["num_ij"] = num_ij
         f["params"]["num_plaq_accum"] = num_plaq_accum
-        f["params"]["num_plaq"] = num_plaq
+        f["params"]["num_plaq"] = num_plaq_total
         f["params"]["num_b"] = num_b
         f["params"]["num_b2"] = num_b2
         f["params"]["num_bs"] = num_bs
