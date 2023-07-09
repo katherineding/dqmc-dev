@@ -1,3 +1,7 @@
+*.h5
+*.h5.log
+
+
 # Prerequisites
 *.d
 
