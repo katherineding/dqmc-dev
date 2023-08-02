@@ -4,7 +4,7 @@ CFLAGS = -std=gnu11 -Wall -Wextra -Ofast -axCORE-AVX2,MIC-AVX512
 CFLAGS += -DMKL_DIRECT_CALL_SEQ -mkl=sequential
 CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
 CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
-CFLAGS += -DOMP_MEAS_NUM_THREADS=6
+CFLAGS += -DOMP_MEAS_NUM_THREADS=2
 CFLAGS += -DPROFILE_ENABLE
 CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 CFLAGS += -qopenmp  # to disable openmp, use -qopenmp-stubs
