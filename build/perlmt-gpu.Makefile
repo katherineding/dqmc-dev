@@ -8,7 +8,7 @@ CFLAGS = -fast -mp=gpu -gpu=cc80,cuda11.7 -Minfo=mp
 CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
 CFLAGS += -DPROFILE_ENABLE 
 CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
-CFLAGS += -DOMP_MEAS_NUM_THREADS=6
+CFLAGS += -DOMP_MEAS_NUM_THREADS=2
 CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 
 #LDFLAGS += -L/usr/lib/x86_64-linux-gnu/hdf5/serial
