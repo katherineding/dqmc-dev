@@ -3,10 +3,17 @@
 *.gcda
 *.gcov
 *.html
+*.css
+
+# DQMC executable
+dqmc_1
+dqmc_stack
 
 #generated data files used in testing
 *.h5
 *.h5.log
+*.h5.params
+stack
 
 # ============================C=====================================
 
