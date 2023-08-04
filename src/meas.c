@@ -470,8 +470,8 @@ void measure_uneqlt(const struct params *const restrict p,
 	// num jjn_arr[num_bb*L];
 
 	// my_copy(jnjn_arr,m->jnjn,num_bb*L);
-	// my_copy(jnj_arr,m->new_jnj,num_bb*L);
-	// my_copy(jjn_arr,m->new_jjn,num_bb*L);
+	// my_copy(jnj_arr,m->jnj,num_bb*L);
+	// my_copy(jjn_arr,m->jjn,num_bb*L);
 
 	// num * _pair_bb = (num *)my_calloc(num_bb*L * sizeof(num));
 	// num * _jj =   (num *)my_calloc(num_bb*L * sizeof(num));
@@ -492,8 +492,8 @@ void measure_uneqlt(const struct params *const restrict p,
 
 	// my_copy(_pair_bb,(m->pair_bb),num_bb*L);
 	// my_copy(_jj,    (m->jj),    num_bb*L);
-	// my_copy(_jnj,   (m->new_jnj),   num_bb*L);
-	// my_copy(_jjn,   (m->new_jjn),   num_bb*L);
+	// my_copy(_jnj,   (m->jnj),   num_bb*L);
+	// my_copy(_jjn,   (m->jjn),   num_bb*L);
 	// my_copy(_jnjn,  (m->jnjn),  num_bb*L);
 	// my_copy(_jsjs,  (m->jsjs),  num_bb*L);
 	// my_copy(_kk,    (m->kk),    num_bb*L);
@@ -510,8 +510,8 @@ void measure_uneqlt(const struct params *const restrict p,
 
 	num * _pair_bb = m->pair_bb;
 	num * _jj =   m->jj;
-	num * _jnj =  m->new_jnj;
-	num * _jjn =  m->new_jjn;
+	num * _jnj =  m->jnj;
+	num * _jjn =  m->jjn;
 	num * _jnjn = m->jnjn;
 	num * _jsjs = m->jsjs;
 	num * _kk =   m->kk;
@@ -843,7 +843,8 @@ void measure_uneqlt(const struct params *const restrict p,
 						const num gdj1j0 = Gdtt[j1 + j0*N + N*N*0];
 						const num gdj0j1 = Gdtt[j0 + j1*N + N*N*0]; //zero time
 						if (meas_thermal) {
-// =======
+// =======	
+// 						#Wen's CPU version: TODO: add this to GPU
 //                      m->pair_b2b2[bb + num_b2b2*t] += 0.5*pre*(gui0j0*gdi2j2 + gui2j0*gdi0j2 + gui0j2*gdi2j0 + gui2j2*gdi0j0);
 // 						const num x = ppui0i2*ppuj0j2*(delta_i0j2 - guj2i0)*gui2j0 +
 // 									  ppui2i0*ppuj2j0*(delta_i2j0 - guj0i2)*gui0j2 +
