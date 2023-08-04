@@ -201,10 +201,12 @@ static int pop_stack(const char *file, char *line)
 
 		const int new_chars = end - start + 1;
 		if (len_line + new_chars > MAX_LEN) {
-			my_printf("error: last line length > %d\n", MAX_LEN);
+			my_printf("len_line = %d, end = %d, start = %d, new_chars = %d, "
+				"error: last line length > %d\n", len_line, end, start, new_chars, MAX_LEN);
 			ret = -1;
 			goto end;
 		}
+		//last line length is not an accurate error message!
 
 		if (new_chars > 0) {
 			if (len_line > 0)
@@ -437,7 +439,7 @@ int main(int argc, char **argv)
 		int pop_status = pop_stack(stack_file, sim_file);
 		if (pop_status == -1) { // pop_stack() failed
 			my_printf("[ERROR] pop_stack() failed; idling\n");
-			return EXIT_FAILURE;
+			return EXIT_SUCCESS;
 		}
 		else if (pop_status == 1) { // stack_file empty
 			my_printf("pop_stack() returned %d, %s empty; idling\n", 
@@ -450,7 +452,7 @@ int main(int argc, char **argv)
 		memcpy(log_file, sim_file, len_sim_file);
 		memcpy(log_file + len_sim_file, ".log", 5);
 
-		// my_printf("memory requirement: %zu bytes\n", get_memory_req(sim_file));
+		// my_printf("memory requirement: %d bytes\n", get_memory_req(sim_file));
 		my_printf("starting:   %s\n", sim_file);
 		my_printf("logging to: %s\n", log_file);
 		// run dqmc here 

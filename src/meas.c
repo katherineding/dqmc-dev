@@ -2,6 +2,7 @@
 #include "data.h"
 #include "util.h"
 #include "prof.h"
+#include <unistd.h>
 // #include "omp.h"
 // #include <stdio.h>
 // #include <math.h>
@@ -12,7 +13,8 @@
 #define NEM_BONDS 2
 
 // Number of OpenMP threads used for expensive unequal time measurements.
-// This overrides the omp_set_num_threads() function called by main
+// This overrides the omp_set_num_threads() function called by main if 
+// OMP_MEAS_NUM_THREADS is not specified during compilation.
 #ifndef OMP_MEAS_NUM_THREADS
 	#define OMP_MEAS_NUM_THREADS 2
 #endif
@@ -75,7 +77,10 @@ void measure_eqlt(const struct params *const restrict p,
 		const int r = p->map_i[i];
 		const num pre = phase / p->degen_i[r];
 		const num guii = gu[i + i*N], gdii = gd[i + i*N];
+		// NOTE: density is *sum* of density_u and density_d
 		m->density[r] += pre*(2. - guii - gdii);
+		m->density_u[r] += pre*(1. - guii);
+		m->density_d[r] += pre*(1. - gdii);
 		m->double_occ[r] += pre*(1. - guii)*(1. - gdii);
 	}
 
@@ -89,10 +94,15 @@ void measure_eqlt(const struct params *const restrict p,
 			const num guij = gu[i + j*N], gdij = gd[i + j*N];
 			const num guji = gu[j + i*N], gdji = gd[j + i*N];
 			const num gujj = gu[j + j*N], gdjj = gd[j + j*N];
+			// NOTE: g00 is *average* of g00_u and g00_d
 			#ifdef USE_PEIERLS
 			m->g00[r] += 0.5*pre*(guij*p->peierlsu[j + i*N] + gdij*p->peierlsd[j + i*N]);
+			m->g00_u[r] += pre*(guij*p->peierlsu[j + i*N]);
+			m->g00_d[r] += pre*(gdij*p->peierlsd[j + i*N]);
 			#else
 			m->g00[r] += 0.5*pre*(guij + gdij);
+			m->g00_u[r] += pre*guij;
+			m->g00_d[r] += pre*gdij;
 			#endif
 			const num x = delta*(guii + gdii) - (guji*guij + gdji*gdij);
 			m->nn[r] += pre*((2. - guii - gdii)*(2. - gujj - gdjj) + x);
@@ -108,6 +118,64 @@ void measure_eqlt(const struct params *const restrict p,
 		}
 	}
 
+	const int num_plaq_accum = p->num_plaq_accum;
+	const int num_plaq = p->num_plaq;
+	const int meas_chiral = p->meas_chiral;
+
+	//printf("num_plaq_accum = %d, num_plaq=%d, meas_chiral= %d\n",num_plaq_accum,num_plaq,meas_chiral);
+	if (meas_chiral) {
+		for (int a = 0; a < num_plaq; a++){
+			//printf("a=%d\n",a);
+			const int i0 = p->plaqs[a];
+			const int i1 = p->plaqs[a + 1*num_plaq];
+			const int i2 = p->plaqs[a + 2*num_plaq];
+
+			const num gui0i0 = gu[i0 + i0*N];
+			const num gui1i1 = gu[i1 + i1*N];
+			const num gui2i2 = gu[i2 + i2*N];
+			const num gdi0i0 = gd[i0 + i0*N];
+			const num gdi1i1 = gd[i1 + i1*N];
+			const num gdi2i2 = gd[i2 + i2*N];
+
+			const num gui0i1 = gu[i0 + N*i1];
+			const num gui1i0 = gu[i1 + N*i0];
+			const num gui0i2 = gu[i0 + N*i2];
+			const num gui2i0 = gu[i2 + N*i0];
+			const num gui1i2 = gu[i1 + N*i2];
+			const num gui2i1 = gu[i2 + N*i1];
+
+			const num gdi0i1 = gd[i0 + N*i1];
+			const num gdi1i0 = gd[i1 + N*i0];
+			const num gdi0i2 = gd[i0 + N*i2];
+			const num gdi2i0 = gd[i2 + N*i0];
+			const num gdi1i2 = gd[i1 + N*i2];
+			const num gdi2i1 = gd[i2 + N*i1];
+			
+			// printf(stderr,"a=%d\n",a);
+			// sleep(1);
+			const int r = p->map_plaq[a];
+			const num pre = phase / p->degen_plaq[r];
+			// this is obtained using edwin's wick script.
+			const num x = 
+				gdi1i1*gdi2i0*gui0i2 - gdi0i2*gdi2i1*gui1i0 + gdi0i1*gdi2i2*gui1i0 - gdi2i1*gui0i2*gui1i0 - 
+				gdi2i0*gui0i2*gui1i1 + gdi0i1*gdi2i0*gui1i2 - gdi0i0*gdi2i1*gui1i2 + gdi2i1*gui0i0*gui1i2 + 
+				gdi2i0*gui0i1*gui1i2 - gdi0i2*gdi1i1*gui2i0 + gdi0i2*gui1i1*gui2i0 + gdi0i1*gui1i2*gui2i0 - 
+				gdi0i2*gui1i0*gui2i1 + gdi1i2*(gdi2i0*gui0i1 + (gdi0i1 + gui0i1)*gui2i0 + (gdi0i0 - gui0i0)*gui2i1) - 
+				                       gdi1i0*(gdi2i1*gui0i2 + (gdi0i2 + gui0i2)*gui2i1 + gui0i1*(gdi2i2 - gui2i2)) - 
+				gdi0i1*gui1i0*gui2i2;
+
+			m->chi[r] += pre * x;
+
+			// if (a == 8 || a == 8+N){
+			// 	printf("degen=%d, r=%d, i0 = %d, i1=%d, i2= %d\n",p->degen_plaq[r], r, i0,i1,i2);
+			// }
+		}
+		
+	}
+	
+	// printf("total[0]: %f + i %f \n", creal(m->chi[0]), cimag(m->chi[0]));
+	// printf("total[1]: %f + i %f \n", creal(m->chi[1]), cimag(m->chi[1]));
+	// fflush(stdout);
 	if (!meas_energy_corr)
 		return;
 
@@ -242,7 +310,6 @@ void measure_uneqlt(const struct params *const restrict p,
 	const int num_b2b = p->num_b2b, num_bb2 = p->num_bb2;
 	const int meas_bond_corr = p->meas_bond_corr;
 	const int meas_2bond_corr = p->meas_2bond_corr;
-	// const int meas_hop2_corr = p->meas_hop2_corr;
 	const int meas_energy_corr = p->meas_energy_corr;
 	const int meas_nematic_corr = p->meas_nematic_corr;
 	const int meas_thermal = p->meas_thermal;
@@ -274,11 +341,16 @@ void measure_uneqlt(const struct params *const restrict p,
 				const num gdij = Gdt0_t[i + N*j];
 				const num gdji = Gd0t_t[j + N*i];
 				const num gdjj = Gd00[j + N*j];
+				// NOTE: gt0 is *average* of gt0_u and gt0_d
 					#ifdef USE_PEIERLS
 				m->gt0[r + num_ij*t] += 0.5*pre*(guij*p->peierlsu[j + i*N] + 
 												 gdij*p->peierlsd[j + i*N]);
+				m->gt0_u[r + num_ij*t] += pre*(guij*p->peierlsu[j + i*N]);
+				m->gt0_d[r + num_ij*t] += pre*(gdij*p->peierlsd[j + i*N]);
 					#else
 				m->gt0[r + num_ij*t] += 0.5*pre*(guij + gdij);
+				m->gt0_u[r + num_ij*t] += pre*guij;
+				m->gt0_d[r + num_ij*t] += pre*gdij;
 					#endif
 				const num x = delta_tij*(guii + gdii) - (guji*guij + gdji*gdij);
 				
@@ -489,7 +561,7 @@ void measure_uneqlt(const struct params *const restrict p,
 						 -pui1i0 * puj0j1 * (delta_i1j1 - guj1i1) * gui0j0
 						 +pui1i0 * puj1j0 * (delta_i1j0 - guj0i1) * gui0j1);
 
-					m->new_jnj[bb] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
+					m->jnj[bb] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
 
 					//j(i0i1)jn(j0j1), 6 fermion product, 2 phases, t = 0
 					_wick_j = - pui1i0*gui0i1 + pui0i1*gui1i0 - pdi1i0*gdi0i1 + pdi0i1*gdi1i0;
@@ -517,7 +589,7 @@ void measure_uneqlt(const struct params *const restrict p,
 					t4 = ( (delta_i1j0 - gdj0i1) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi0j1 ) * 
 						pdi1i0 * (puj0j1 * guj1j0 - puj1j0 * guj0j1);
 
-					m->new_jjn[bb] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
+					m->jjn[bb] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
 			
 					//TODO further simplify this expression for faster measurements?
 					//TODO: declare these constant earlier?
@@ -636,7 +708,8 @@ void measure_uneqlt(const struct params *const restrict p,
 				const num gdj2i2 = Gd00[j2 + i2*N];
 				const num gdj2j0 = Gd00[j2 + j0*N];
 				const num gdj0j2 = Gd00[j0 + j2*N];
-
+                                
+                                m->pair_b2b2[bb] += 0.5*pre*(gui0j0*gdi2j2 + gui2j0*gdi0j2 + gui0j2*gdi2j0 + gui2j2*gdi0j0);
 				const num x = ppui0i2*ppuj0j2*(delta_i0j2 - guj2i0)*gui2j0 +
 							  ppui2i0*ppuj2j0*(delta_i2j0 - guj0i2)*gui0j2 +
 							  ppdi0i2*ppdj0j2*(delta_i0j2 - gdj2i0)*gdi2j0 +
@@ -648,7 +721,15 @@ void measure_uneqlt(const struct params *const restrict p,
 				m->j2j2[bb] += pre*((ppui2i0*gui0i2 - ppui0i2*gui2i0 + ppdi2i0*gdi0i2 - ppdi0i2*gdi2i0)
 				                   *(ppuj2j0*guj0j2 - ppuj0j2*guj2j0 + ppdj2j0*gdj0j2 - ppdj0j2*gdj2j0) 
 				                   + x - y);
-
+			      m->js2js2[bb] += pre*((ppui2i0*gui0i2 - ppui0i2*gui2i0 - ppdi2i0*gdi0i2 + ppdi0i2*gdi2i0)
+					           *(ppuj2j0*guj0j2 - ppuj0j2*guj2j0 - ppdj2j0*gdj0j2 + ppdj0j2*gdj2j0)
+                                      + x - y);
+			      m->k2k2[bb]  += pre*((ppui2i0*gui0i2 + ppui0i2*gui2i0 + ppdi2i0*gdi0i2 + ppdi0i2*gdi2i0)
+					           *(ppuj2j0*guj0j2 + ppuj0j2*guj2j0 + ppdj2j0*gdj0j2 + ppdj0j2*gdj2j0)
+                                      + x + y);
+			      m->ks2ks2[bb] += pre*((ppui2i0*gui0i2 + ppui0i2*gui2i0 - ppdi2i0*gdi0i2 - ppdi0i2*gdi2i0)
+					          *(ppuj2j0*guj0j2 + ppuj0j2*guj2j0 - ppdj2j0*gdj0j2 - ppdj0j2*gdj2j0)
+                                      + x + y);
 			}
 		}
 	}
@@ -1084,7 +1165,7 @@ void measure_uneqlt(const struct params *const restrict p,
 							 +pui1i0 * puj1j0 * (delta_i1j0 - guj0i1) * gui0j1);
 
 						//j(i0i1)jn(j0j1), 6 fermion product, 2 phases, t > 0
-						m->new_jnj[bb + num_bb*t] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
+						m->jnj[bb + num_bb*t] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
 
 						_wick_jn = (2 - guj0j0 - guj1j1) * (pdj0j1 * gdj1j0 - pdj1j0 * gdj0j1) + 
 						 		   (2 - gdj0j0 - gdj1j1) * (puj0j1 * guj1j0 - puj1j0 * guj0j1);
@@ -1111,7 +1192,7 @@ void measure_uneqlt(const struct params *const restrict p,
 							pdi1i0 * (puj0j1 * guj1j0 - puj1j0 * guj0j1);
 
 
-						m->new_jjn[bb + num_bb*t] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
+						m->jjn[bb + num_bb*t] += pre*(_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
 
 						// thermal: jnjn, t > 0. TODO: simplify this expression for faster measurements
 						const num _wick_jn_i = (2 - gui0i0 - gui1i1) * (pdi0i1 * gdi1i0 - pdi1i0 * gdi0i1) + 
@@ -1334,6 +1415,7 @@ void measure_uneqlt(const struct params *const restrict p,
 						const num gdj2j0 = Gd00[j2 + j0*N];
 						const num gdj0j2 = Gd00[j0 + j2*N];
 
+                                                m->pair_b2b2[bb + num_b2b2*t] += 0.5*pre*(gui0j0*gdi2j2 + gui2j0*gdi0j2 + gui0j2*gdi2j0 + gui2j2*gdi0j0);
 						const num x = ppui0i2*ppuj0j2*(delta_i0j2 - guj2i0)*gui2j0 +
 									  ppui2i0*ppuj2j0*(delta_i2j0 - guj0i2)*gui0j2 +
 									  ppdi0i2*ppdj0j2*(delta_i0j2 - gdj2i0)*gdi2j0 +
@@ -1346,6 +1428,18 @@ void measure_uneqlt(const struct params *const restrict p,
 							pre*((ppui2i0*gui0i2 - ppui0i2*gui2i0 + ppdi2i0*gdi0i2 - ppdi0i2*gdi2i0)
 						        *(ppuj2j0*guj0j2 - ppuj0j2*guj2j0 + ppdj2j0*gdj0j2 - ppdj0j2*gdj2j0) 
 						        + x - y);
+                                      m->js2js2[bb + num_b2b2*t] += 
+                                            pre*((ppui2i0*gui0i2 - ppui0i2*gui2i0 - ppdi2i0*gdi0i2 + ppdi0i2*gdi2i0)
+					              *(ppuj2j0*guj0j2 - ppuj0j2*guj2j0 - ppdj2j0*gdj0j2 + ppdj0j2*gdj2j0)
+                                              + x - y);
+			                   m->k2k2[bb + num_b2b2*t]  += 
+                                            pre*((ppui2i0*gui0i2 + ppui0i2*gui2i0 + ppdi2i0*gdi0i2 + ppdi0i2*gdi2i0)
+					             *(ppuj2j0*guj0j2 + ppuj0j2*guj2j0 + ppdj2j0*gdj0j2 + ppdj0j2*gdj2j0)
+                                             + x + y);
+			                   m->ks2ks2[bb + num_b2b2*t] += 
+                                             pre*((ppui2i0*gui0i2 + ppui0i2*gui2i0 - ppdi2i0*gdi0i2 - ppdi0i2*gdi2i0)
+					             *(ppuj2j0*guj0j2 + ppuj0j2*guj2j0 - ppdj2j0*gdj0j2 - ppdj0j2*gdj2j0)
+                                             + x + y);
 
 					}
 				}

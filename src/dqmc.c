@@ -548,8 +548,14 @@ int dqmc_wrapper(const char *sim_file, const char *log_file,
 #else
 	fprintf(log, "using 2 measurement threads (default)\n");
 #endif
-	fprintf(log, "minimum RAM requirement: %.2f MB\n", 
-		(double) get_memory_req(sim_file)*1e-6);
+	const int mem_result = get_memory_req(sim_file);
+	if (mem_result < 0) {
+		fprintf(log, "minimum RAM check failed: %d\n", mem_result);
+	}
+	else {
+		fprintf(log, "minimum RAM requirement: %.2f MB\n", 
+			((double)  mem_result)*1e-6);
+	}
 
 	// exit path if dry run
 	if (dry) {
