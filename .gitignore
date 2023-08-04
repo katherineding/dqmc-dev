@@ -1,6 +1,14 @@
+# gcov and gcovr coverage testing output
+*.gcno
+*.gcda
+*.gcov
+*.html
+
+#generated data files used in testing
 *.h5
 *.h5.log
 
+# ============================C=====================================
 
 # Prerequisites
 *.d
@@ -54,6 +62,8 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+#=====================Python=======================================
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -215,4 +225,5 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
 
