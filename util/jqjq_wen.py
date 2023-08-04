@@ -33,14 +33,13 @@ def get_component(path,name="j2j2"):
     if name == "j2j2":
         # four phases
         correlator.shape = -1, L, b2ps, b2ps, Ny, Nx
-    elif name == "jj2" or name == "jnj2":
+    elif name == "jnj":
         # three phases
         correlator.shape = -1, L, b2ps, bps, Ny, Nx
-    elif name == "j2j" or name == "j2jn":
+    elif name == "jjn":
         # three phases
         correlator.shape = -1, L, bps, b2ps, Ny, Nx
-    elif name == "jnj" or name == "jjn" or name == "jnjn" or name == "jj" \
-    or name == "new_jnj" or name == "new_jjn":
+    elif name == "jnjn":
         # two phases
         correlator.shape = -1, L, bps, bps, Ny, Nx
     else:
@@ -56,39 +55,22 @@ def get_component(path,name="j2j2"):
 
 
 def thermal_sum(path,q0_corrs):
-    """ 
-    Take tuple of correlators, each element of shape (Nbin_completed, L, b[2]ps, b[2]ps),
-    Perform appropriate summation over bond types to obtain JNJN, JQJN, JNJQ, JQJQ
-    Return a dictionary with named elements.
-    E.g. result["JQJN"].shape = (4, Nbin_complete, L)
-    Input is not divided by sign.
-     """
     
-
-    U, mu, beta, Nx, Ny, bps,  b2ps, nflux, tp, N, L, dt= \
+    U, mu, beta, Nx, Ny, bps, b2ps, tp, N, L, dt= \
         util.load_firstfile(path,"metadata/U","metadata/mu","metadata/beta",\
-            "metadata/Nx","metadata/Ny","metadata/bps",\
-            "metadata/b2ps", "metadata/nflux",\
+            "metadata/Nx","metadata/Ny","metadata/bps","metadata/b2ps", \
             "metadata/t'","params/N","params/L","params/dt")
 
     j2j2_q0,\
-    jj2_q0,j2j_q0,\
-    jnj2_q0,j2jn_q0,\
     jjn_q0, jnj_q0,\
-    jnjn_q0,jj_q0 = q0_corrs
+    jnjn_q0 = q0_corrs
 
-    # bond type t factors
     t_arr = [1,1,tp,tp]
     # 2bond type t factors
-    if "half-fill-tp" in path and nflux == 0:
-        print("using legacy t2_arr!")
-        t2_arr= [1+2*tp**2,1+2*tp**2,2,2,2*tp,2*tp,2*tp,2*tp,4*tp,4*tp, tp**2,tp**2]
-    else:
-        t2_arr = [1,1,1,1,tp,tp,tp,tp,tp,tp,tp**2,tp**2]
-    # my two-hop bond dx,dy distances
-    dx2_arr = [2,0,1,-1,2,1,-2,-1,0,1,2,-2]
-    dy2_arr = [0,2,1, 1,1,2, 1, 2,1,0,2, 2]
-
+    t2_arr = [4*tp,4*tp,2,2,1+2*tp**2,1+2*tp**2,2*tp,2*tp,tp**2,2*tp,2*tp,tp**2]
+    # wen's two-hop bond dx,dy distances
+    dx2_arr = [1,0,1,-1,2,0,2,1,2,-2,-1,-2]
+    dy2_arr = [0,1,1, 1,0,2,1,2,2, 1, 2, 2]
     result_dict = {}
 
     #bond-bond types: jj, jnj, jjn, jnjn
@@ -103,9 +85,9 @@ def thermal_sum(path,q0_corrs):
     for itype in range(bps):
         for jtype in range(bps):
             jj_xx += t_arr[itype]*t_arr[jtype]*dx_arr[itype]*dx_arr[jtype]*\
-                jj_q0[:,:,itype,jtype]
+                j2j2_q0[:,:,itype,jtype]
             jj_yy += t_arr[itype]*t_arr[jtype]*dy_arr[itype]*dy_arr[jtype]*\
-                jj_q0[:,:,itype,jtype]
+                j2j2_q0[:,:,itype,jtype]
             jnjn_xx += t_arr[itype]*t_arr[jtype]*dx_arr[itype]*dx_arr[jtype]*\
                 jnjn_q0[:,:,itype,jtype]
             jnjn_yy += t_arr[itype]*t_arr[jtype]*dy_arr[itype]*dy_arr[jtype]*\
@@ -120,9 +102,9 @@ def thermal_sum(path,q0_corrs):
                 jjn_q0[:,:,itype,jtype]
 
             jj_xy += t_arr[itype]  *t_arr[jtype]*dx_arr[itype]*dy_arr[jtype]*\
-                jj_q0[:,:,itype,jtype]
+                j2j2_q0[:,:,itype,jtype]
             jj_yx += t_arr[itype]  *t_arr[jtype]*dy_arr[itype]*dx_arr[jtype]*\
-                jj_q0[:,:,itype,jtype]
+                j2j2_q0[:,:,itype,jtype]
             jnjn_xy += t_arr[itype]*t_arr[jtype]*dx_arr[itype]*dy_arr[jtype]*\
                 jnjn_q0[:,:,itype,jtype]
             jnjn_yx += t_arr[itype]*t_arr[jtype]*dy_arr[itype]*dx_arr[jtype]*\
@@ -163,21 +145,21 @@ def thermal_sum(path,q0_corrs):
     for itype in range(bps):
         for jtype in range(b2ps):
             j2jn_xx += t_arr[itype]*t2_arr[jtype]*dx_arr[itype]*dx2_arr[jtype]*\
-                       j2jn_q0[:,:,itype,jtype]
+                       jjn_q0[:,:,itype,jtype]
             j2jn_yy += t_arr[itype]*t2_arr[jtype]*dy_arr[itype]*dy2_arr[jtype]*\
-                       j2jn_q0[:,:,itype,jtype]
+                       jjn_q0[:,:,itype,jtype]
             j2j_xx +=  t_arr[itype]*t2_arr[jtype]*dx_arr[itype]*dx2_arr[jtype]*\
-                       j2j_q0[:,:,itype,jtype]
+                       j2j2_q0[:,:,itype,jtype]
             j2j_yy +=  t_arr[itype]*t2_arr[jtype]*dy_arr[itype]*dy2_arr[jtype]*\
-                       j2j_q0[:,:,itype,jtype]
+                       j2j2_q0[:,:,itype,jtype]
             j2jn_xy += t_arr[itype]*t2_arr[jtype]*dx_arr[itype]*dy2_arr[jtype]*\
-                       j2jn_q0[:,:,itype,jtype]
+                       jjn_q0[:,:,itype,jtype]
             j2jn_yx += t_arr[itype]*t2_arr[jtype]*dy_arr[itype]*dx2_arr[jtype]*\
-                       j2jn_q0[:,:,itype,jtype]
+                       jjn_q0[:,:,itype,jtype]
             j2j_xy +=  t_arr[itype]*t2_arr[jtype]*dx_arr[itype]*dy2_arr[jtype]*\
-                       j2j_q0[:,:,itype,jtype]
+                       j2j2_q0[:,:,itype,jtype]
             j2j_yx +=  t_arr[itype]*t2_arr[jtype]*dy_arr[itype]*dx2_arr[jtype]*\
-                       j2j_q0[:,:,itype,jtype]
+                       j2j2_q0[:,:,itype,jtype]
 
     #==========================================================================
     # 1bond-2bond types
@@ -188,28 +170,25 @@ def thermal_sum(path,q0_corrs):
     for itype in range(b2ps):
         for jtype in range(bps):
             jnj2_xx += t2_arr[itype]*t_arr[jtype]*dx2_arr[itype]*dx_arr[jtype]*\
-                       jnj2_q0[:,:,itype,jtype]
+                       jnj_q0[:,:,itype,jtype]
             jnj2_yy += t2_arr[itype]*t_arr[jtype]*dy2_arr[itype]*dy_arr[jtype]*\
-                       jnj2_q0[:,:,itype,jtype]
+                       jnj_q0[:,:,itype,jtype]
             jj2_xx +=  t2_arr[itype]*t_arr[jtype]*dx2_arr[itype]*dx_arr[jtype]*\
-                       jj2_q0[:,:,itype,jtype]
+                       j2j2_q0[:,:,itype,jtype]
             jj2_yy +=  t2_arr[itype]*t_arr[jtype]*dy2_arr[itype]*dy_arr[jtype]*\
-                       jj2_q0[:,:,itype,jtype]
+                       j2j2_q0[:,:,itype,jtype]
             jnj2_xy += t2_arr[itype]*t_arr[jtype]*dx2_arr[itype]*dy_arr[jtype]*\
-                       jnj2_q0[:,:,itype,jtype]
+                       jnj_q0[:,:,itype,jtype]
             jnj2_yx += t2_arr[itype]*t_arr[jtype]*dy2_arr[itype]*dx_arr[jtype]*\
-                       jnj2_q0[:,:,itype,jtype]
+                       jnj_q0[:,:,itype,jtype]
             jj2_xy +=  t2_arr[itype]*t_arr[jtype]*dx2_arr[itype]*dy_arr[jtype]*\
-                       jj2_q0[:,:,itype,jtype]
+                       j2j2_q0[:,:,itype,jtype]
             jj2_yx +=  t2_arr[itype]*t_arr[jtype]*dy2_arr[itype]*dx_arr[jtype]*\
-                       jj2_q0[:,:,itype,jtype]
+                       j2j2_q0[:,:,itype,jtype]
 
     #==========================================================================
     # prefactors required to actually form JQ(tau)JQ(0) operator
-    # see transport notes for detailed derivation
-    # NOTE: the prefactor is 1/4, not 1/16, because in DQMC measurements,
-    # each bond is only counted once. In notes, each bond is counted twice.
-    # Extra (-1) factor due to (i)^2
+    # see transport notes
     pre_arr = 1/4*np.outer([1,-U,U+2*mu],[1,-U,U+2*mu]) * (-1)
     xx = pre_arr[0,0]*j2j2_xx + pre_arr[0,1]*j2jn_xx + pre_arr[0,2]*j2j_xx + \
          pre_arr[1,0]*jnj2_xx + pre_arr[1,1]*jnjn_xx + pre_arr[1,2]*jnj_xx + \
@@ -240,11 +219,10 @@ def thermal_sum(path,q0_corrs):
     result_dict['metadata'] = (L,dt)
 
     #==========================================================================
-    #prefactors same for JQ(tau)JN(0),JN(tau)JQ(0)
+    #prefactors same for all three methods for JQ(tau)JN(0),JN(tau)JQ(0)
     #TODO: check if this is actually consistent with bond, map definitions
     #JQJN and JNJQ might be flipped around
-    #NOTE: No (-e) factor here, because using the particle-current J_N
-    pre_arr = np.array([1,-U,U+2*mu]) * 1/2 
+    pre_arr = np.array([1,-U,U+2*mu]) * 1/2
     xx = pre_arr[0]*j2j_xx + pre_arr[1]*jnj_xx + pre_arr[2]*jj_xx
     yy = pre_arr[0]*j2j_yy + pre_arr[1]*jnj_yy + pre_arr[2]*jj_yy
     xy = pre_arr[0]*j2j_xy + pre_arr[1]*jnj_xy + pre_arr[2]*jj_xy
@@ -259,7 +237,6 @@ def thermal_sum(path,q0_corrs):
     yx = pre_arr[0]*jj2_yx + pre_arr[1]*jjn_yx + pre_arr[2]*jj_yx
 
     result_dict["JNJQ"] =  np.stack((   xx,     yy,      xy,     yx), axis=0)
-    # jjq_dict['metadata'] = (L,dt)
     return result_dict
 
 def plot_components(result_dict):
@@ -284,47 +261,21 @@ def plot_components(result_dict):
             plt.legend()
 
 
-def my_correlators(path):
+def wen_correlators(path):
 
-    """ 
-    Given path with trailing backslash, run get_component() and thermal_sum() 
-    to get a dictionary with JNJN, JQJN, JNJQ, JQJQ
-    Return a dictionary with named elements.
-    E.g. result["JQJN"].shape = (4, Nbin_complete, L)
-    NOTE: elements divided by sign for prettier plotting
-    """
+    # if da.info(path,uneqlt=True,show=True,imagtol=1e-2) == 1: 
+    #     return None
 
-    if da.info(path,uneqlt=True,show=True,imagtol=1e-2) == 1: 
-        return None
-
-    U, mu, beta, Nx, Ny, bps,  b2ps, nflux, tp, N, L, dt= \
+    U, mu, beta, Nx, Ny, bps, b2ps, tp, N, L, dt= \
         util.load_firstfile(path,"metadata/U","metadata/mu","metadata/beta",\
-            "metadata/Nx","metadata/Ny","metadata/bps",\
-            "metadata/b2ps", "metadata/nflux",\
-            "metadata/t'","params/N","params/L","params/dt")
-
-    try:
-        jjn_q0  = get_component(path,'jjn')
-        jnj_q0  = get_component(path,'jnj')
-    except KeyError as e:
-        print(f"KeyError: {e}, using legacy names")
-        jjn_q0  = get_component(path,'new_jjn')
-        jnj_q0  = get_component(path,'new_jnj')
+            "metadata/Nx","metadata/Ny","metadata/bps","metadata/b2ps", \
+            "metadata/t'","params/N","params/L","params/dt")    
     
     j2j2_q0 = get_component(path,'j2j2')
-    j2j_q0  = get_component(path,'j2j')
-    jj2_q0  = get_component(path,'jj2')
-    j2jn_q0 = get_component(path,'j2jn')
-    jnj2_q0 = get_component(path,'jnj2')
+    jjn_q0  = get_component(path,'jjn')
+    jnj_q0  = get_component(path,'jnj')
     jnjn_q0 = get_component(path,'jnjn')
-    jj_q0   = get_component(path,'jj')
 
-    #TODO: generate grid range based on U?
-    dm_dict, de_dict = da.eqlt_meas_1(path,['density'])
-    dm = dm_dict["density"].real
-    de = de_dict["density"]
-    #tt = fr"{Nx}x{Ny} nflux={nflux} n={dm.real:.7g} t'={tp} U={U} $\beta$={beta:.3g}"
-    print(f"Achieved n-1={(dm-1):.3g} , SE(n) =  {de:.3g}")
 
     ns, s = util.load(path,"meas_uneqlt/n_sample", "meas_uneqlt/sign")
     mask = ns == ns.max(); nbin = mask.sum()
@@ -333,168 +284,15 @@ def my_correlators(path):
 
     #NOTE: no error analysis, just divided by sign
     j2j2_q0 /= np.mean(s)
-    
-    jj2_q0 /= np.mean(s)
-    j2j_q0 /= np.mean(s)
-    jnj2_q0 /= np.mean(s)
-    j2jn_q0 /= np.mean(s)
 
     jjn_q0 /= np.mean(s)
     jnj_q0 /= np.mean(s)
 
     jnjn_q0 /= np.mean(s)
-    jj_q0 /= np.mean(s)
 
     q0_corrs = (j2j2_q0,\
-        jj2_q0,j2j_q0,\
-        jnj2_q0,j2jn_q0,\
         jjn_q0, jnj_q0,\
-        jnjn_q0,jj_q0)
+        jnjn_q0)
 
     return thermal_sum(path,q0_corrs)
 
-
-def plotcorr(my_dict):
-
-    L, dt = my_dict["metadata"] 
-
-    xx = my_dict['JQJQ'][0];
-    yy = my_dict['JQJQ'][1];
-    xy = my_dict['JQJQ'][2];
-    yx = my_dict['JQJQ'][3];
-
-    plt.figure()
-    plt.title(r"$ \langle J_Q(\tau)J_Q \rangle $")
-    plt.errorbar(range(L)*dt,(xx.real).mean(0),yerr=xx.std(0), 
-        fmt='s-',label="xx real")
-    plt.errorbar(range(L)*dt,(xx.imag).mean(0),yerr=xx.std(0), 
-        fmt='.', label="xx imag")
-    plt.errorbar(range(L)*dt,(yy.real).mean(0),yerr=yy.std(0), 
-        fmt='s-',label="yy real")
-    plt.errorbar(range(L)*dt,(yy.imag).mean(0),yerr=yy.std(0), 
-        fmt='.', label="yy imag")
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-    plt.figure()
-    plt.title(r"$\langle J_Q(\tau)J_Q \rangle $")
-    plt.errorbar(range(L)*dt,(xy.real).mean(0),yerr=xy.std(0), 
-        fmt='s-',label="xy real")
-    plt.errorbar(range(L)*dt,(xy.imag).mean(0),yerr=xy.std(0), 
-        fmt='.', label="xy imag")
-    plt.errorbar(range(L)*dt,(yx.real).mean(0),yerr=yx.std(0), 
-        fmt='s-',label="yx real")
-    plt.errorbar(range(L)*dt,(yx.imag).mean(0),yerr=yx.std(0), 
-        fmt='.', label="yx imag")
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-    #==============================================================
-
-    xx = my_dict['JQJN'][0];
-    yy = my_dict['JQJN'][1];
-    xy = my_dict['JQJN'][2];
-    yx = my_dict['JQJN'][3];
-
-    plt.figure()
-    plt.title(r"$ \langle J_Q(\tau)J_N \rangle $")
-    plt.errorbar(range(L)*dt,(xx.real).mean(0),yerr=xx.std(0), 
-        fmt='s-',label="xx real")
-    plt.errorbar(range(L)*dt,(xx.imag).mean(0),yerr=xx.std(0), 
-        fmt='.', label="xx imag")
-    plt.errorbar(range(L)*dt,(yy.real).mean(0),yerr=yy.std(0), 
-        fmt='s-',label="yy real")
-    plt.errorbar(range(L)*dt,(yy.imag).mean(0),yerr=yy.std(0), 
-        fmt='.', label="yy imag")
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-    plt.figure()
-    plt.title(r"$ \langle J_Q(\tau)J_N \rangle $")
-    plt.errorbar(range(L)*dt,(xy.real).mean(0),yerr=xy.std(0), 
-        fmt='s-',label="xy real")
-    plt.errorbar(range(L)*dt,(xy.imag).mean(0),yerr=xy.std(0), 
-        fmt='.', label="xy imag")
-    plt.errorbar(range(L)*dt,(yx.real).mean(0),yerr=yx.std(0), 
-        fmt='s-',label="yx real")
-    plt.errorbar(range(L)*dt,(yx.imag).mean(0),yerr=yx.std(0), 
-        fmt='.', label="yx imag")
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-    #==========================================================
-    xx = my_dict['JNJQ'][0];
-    yy = my_dict['JNJQ'][1];
-    xy = my_dict['JNJQ'][2];
-    yx = my_dict['JNJQ'][3];
-
-    plt.figure()
-    plt.title(r"$ \langle J_N(\tau)J_Q \rangle $")
-    plt.errorbar(range(L)*dt,(xx.real).mean(0),yerr=xx.std(0), 
-        fmt='s-',label="xx real")
-    plt.errorbar(range(L)*dt,(xx.imag).mean(0),yerr=xx.std(0), 
-        fmt='.', label="xx imag")
-    plt.errorbar(range(L)*dt,(yy.real).mean(0),yerr=yy.std(0), 
-        fmt='s-',label="yy real")
-    plt.errorbar(range(L)*dt,(yy.imag).mean(0),yerr=yy.std(0), 
-        fmt='.', label="yy imag")
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-
-    plt.figure()
-    plt.title(r"$ \langle J_N(\tau)J_Q \rangle $")
-    plt.errorbar(range(L)*dt,(xy.real).mean(0),yerr=xy.std(0), 
-        fmt='s-',label="xy real")
-    plt.errorbar(range(L)*dt,(xy.imag).mean(0),yerr=xy.std(0), 
-        fmt='.', label="xy imag")
-    plt.errorbar(range(L)*dt,(yx.real).mean(0),yerr=yx.std(0), 
-        fmt='s-',label="yx real")
-    plt.errorbar(range(L)*dt,(yx.imag).mean(0),yerr=yx.std(0), 
-        fmt='.', label="yx imag")
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-    plt.show()
-
-    #=============================================================
-    xx = my_dict['JNJN'][0];
-    yy = my_dict['JNJN'][1];
-    xy = my_dict['JNJN'][2];
-    yx = my_dict['JNJN'][3];
-
-    plt.figure()
-    plt.title(r"$ \langle J_N(\tau)J_N \rangle $")
-    plt.errorbar(range(L)*dt,(xx.real).mean(0),yerr=xx.std(0), 
-        fmt='s-',label="xx real")
-    plt.errorbar(range(L)*dt,(xx.imag).mean(0),yerr=xx.std(0), 
-        fmt='.', label="xx imag")
-    plt.errorbar(range(L)*dt,(yy.real).mean(0),yerr=yy.std(0), 
-        fmt='s-',label="yy real")
-    plt.errorbar(range(L)*dt,(yy.imag).mean(0),yerr=yy.std(0), 
-        fmt='.', label="yy imag")
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-
-    plt.figure()
-    plt.title(r"$ \langle J_N(\tau)J_N \rangle $")
-    plt.errorbar(range(L)*dt,(xy.real).mean(0),yerr=xy.std(0), 
-        fmt='s-',label="xy real")
-    plt.errorbar(range(L)*dt,(xy.imag).mean(0),yerr=xy.std(0), 
-        fmt='.', label="xy imag")
-    plt.errorbar(range(L)*dt,(yx.real).mean(0),yerr=yx.std(0), 
-        fmt='s-',label="yx real")
-    plt.errorbar(range(L)*dt,(yx.imag).mean(0),yerr=yx.std(0), 
-        fmt='.', label="yx imag")
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-    plt.show()
-
-
-def compare(my_dict,wen_dict):
-    print(np.max(np.abs(my_dict['JQJQ']-wen_dict["JQJQ"])))
-    print(np.max(np.abs(my_dict['JQJN']-wen_dict["JQJN"])))
-    print(np.max(np.abs(my_dict['JNJQ']-wen_dict["JNJQ"])))
-    print(np.max(np.abs(my_dict['JNJN']-wen_dict["JNJN"])))

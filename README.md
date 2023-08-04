@@ -1,7 +1,8 @@
 # Complex-capable DQMC
 
 This DQMC code is for single-band Hubbard model, allowing kinetic hopping to be modified by Peierl's phase (which requires complexifying the entire simulation).
-Simulation parameters (including geometry and potentially multiple orbitals) are controlled by a python utility script in `util/`. The goal was to make the C code as "model parameter agnostic" as possible. Whether this is achieved is debatable -- it is usually still necessary to manually modify the C source code when we want to study a slightly different model, or add new measurements.
+
+Simulation parameters (including geometry and potentially multiple orbitals) are controlled by python utility script `gen_1band_unified_hub.py` in `util/`. The default geometry is square. The goal was to make the C code as "model parameter agnostic" as possible. Whether this is achieved is debatable -- it is usually still necessary to manually modify the C source code when we want to study a slightly different model, or add new measurements.
 
 The source code is in C and uses idioms like `goto`, `restrict`, and implicit casting of `void *`pointers into other pointer types, which are not consistent with C++ standards. So if you try to compile the code with a C++ compiler, you'll likely get compilation errors.
 
@@ -16,20 +17,26 @@ This program relies on POSIX C APIs, like `clock_gettime()` and `sigaction()`. I
 
 Unfortunately, as we are dealing with a variety of computing environments, both the source code and the Makefile must be adjusted, based on what compilers, BLAS + LAPACK libraries, and offload devices (if any) are available.
 
-1. Sherlock or Cori KNL, CPU only: `master` branch
+1. [Sherlock](https://www.sherlock.stanford.edu/docs/) or [Cori KNL](https://docs.nersc.gov/systems/cori/), CPU only: `master` branch
 	- Intel compiler `icc`
 	- `imkl` headers and library `>= 2019`
 	- `hdf5` headers and library `>= 1.10`
-2. Perlmutter, CPU only: `perlmt-cpu` branch
-*Note: this branch may be modified to use the AOCC compiler and AOCL math libraries when it becomes supported in the future*
+	To get correct paths to these headers and libraries on Sherlock, add `module load hdf5/1.10.2 icc/2019 imkl/2019` to your .bashrc.
+2. [Perlmutter](https://docs.nersc.gov/systems/perlmutter/), CPU only: `perlmt-cpu` branch
+	*Note: this branch may be modified to use the AOCC compiler and AOCL math libraries when it becomes supported in the future*
 	- GNU Compiler `gcc`
 	- `cray-libsci` headers and library
 	- `hdf5` headers and library
-3. Perlmutter, with GPU offloading: `perlmt-gpu` branch 
-*Note: this branch may be modified to use the AOCL math libraries when it becomes supported in the future*
+3. [Perlmutter](https://docs.nersc.gov/systems/perlmutter/), with GPU offloading: `perlmt-gpu` branch 
+	*Note: this branch may be modified to use the AOCL math libraries when it becomes supported in the future*
 	- Nvidia Compiler `ncc`
 	- `cray-libsci` headers and library
 	- `hdf5` headers and library
+4. gcc + imkl, CPU only: `master` branch
+	- GNU compiler `gcc`
+	- `imkl` headers and library `>= 2019`
+	- `hdf5` headers and library `>= 1.10`
+	To get correct paths to these headers and libraries on Sherlock, add `module load hdf5/1.10.2 gcc/10.1.0 imkl/2019` to your .bashrc. The `icc/2019` module must be unloaded or it messes up the search paths.
 
 ### For python scripts in `util/`
 - `python3`
@@ -40,11 +47,14 @@ Unfortunately, as we are dealing with a variety of computing environments, both 
 
 You can get these via miniconda/anaconda.
 
-## Compilation
+On sherlock, do `pip3 install --user gitpython h5py` once. Add `module load python/3.6.1 py-scipy/1.1.0_py36 py-numpy/1.14.3_py36 viz py-matplotlib/3.1.1_py36` to your .bashrc.
+
+
+## Compilation (Master Branch)
 
 Go to build/
 
-Optionally, replace `-xHost` in Makefile or Makefile.icx with appropriate optimized instruction set flags.
+Optionally, replace `-xHost` in Makefile or Makefile.icx (`-march` in gcc.imkl.Makefile) with appropriate optimized instruction set flags.
 
 Mandatory: pick whether to compile with `-DUSE_CPLX`. Real DQMC can only be used with hdf5 files generated with `nflux=0` option, while Complex DQMC can only be used with hdf5 files generated with `nflux!=0` option. 
 
@@ -55,20 +65,20 @@ Run `make -f <makefilename>`.
 ## Usage
 
 To (batch-)generate simulation files, run
-`python3 gen_1band_hub.py <parameter arguments>`
+`python3 gen_1band_unified_hub.py <parameter arguments>`
 
 To push some .h5 files to a stack, run something like
 `python3 push.py <stackfile_name> <some .h5 files>`
 
 Run dqmc in single file mode:
-`./dqmc_1 [options] file.h5`
+`./dqmc_1 <options> file.h5`
 
 Run dqmc in stack mode:
-`./dqmc_stack [options] stackfile`
+`./dqmc_stack <options> stackfile`
 
-Command line options are found by using the standard `--help` or `--usage` flags.
+Command line options for `dqmc_1`, `dqmc_stack`,`gen_1band_unified_hub.py` are found by using the standard `--help` or `--usage` flags.
 
-To check estimated memory usage and exit, toggle `--dry-run` or `-n`. But note this option for `dqmc_stack` edits the stack file, so you have to re-add the .h5 files back to the stack file after this.
+To check estimated memory usage and exit for `dqmc_1`, `dqmc_stack`, toggle `--dry-run` or `-n`. But note this option for `dqmc_stack` edits the stack file, so you have to re-add the .h5 files back to the stack file after this.
 
 ## Best practice
 
@@ -98,15 +108,15 @@ A catastropic failure mode that is NOT safeguarded against is if the same file i
 
 Unix system signals SIGINT, SIGTERM, SIGHUP, SIGUSR1 are caught by signal handlers and used to set a stop flag. The dqmc() loop checks for the stop flag every full H-S sweep. Upon reaching time limit or receiving an interrupt signal, simulation stops and throws away all unsaved data. We essentially regress to the last valid checkpoint.
 
-Checkpointing (save current simulation state and measurements to disk) is by default performed every 1000 full H-S sweeps. This is probably too frequent, so it's user adjustable in simulation file generation. If `checkpoint_every=0`, no checkpointing is performed at all (so upon any interrupt, all working data is lost).
+Checkpointing (save current simulation state and measurements to disk) is by default performed every 10000 full H-S sweeps. This may still be too frequent, so it's user adjustable in simulation file generation. If `--checkpoint_every=0`, no checkpointing is performed (so upon any interrupt, all working data is lost). OTOH, upon successful completion of all H-S sweeps,  simulation state and measurements will be saved to disk.
 
-To have true benchmarking mode, where you never save any data to disk, genereate simulation file with `checkpoint_every=0` and run dqmc with `./<executable> -b`.
+To have true benchmarking mode, where you never save *any* data to disk, (and the .h5 files remain in their initial, untouched state), genereate simulation file with `--checkpoint_every=0` and run dqmc with `./<executable> -b`.
 
 A crude mechanism for detecting hdf5 file corruption is implemented by setting a `partial_write` flag. Upon detecting any corruption, we just give up on working on this file entirely. Partial writes can occur if the simulation is killed in the middle of performing `sim_data_save()`. I'm not sure this method is watertight yet, needs more testing.
 
 ## Differences from Edwin's Code
 
-This version of the DQMC code is based on edwnh/dqmc commit c91ba61. Divergence from Edwin's code as of 09/2022 at this point include:
+This version of the DQMC code is based on edwnh/dqmc commit c91ba61. Divergence from Edwin's code as of 03/2023 at this point include:
 
 - Removed `tick_t` alias
 
@@ -114,28 +124,35 @@ This version of the DQMC code is based on edwnh/dqmc commit c91ba61. Divergence 
 
 - Added consistency check between hdf5 simulation file generation script and compiled dqmc executable. Inconsistent versions do not necessarily indicate a problem.
 
-- Changed checkpoint behavior to be more conservative, as desrived above.
+- Changed checkpoint behavior to be more conservative, as described above.
 
 - Added `partial_write` file corruption check. 
 
 - More verbose log information.
 
-- Different return flags for functions. Most notably nonzero return codes for main() functions. This may trigger unexpected SLURM behavior. Needs testing.
+- ~~Different return flags for functions. Most notably nonzero return codes for main() functions. This may trigger unexpected SLURM behavior. Needs testing.~~
 
 - Removed unused python dqmc source code.
 
 - Added thermal phases, thermal, 2bond measurements. 
 
-- Added triangular lattice python generation script.
+- Added python thermal transport analysis scripts in `util/`
+
+- Added scalar spin chirality measurement for some lattices.
+
+- Unified all `gen_1band_xxx.py` scripts into one file `gen_1band_unified_hub.py`, but bond definitions required for e.g. transport measurements, and optional measurements are not implemented for all lattices. 
+
+- `gen_1band_unified_hub.py` takes `argp` style arguments as opposed to the default python syntax. This means all arguments are in the form `--name=value` rather than Edwin's version, which is `name=value`
 
 ## TODOs
 
-- Add profiling for how much overhead regular checkpoints add.
+- ~~Add profiling for how much overhead regular checkpoints add.~~
 - Make `double` vs `complex double` a runtime choice, so we don't have to do separate compilations
 - Make dry run completely side-effect-free
 - Improve stack mechanism to reduce competition and wait times -- double ended queue? process private queues? But this is not the main bottleneck right now.
-- Add safeguards for simultaneous hdf5 file RW failure mode
-- BUGFIX for thermal phase `#define`s b/c of premature optimization.
+- ~~Add safeguards for simultaneous hdf5 file RW failure mode~~
+- ~~BUGFIX for thermal phase `#define`s b/c of premature optimization.~~
 - Add check for consistency between C standard `double _Complex` and whatever idiosyncratic complex type (probably a struct) the math library (AOCL, cray-libsci, IMKL, cuBLAS) is using, to make sure they are both 16 bytes.
 - Add a last_modified field to keep hdf5 files refreshed and always in $SCRATCH dir?
 - my_calloc() might no longer be the most optimal thing to do on AMD CPUs. It also may be less important to worry about memory alignment if matrix operations are offloaded to GPUs. 
+- Add example workflow

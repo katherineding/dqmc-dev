@@ -31,9 +31,9 @@
  *
  */
 #include <xmmintrin.h>
+#include <complex.h>
 
 #ifdef USE_CPLX
-	#include <complex.h>
 	typedef double _Complex num;
 #else
 	typedef double num;
