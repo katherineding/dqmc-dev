@@ -305,3 +305,60 @@ def H_periodic_kagome(Nx, Ny, t=1, tp = 0, nflux = 0, alpha = 1/2):
         assert np.max(np.abs(K.imag)) < 1e-10
 
     return K, P
+
+
+
+# def JX_periodic_2D(Ny, Nx, ty=1.0, tx=1.0, tp=0.0, typp=0.0, txpp=0.0, nflux=0):
+#     B = nflux/(Ny*Nx)
+#     mat_ij = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex)
+#     for iy in range(Ny):
+#         for ix in range(Nx):
+#             iy1 = (iy + 1) % Ny
+#             ix1 = (ix + 1) % Nx
+#                 #jx    jy    ix    iy        -i/hbar * tij element                                                  (i_x - jx)                                                                                           
+#             mat_ij[ix + Nx*iy1, ix + Nx*iy] += -1j * ty * np.exp(1j*np.pi*B*( 1* ix + (0 if iy1 > iy else  Ny* ix))) * 0 
+#             mat_ij[ix + Nx*iy, ix + Nx*iy1] += -1j * ty * np.exp(1j*np.pi*B*(-1* ix + (0 if iy1 > iy else -Ny* ix))) * 0
+#             mat_ij[ix1 + Nx*iy, ix + Nx*iy] += -1j * tx * np.exp(1j*np.pi*B*( 1*-iy + (0 if ix1 > ix else  Nx*-iy))) * (-1)
+#             mat_ij[ix + Nx*iy, ix1 + Nx*iy] += -1j * tx * np.exp(1j*np.pi*B*(-1*-iy + (0 if ix1 > ix else -Nx*-iy))) * 1
+
+#             mat_ij[ix1 + Nx*iy1, ix + Nx*iy] += -1j * tp * np.exp(1j*np.pi*B*( 1*ix  +  1*-iy  + (0 if iy1 > iy else  Ny*ix1) + (0 if ix1 > ix else  Nx*-iy1) + (-Nx*Ny if ix1 < ix and iy1 < iy else 0))) * -1 
+#             mat_ij[ix + Nx*iy, ix1 + Nx*iy1] += -1j * tp * np.exp(1j*np.pi*B*(-1*ix1 + -1*-iy1 + (0 if iy1 > iy else -Ny*ix ) + (0 if ix1 > ix else -Nx*-iy ) + ( Nx*Ny if ix1 < ix and iy1 < iy else 0))) * 1
+#             mat_ij[ix1 + Nx*iy, ix + Nx*iy1] += -1j * tp * np.exp(1j*np.pi*B*(-1*ix  +  1*-iy1 + (0 if iy1 > iy else -Ny*ix1) + (0 if ix1 > ix else  Nx*-iy ) + ( Nx*Ny if ix1 < ix and iy1 < iy else 0))) * -1 
+#             mat_ij[ix + Nx*iy1, ix1 + Nx*iy] += -1j * tp * np.exp(1j*np.pi*B*( 1*ix1 + -1*-iy  + (0 if iy1 > iy else  Ny*ix ) + (0 if ix1 > ix else -Nx*-iy1) + (-Nx*Ny if ix1 < ix and iy1 < iy else 0))) * 1
+
+#             iy2 = (iy + 2) % Ny
+#             ix2 = (ix + 2) % Nx
+#             mat_ij[ix + Nx*iy2, ix + Nx*iy] += -1j * typp * np.exp(1j*np.pi*B*( 2* ix + (0 if iy2 > iy else  Ny* ix))) * 0
+#             mat_ij[ix + Nx*iy, ix + Nx*iy2] += -1j * typp * np.exp(1j*np.pi*B*(-2* ix + (0 if iy2 > iy else -Ny* ix))) * 0
+#             mat_ij[ix2 + Nx*iy, ix + Nx*iy] += -1j * txpp * np.exp(1j*np.pi*B*( 2*-iy + (0 if ix2 > ix else  Nx*-iy))) * -2
+#             mat_ij[ix + Nx*iy, ix2 + Nx*iy] += -1j * txpp * np.exp(1j*np.pi*B*(-2*-iy + (0 if ix2 > ix else -Nx*-iy))) * 2
+    
+#     return np.transpose(mat_ij)
+
+
+# def JY_periodic_2D(Ny, Nx, ty=1.0, tx=1.0, tp=0.0, typp=0.0, txpp=0.0, nflux=0):
+#     B = nflux/(Ny*Nx)
+#     mat_ij = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex)
+#     for iy in range(Ny):
+#         for ix in range(Nx):
+#             iy1 = (iy + 1) % Ny
+#             ix1 = (ix + 1) % Nx
+#                 #jx    jy    ix    iy        (charge -e)                                                              (i_y - j_y)                                                                                           
+#             mat_ij[ix + Nx*iy1, ix + Nx*iy] += -1j * ty * np.exp(1j*np.pi*B*( 1* ix + (0 if iy1 > iy else  Ny* ix))) * -1
+#             mat_ij[ix + Nx*iy, ix + Nx*iy1] += -1j * ty * np.exp(1j*np.pi*B*(-1* ix + (0 if iy1 > iy else -Ny* ix))) * 1
+#             mat_ij[ix1 + Nx*iy, ix + Nx*iy] += -1j * tx * np.exp(1j*np.pi*B*( 1*-iy + (0 if ix1 > ix else  Nx*-iy))) * 0
+#             mat_ij[ix + Nx*iy, ix1 + Nx*iy] += -1j * tx * np.exp(1j*np.pi*B*(-1*-iy + (0 if ix1 > ix else -Nx*-iy))) * 0
+
+#             mat_ij[ix1 + Nx*iy1, ix + Nx*iy] += -1j * tp * np.exp(1j*np.pi*B*( 1*ix  +  1*-iy  + (0 if iy1 > iy else  Ny*ix1) + (0 if ix1 > ix else  Nx*-iy1) + (-Nx*Ny if ix1 < ix and iy1 < iy else 0))) * -1 
+#             mat_ij[ix + Nx*iy, ix1 + Nx*iy1] += -1j * tp * np.exp(1j*np.pi*B*(-1*ix1 + -1*-iy1 + (0 if iy1 > iy else -Ny*ix ) + (0 if ix1 > ix else -Nx*-iy ) + ( Nx*Ny if ix1 < ix and iy1 < iy else 0))) * 1
+#             mat_ij[ix1 + Nx*iy, ix + Nx*iy1] += -1j * tp * np.exp(1j*np.pi*B*(-1*ix  +  1*-iy1 + (0 if iy1 > iy else -Ny*ix1) + (0 if ix1 > ix else  Nx*-iy ) + ( Nx*Ny if ix1 < ix and iy1 < iy else 0))) * 1 
+#             mat_ij[ix + Nx*iy1, ix1 + Nx*iy] += -1j * tp * np.exp(1j*np.pi*B*( 1*ix1 + -1*-iy  + (0 if iy1 > iy else  Ny*ix ) + (0 if ix1 > ix else -Nx*-iy1) + (-Nx*Ny if ix1 < ix and iy1 < iy else 0))) * -1
+
+#             iy2 = (iy + 2) % Ny
+#             ix2 = (ix + 2) % Nx
+#             mat_ij[ix + Nx*iy2, ix + Nx*iy] += -1j * typp * np.exp(1j*np.pi*B*( 2* ix + (0 if iy2 > iy else  Ny* ix))) * -2
+#             mat_ij[ix + Nx*iy, ix + Nx*iy2] += -1j * typp * np.exp(1j*np.pi*B*(-2* ix + (0 if iy2 > iy else -Ny* ix))) * 2
+#             mat_ij[ix2 + Nx*iy, ix + Nx*iy] += -1j * txpp * np.exp(1j*np.pi*B*( 2*-iy + (0 if ix2 > ix else  Nx*-iy))) * 0
+#             mat_ij[ix + Nx*iy, ix2 + Nx*iy] += -1j * txpp * np.exp(1j*np.pi*B*(-2*-iy + (0 if ix2 > ix else -Nx*-iy))) * 0
+
+#     return np.transpose(mat_ij)

@@ -220,8 +220,12 @@ int get_memory_req(const char *file) {
 		if (meas_2bond_corr) {
 			sim_alloc_in_bytes +=
 			+ num_b2b2*L * sizeof(num)
+			+ num_b2b2*L * sizeof(num)
 			+ num_b2b*L * sizeof(num)
-			+ num_bb2*L * sizeof(num);
+			+ num_bb2*L * sizeof(num)
+			+ num_b2b2*L * sizeof(num)
+			+ num_b2b2*L * sizeof(num)
+			+ num_b2b2*L * sizeof(num);
 		}
 		if (meas_energy_corr) {
 			sim_alloc_in_bytes +=
