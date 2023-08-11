@@ -109,6 +109,9 @@ def create_1(
     Ny: int = 4,
     mu: float = 0.0,
     tp: float = 0.0,
+    tpp: float = 0.0, 
+    # Careful: tpp will add more bonds to transport or other measurements. These parts are not included in this code.
+    # adding tpp, currently, the measurments are not enough to get whole bond-anything correlations.
     U: float = 6.0,
     dt: float = 0.1,
     L: int = 40,
@@ -509,7 +512,7 @@ def create_1(
         assert num_b2b == map_b2b.max() + 1
 
         kij, peierls = tight_binding.H_periodic_square(
-            Nx, Ny, t=1, tp=tp, nflux=nflux, alpha=1 / 2, twistx=twistx, twisty=twisty
+            Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2, twistx=twistx, twisty=twisty
         )
         # phases accumulated by two-hop processes
         # Here: types 0,1 include t' factors
@@ -517,6 +520,7 @@ def create_1(
         #   Types 8,9: sum of four paths
         #   Types 10,11: one path each
         #   ZF case: 1+2*tp, 1+2*tp, 2, 2, 2, 2, 2, 2, 4, 4, 1, 1
+        # non-zero tpp case is not considered yet.
         thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
         for i in range(N):
             for btype in range(b2ps):
@@ -857,6 +861,7 @@ def create_1(
         f["metadata"]["plaq_per_cell"] = plaq_per_cell
         f["metadata"]["U"] = U
         f["metadata"]["t'"] = tp
+        f["metadata"]["t''"] = tpp
         f["metadata"]["nflux"] = nflux
         f["metadata"]["twistx"] = twistx
         f["metadata"]["twisty"] = twisty
@@ -1125,6 +1130,13 @@ if __name__ == "__main__":
         default=0.0,
         metavar="X",
         help="Next nearest hopping integral",
+    )
+    group1.add_argument(
+        "--tpp",
+        type=float,
+        default=0.0,
+        metavar="X",
+        help="Third nearest hopping integral",
     )
     group1.add_argument(
         "--nflux",
