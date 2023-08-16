@@ -61,7 +61,7 @@ def make_peierls_mat(Nx, Ny, shape, nflux, alpha = 1/2, jr_orbit = np.array((0,0
 
     return peierls
 
-def H_periodic_square(Nx, Ny, t=1, tp = 0, nflux = 0, alpha = 1/2, twistx=0, twisty=0):
+def H_periodic_square(Nx, Ny, t=1, tp = 0, tpp=0, nflux = 0, alpha = 1/2, twistx=0, twisty=0):
     # This function is now consistent with existing DQMC simulations
     # First: hopping (assuming periodic boundaries and no field)
     tij = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex128)
@@ -80,6 +80,13 @@ def H_periodic_square(Nx, Ny, t=1, tp = 0, nflux = 0, alpha = 1/2, twistx=0, twi
 
             tij[ix1+Nx*iy , ix +Nx*iy1] += -tp*np.exp(+1j*twistx-1j*twisty)
             tij[ix +Nx*iy1, ix1+Nx*iy ] += -tp*np.exp(-1j*twistx+1j*twisty)
+            
+            iy2 = (iy + 2) % Ny
+            ix2 = (ix + 2) % Nx
+            tij[ix2+Nx*iy , ix +Nx*iy ] += -tpp*np.exp( 1j*twistx*2)
+            tij[ix +Nx*iy , ix2+Nx*iy ] += -tpp*np.exp(-1j*twistx*2)
+            tij[ix +Nx*iy2, ix +Nx*iy ] += -tpp*np.exp( 1j*twisty*2)
+            tij[ix +Nx*iy , ix +Nx*iy2] += -tpp*np.exp(-1j*twisty*2)
 
     peierls = make_peierls_mat(Nx,Ny,'square',nflux,alpha,np.array((0,0)))
 
