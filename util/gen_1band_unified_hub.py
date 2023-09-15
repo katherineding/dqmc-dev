@@ -827,7 +827,7 @@ def create_1(
 
     # Zeeman interaction
     Kd = Ku.copy()
-    for i in range(Ny * Nx):
+    for i in range(N):
         Ku[i, i] -= mu - h
         Kd[i, i] -= mu + h
 
