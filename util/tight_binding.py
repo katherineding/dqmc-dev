@@ -79,8 +79,16 @@ def make_peierls_mat(
 
 
 def H_periodic_square(
-    Nx, Ny, t=1, tp=0, tpp=0, nflux=0, alpha=1 / 2, twistx=0, twisty=0
-):
+    Nx: int,
+    Ny: int,
+    t: float = 1,
+    tp: float = 0,
+    tpp: float = 0,
+    nflux: int = 0,
+    alpha: float = 1 / 2,
+    twistx: float = 0,
+    twisty: float = 0,
+) -> tuple[np.ndarray, np.ndarray]:
     # This function is now consistent with existing DQMC simulations
     # First: hopping (assuming periodic boundaries and no field)
     tij = np.zeros((Ny * Nx, Ny * Nx), dtype=np.complex128)
@@ -128,13 +136,21 @@ def H_periodic_square(
     return K, peierls
 
 
-def H_periodic_triangular(Nx, Ny, t=1, tp=0, nflux=0, alpha=1 / 2):
+def H_periodic_triangular(
+    Nx: int,
+    Ny: int,
+    t: float = 1,
+    tp: float = 0,
+    tpp: float = 0,
+    nflux: int = 0,
+    alpha: float = 1 / 2,
+) -> tuple[np.ndarray, np.ndarray]:
     """TB model with Peierls phase:
     H = sum -t_ij exp[i phi_ij] c_i^dag c_j
     phi_ij is phase from j -> i hopping
 
     """
-    if tp != 0:
+    if tp != 0 or tpp != 0:
         raise NotImplementedError
     # First: hopping (assuming periodic boundaries and no field)
     kij = np.zeros((Ny * Nx, Ny * Nx), dtype=np.complex128)
@@ -165,9 +181,18 @@ def H_periodic_triangular(Nx, Ny, t=1, tp=0, nflux=0, alpha=1 / 2):
     return K, peierls
 
 
-def H_periodic_honeycomb(Nx, Ny, t=1, tp=0, nflux=0, alpha=1 / 2):
+def H_periodic_honeycomb(
+    Nx: int,
+    Ny: int,
+    t: float = 1,
+    tp: float = 0,
+    tpp: float = 0,
+    nflux: int = 0,
+    alpha: float = 1 / 2,
+) -> tuple[np.ndarray, np.ndarray]:
+    if tp != 0 or tpp != 0:
+        raise NotImplementedError
     # NOTE displacement vectors need to be consistent with primitive vectors
-
     delta_1 = np.array((1 / 2, 1 / (2 * np.sqrt(3))))
     delta_2 = np.array((-1 / 2, 1 / (2 * np.sqrt(3))))
     delta_3 = np.array((0, -1 / np.sqrt(3)))  # offset of B relative to A
@@ -259,8 +284,16 @@ def H_periodic_honeycomb(Nx, Ny, t=1, tp=0, nflux=0, alpha=1 / 2):
     return K, P
 
 
-def H_periodic_kagome(Nx, Ny, t=1, tp=0, nflux=0, alpha=1 / 2):
-    if tp != 0:
+def H_periodic_kagome(
+    Nx: int,
+    Ny: int,
+    t: float = 1,
+    tp: float = 0,
+    tpp: float = 0,
+    nflux: int = 0,
+    alpha: float = 1 / 2,
+) -> tuple[np.ndarray, np.ndarray]:
+    if tp != 0 or tpp != 0:
         raise NotImplementedError
 
     tij = np.zeros((3 * Ny * Nx, 3 * Ny * Nx), dtype=np.complex128)

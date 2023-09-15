@@ -109,7 +109,7 @@ def create_1(
     Ny: int = 4,
     mu: float = 0.0,
     tp: float = 0.0,
-    tpp: float = 0.0, 
+    tpp: float = 0.0,
     # Careful: tpp will add more bonds to transport or other measurements. These parts are not included in this code.
     # adding tpp, currently, the measurments are not enough to get whole bond-anything correlations.
     U: float = 6.0,
@@ -167,7 +167,7 @@ def create_1(
         map_i = np.zeros(N, dtype=np.int32)
         # translation average for each orbital
         for orb in range(Norb):
-            map_i[Ncell * orb : Ncell * (orb + 1)] = orb  
+            map_i[Ncell * orb : Ncell * (orb + 1)] = orb
         degen_i = np.full(Norb, Ncell, dtype=np.int32)
     else:
         map_i = np.arange(N, dtype=np.int32)
@@ -181,7 +181,7 @@ def create_1(
 
     plaq_per_cell = plaq_per_cell_dict[geometry]
     num_plaq_total = plaq_per_cell * Nx * Ny
-    # plaquette definitions 
+    # plaquette definitions
     plaqs = np.zeros((3, num_plaq_total), dtype=np.int32)  # NOTE: placeholder
 
     # per plaquette (per site) measurement mapping
@@ -202,7 +202,6 @@ def create_1(
     # print("map",map_plaq)
 
     if geometry == "square":
-
         # 2 site mapping: site r = (x,y) has total (column order) index x + Nx * y
         map_ij = np.zeros((N, N), dtype=np.int32)
         num_ij = N if trans_sym else N * N
@@ -512,7 +511,15 @@ def create_1(
         assert num_b2b == map_b2b.max() + 1
 
         kij, peierls = tight_binding.H_periodic_square(
-            Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2, twistx=twistx, twisty=twisty
+            Nx,
+            Ny,
+            t=1,
+            tp=tp,
+            tpp=tpp,
+            nflux=nflux,
+            alpha=1 / 2,
+            twistx=twistx,
+            twisty=twisty,
         )
         # phases accumulated by two-hop processes
         # Here: types 0,1 include t' factors
@@ -547,7 +554,6 @@ def create_1(
                 thermal_phases[btype, i] = pp
 
     elif geometry == "triangular":
-
         # fill in plaquette definition! TODO: check correctness
         for iy in range(Ny):
             for ix in range(Nx):
@@ -625,14 +631,13 @@ def create_1(
         degen_b2b = np.zeros(num_b2b, dtype=np.int32)
 
         kij, peierls = tight_binding.H_periodic_triangular(
-            Nx, Ny, t=1, tp=tp, nflux=nflux, alpha=1 / 2
+            Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
         )
 
         # NOTE: placeholder
         thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
 
     elif geometry == "honeycomb":
-
         # 2 site mapping
         map_ij = np.zeros((N, N), dtype=np.int32)
         num_ij = Norb * Norb * Ny * Nx if trans_sym else N * N
@@ -707,14 +712,13 @@ def create_1(
         degen_b2b = np.zeros(num_b2b, dtype=np.int32)
 
         kij, peierls = tight_binding.H_periodic_honeycomb(
-            Nx, Ny, t=1, tp=tp, nflux=nflux, alpha=1 / 2
+            Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
         )
 
         # phases accumulated by two-hop processes NOTE: placeholder
         thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
 
     elif geometry == "kagome":
-
         # plaquette definitions TODO: check correctness
         for iy in range(Ny):
             for ix in range(Nx):
@@ -729,7 +733,6 @@ def create_1(
                 plaqs[2, i + Nx * Ny] = (
                     ix + Nx * iy1 + Nx * Ny * 1
                 )  # i2 = i+y(B) //counterclockwise
-
 
         # 2 site mapping
         map_ij = np.zeros((N, N), dtype=np.int32)
@@ -807,7 +810,7 @@ def create_1(
         degen_b2b = np.zeros(num_b2b, dtype=np.int32)
 
         kij, peierls = tight_binding.H_periodic_kagome(
-            Nx, Ny, t=1, tp=tp, nflux=nflux, alpha=1 / 2
+            Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
         )
 
         # phases accumulated by two-hop processes NOTE: placeholder
