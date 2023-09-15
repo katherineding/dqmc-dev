@@ -116,7 +116,7 @@ A crude mechanism for detecting hdf5 file corruption is implemented by setting a
 
 ## Differences from Edwin's Code
 
-This version of the DQMC code is based on edwnh/dqmc commit c91ba61. Divergence from Edwin's code as of 03/2023 at this point include:
+This version of the DQMC code is based on [edwnh/dqmc](https://github.com/edwnh/dqmc) commit c91ba610cab2418e575a2008094499ea0e35754a. Divergence from Edwin's code as of 08/2023 at this point include:
 
 - Removed `tick_t` alias
 
@@ -143,6 +143,11 @@ This version of the DQMC code is based on edwnh/dqmc commit c91ba61. Divergence 
 - Unified all `gen_1band_xxx.py` scripts into one file `gen_1band_unified_hub.py`, but bond definitions required for e.g. transport measurements, and optional measurements are not implemented for all lattices. 
 
 - `gen_1band_unified_hub.py` takes `argp` style arguments as opposed to the default python syntax. This means all arguments are in the form `--name=value` rather than Edwin's version, which is `name=value`
+
+- Added option to apply twisted boundary conditions
+
+- Added hoppings farther than next nearst neighbor for some lattices.
+
 
 ## TODOs
 
