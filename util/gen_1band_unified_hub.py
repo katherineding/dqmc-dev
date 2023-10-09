@@ -23,7 +23,7 @@ hash_short = repo.git.rev_parse(repo.head, short=True)
 # FIXME: are plaquettes constrained by requiring nonzero hopping element
 # to connect sites, or can plaquettes be defined for arbitrary 3 sites?
 plaq_per_cell_dict = {}
-plaq_per_cell_dict["square"] = 1  # PLACEHOLDER
+plaq_per_cell_dict["square"] = 2  # PLACEHOLDER
 plaq_per_cell_dict["triangular"] = 2
 plaq_per_cell_dict["honeycomb"] = 1  # PLACEHOLDER
 plaq_per_cell_dict["kagome"] = 2  # PLACEHOLDER
@@ -202,6 +202,20 @@ def create_1(
     # print("map",map_plaq)
 
     if geometry == "square":
+
+        # Use same plaquette definition as triangular TODO: check correctness
+        for iy in range(Ny):
+            for ix in range(Nx):
+                i = ix + Nx * iy
+                iy1 = (iy + 1) % Ny
+                ix1 = (ix + 1) % Nx
+                plaqs[0, i] = i  # i0 = i
+                plaqs[1, i] = ix1 + Nx * iy  # i1 = i + x
+                plaqs[2, i] = ix + Nx * iy1  # i2 = i + y // counterclockwise
+                plaqs[0, i + Nx * Ny] = ix1 + Nx * iy  # i0 = i + x
+                plaqs[1, i + Nx * Ny] = ix1 + Nx * iy1  # i1 = i + x + y
+                plaqs[2, i + Nx * Ny] = ix + Nx * iy1  # i2 = i + y //counterclockwise
+        
         # 2 site mapping: site r = (x,y) has total (column order) index x + Nx * y
         map_ij = np.zeros((N, N), dtype=np.int32)
         num_ij = N if trans_sym else N * N
@@ -566,8 +580,6 @@ def create_1(
                 plaqs[0, i + Nx * Ny] = ix1 + Nx * iy  # i0 = i + x
                 plaqs[1, i + Nx * Ny] = ix1 + Nx * iy1  # i1 = i + x + y
                 plaqs[2, i + Nx * Ny] = ix + Nx * iy1  # i2 = i + y //counterclockwise
-
-        print(plaqs)
 
         # 2 site mapping
         map_ij = np.zeros((N, N), dtype=np.int32)
