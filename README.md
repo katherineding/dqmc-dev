@@ -45,9 +45,9 @@ Unfortunately, as we are dealing with a variety of computing environments, both 
 - `gitpython`
 - `scipy`
 
-You can get these via miniconda/anaconda.
+You can get these via miniconda/anaconda in any compute environment.
 
-On sherlock, do `pip3 install --user gitpython h5py` once. Add `module load python/3.6.1 py-scipy/1.1.0_py36 py-numpy/1.14.3_py36 viz py-matplotlib/3.1.1_py36` to your .bashrc.
+For Sherlock specifically, add `module load python/3.9.0 py-scipy/1.10.1_py39 py-numpy/1.24.2_py39 viz py-matplotlib/3.7.1_py39` to your .bashrc. After all the above modules are loaded, do `pip3 install --user gitpython h5py` once. Do NOT use the `py-h5py/3.7.0_py39` module, since that force loads the 1.12.2 hdf5 headers, and messes with the C code compilation.
 
 
 ## Compilation (Master Branch)
