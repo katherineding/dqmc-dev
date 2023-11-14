@@ -37,6 +37,7 @@ class Transport:
         self.mask = mask
         self.nbin = nbin
         self.sign = np.mean(s).real
+        self.n_sample = ns.max()
 
         # get density info 
         dm_dict, de_dict = da.eqlt_meas_1(path,['density'])
@@ -80,7 +81,7 @@ class Transport:
 
         # constructing operators (lhs) to invert with maxent 
         chi_xx =  0.5 * (xx + yy) # do an average to reduce noise 
-        chi_hermit = xx + yy + xy - yx    
+        chi_hermit = (xx + yy + xy - yx) 
 
         # for appending tau=L component for maxEnt. needs to have the correct symmetry 
         append = xx[:,0] + yy[:,0] - xy[:,0] + yx[:,0]   # (Nbin, 1) array 
@@ -111,7 +112,7 @@ class Transport:
         return ( (chi_xx, append_xx), (chi_hermit, append) )
 
     def perform_maxent(self, chi_, bs=1, method = "BT", anneal_arr = None, checks=False,
-                       alpha_arr = np.logspace(1, 9, 1+20*(9-1)), inspect=False, sym=True):
+                       alpha_arr = np.logspace(1, 9, 1+20*(9-1)), inspect=False, sym=True, drop=False):
         """Performs MaxEnt on correlations of the form O(tau)O^{dagger}
         Args: 
             chi: a tuple containing lhs of the integral to invert (real) 
@@ -144,6 +145,10 @@ class Transport:
             resample = np.random.randint(self.nbin,size=self.nbin) #sample with replacement
             pre = my_maxent.Preprocess(chi[resample], dt, beta, grid_info = (omega,domega),
                                     op_type = 'boson', sym=sym, model_arr = anneal_arr, append=append[resample])
+            if drop:
+                pre["tau"] = pre["tau"][:-1]
+                pre["lhs"] = pre["lhs"][:,:-1]
+                pre["K"] = pre["K"][:-1,:]
             A = my_maxent.MaxEnt(pre, alpha_arr = alpha_arr, method=method,
                                 printout=checks,inspect=inspect)
             s = (A/domega)*pre["norm"]*np.pi 
@@ -180,10 +185,8 @@ class Transport:
     
     def kappa_0(self, **kwargs):
         """Computes Kubo contribution to thermal conductivity coefficient.
-        Args:
-            omega_grid: Tuple containing np.arrays of omega, domega 
         Returns:
-            Tuple
+            Tuples of size (bootstraps, nomega)
             [0]: kappa_xx(omega)
             [1]: kappa_xy(omega)
         """
@@ -191,13 +194,27 @@ class Transport:
         maxent_results = [self.perform_maxent(chi, **kwargs) for chi in lhs] # perform MaxEnt on all lhs 
 
         # return kappa components 
-        kappa_xx = maxent_results[0]["s"].mean(0) * self.metadata["beta"]
-        kappa_xy = (maxent_results[0]["s"].mean(0) * self.metadata["beta"] - 
-                    maxent_results[1]["s"].mean(0)/ 2 * self.metadata["beta"])  # (2*Lxx-L_hermitian)/2
-
+        kappa_xx = (maxent_results[0]["s"] * self.metadata["beta"])
+        kappa_xy = (maxent_results[0]["s"] * self.metadata["beta"] - 
+                    maxent_results[1]["s"]/ 2 * self.metadata["beta"])  # (2*Lxx-L_hermitian)/2
         return kappa_xx, kappa_xy
     
-    
+    def sigma(self, **kwargs):
+        """Computes optical conductivity.
+        Returns:
+            Tuples of size (bootstraps, nomega)
+            [0]: sigma_xx(omega)
+            [1]: sigma_xy(omega)
+        """
+        lhs = self.lhs(self.corr["JNJN"]) # construct LHS 
+        maxent_results = [self.perform_maxent(chi, **kwargs) for chi in lhs] # perform MaxEnt on all lhs 
+
+        # return kappa components 
+        sigma_xx = maxent_results[0]["s"] 
+        sigma_xy = (maxent_results[0]["s"] - maxent_results[1]["s"]/2)  # (2*Lxx-L_hermitian)/2
+
+        return sigma_xx, sigma_xy
+
     @cached_property
     def site_currents(self):
         """Computes site currents. 
