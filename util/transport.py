@@ -23,11 +23,12 @@ class Transport:
         
         # load metadata 
         meta_keys = ["U", "mu", "beta", "Nx", "Ny", "bps", "b2ps", "nflux",
-                     "tp", "N", "L", "dt"]
+                     "tp", "N", "L", "dt", "bonds", "bond2s"]
         meta_args = util.load_firstfile(path,"metadata/U","metadata/mu","metadata/beta",
                                             "metadata/Nx","metadata/Ny","metadata/bps",
                                             "metadata/b2ps", "metadata/nflux",
-                                            "metadata/t'","params/N","params/L","params/dt")    
+                                            "metadata/t'","params/N","params/L","params/dt",
+                                            "params/bonds", "params/bond2s")    
         self.metadata = dict(zip(meta_keys, meta_args))
         
         # get number of samples and sign 
@@ -226,8 +227,8 @@ class Transport:
             "JN": Particle current
         """
         # load site current components 
-        j, jn, j2, bonds, bonds2= util.load(self.path, "meas_eqlt/j", "meas_eqlt/jn", "meas_eqlt/j2",
-                                            "params/bonds", "params/bond2s")
+        j, jn, j2 = util.load(self.path, "meas_eqlt/j", "meas_eqlt/jn", "meas_eqlt/j2"
+                                            )
         j.shape = -1, self.metadata["bps"], self.metadata["Nx"], self.metadata["Ny"]
         j2.shape = -1, self.metadata["b2ps"], self.metadata["Nx"], self.metadata["Ny"]
         jn.shape = -1, self.metadata["bps"], self.metadata["Nx"], self.metadata["Ny"]
@@ -251,32 +252,58 @@ class Transport:
             j2_[:,7,:,:] = np.roll(j2_.copy()[:,7,:,:], 1, axis=-1)
             j2_[:,11,:,:] = np.roll(j2_.copy()[:,11,:,:], 2, axis=-1)
 
-        j2_ = j2_.reshape( (nbin,b2ps,N))
-        j_ = j_.reshape( (nbin,bps,N))
-        jn_ = jn_.reshape( (nbin,bps,N))
+        j2 = j2_.reshape( (nbin,b2ps,N))
+        j = j_.reshape( (nbin,bps,N))
+        jn = jn_.reshape( (nbin,bps,N))
 
         # NOT DIVIDED BY SIGN 
-        JQ = npa([compute_heat_site_current(j[bin], jn[bin], j2[bin], bonds, bonds2, **self.metadata) 
+        JQ = npa([compute_heat_site_current(j[bin], jn[bin], j2[bin], **self.metadata) 
                   for bin in range(nbin)])
-        JN = npa([compute_particle_site_current(j[bin], jn[bin], j2[bin], bonds, bonds2, **self.metadata)
+        JN = npa([compute_particle_site_current(jn[bin], **self.metadata)
                   for bin in range(nbin)])
         return {"JQ": JQ, "JN": JN}
 
-    @cached_property
-    def kappa_1(self):
+
+    def J_bootstrapped(self, bs=1):
+        """Bootstraps heat current measurements.
+        Kwargs:
+            bs: number of bootstraps
+        Returns:
+            Dictionary
+            "JQ": Heat current (bs, N)
+            "JN": Particle current (bs, N)
+        """
+        Nx, Ny = self.metadata["Nx"], self.metadata["Ny"]
+        JQ = self.site_currents["JQ"] / self.sign 
+        JN = self.site_currents["JN"] / self.sign 
+        if bs > 0:
+            JQ_bs = np.full((bs, Nx*Ny, 2),np.nan,dtype=complex)
+            JN_bs = np.full((bs, Nx*Ny, 2),np.nan,dtype=complex)
+            for i in range(bs):
+                resample = np.random.randint(self.nbin,size=self.nbin) #sample with replacement
+                JQ_bs[i,:,:] = JQ[resample].mean(0)
+                JN_bs[i,:,:] = JN[resample].mean(0)
+
+            return {"JQ": JQ_bs, "JN": JN_bs}
+        else:
+            return {"JQ": JQ, "JN": JN}
+
+    def kappa_1(self, JQ):
         """Computes energy magnetization contribution to thermal conductivity
+
+        Args:
+            JQ: heat site current either size (nbin, 2) including JQx and JQy
         Returns:
             Tuple
-            [0]: kappa_xy_1
-            [1]: kappa_yx_1 
+            [0]: kappa_xy_1 (nbin, 2) 
+            [1]: kappa_yx_1 (nbin, 2) 
         """
-        JQ = self.site_currents["JQ"].mean(0) / self.sign 
         Nx, Ny = self.metadata["Nx"], self.metadata["Ny"]
         beta = self.metadata["beta"]
         Rx, Ry = np.meshgrid(np.arange(Nx), np.arange(Ny))
         Rx = Rx.flatten()
         Ry = Ry.flatten()
-        return - 2*(Rx * JQ[:,1]).sum(axis=0)*beta, - 2*(Ry * JQ[:,0]).sum(axis=0)*beta
+        return - 2*(Rx * JQ[:,:,1]).sum(axis=1)*beta, - 2*(Ry * JQ[:,:,0]).sum(axis=1)*beta
 
 
 def get_corr(path):
@@ -305,9 +332,11 @@ def get_corr(path):
     return jqjq.thermal_sum(path,q0_corrs)
 
 
-def compute_heat_site_current(j, jn, j2, bonds, bonds2, **kwargs):
+def compute_heat_site_current(j, jn, j2, **kwargs):
     """
     Compute heat site currents. j, jn are shapes (bps, N) and j2 is of shape (b2ps, N)
+    Returns:
+        Array (N, 2)
     """
     N = kwargs["N"]
     bps = kwargs["bps"]
@@ -315,6 +344,8 @@ def compute_heat_site_current(j, jn, j2, bonds, bonds2, **kwargs):
     tp = kwargs["tp"]
     U = kwargs["U"]
     mu = kwargs["mu"]
+    bonds = kwargs["bonds"]
+    bonds2 = kwargs["bond2s"]
 
     t_arr = np.ones((N, bps)) * npa([1,1,tp,tp]) if tp != 0 else np.ones((N, bps)) 
     t2_arr = np.ones((N, b2ps)) * npa([1,1,1,1,tp,tp,tp,tp,tp,tp,tp**2,tp**2]) if tp != 0 else np.ones((N, b2ps)) 
@@ -345,16 +376,20 @@ def compute_heat_site_current(j, jn, j2, bonds, bonds2, **kwargs):
         jqx += 1j/4 * t2_arr[:,itype]*dx2_arr[itype]*j2[itype,pairsb2[:,itype]]
         jqy += 1j/4 * t2_arr[:,itype]*dy2_arr[itype]*j2[itype,pairsb2[:,itype]]
 
-    jnx, jny = compute_particle_site_current(jn, bonds, **kwargs)
-    return jqx - mu*jnx, jqy - mu*jny
+    jq = npa(list(zip(jqx, jqy)))
+    jN = compute_particle_site_current(jn, **kwargs)
+    return jq - mu*jN
 
-def compute_particle_site_current(jn, bonds, **kwargs):
+def compute_particle_site_current(jn, **kwargs):
     """
     Compute particle site currents. jn is of shape (bps, N) 
+    Returns:
+        Array (N, 2)
     """
     N = kwargs["N"]
     bps = kwargs["bps"]
     tp = kwargs["tp"]
+    bonds = kwargs["bonds"]
     t_arr = np.ones((N, bps)) * npa([1,1,tp,tp]) if tp != 0 else np.ones((N, bps)) 
 
     jx = 0.0 + 0.0j
@@ -366,4 +401,4 @@ def compute_particle_site_current(jn, bonds, **kwargs):
         jx += 1j/2 * t_arr[:,itype]*dx_arr[itype]*jn[itype,pairs[:,itype]]
         jy += 1j/2 * t_arr[:,itype]*dy_arr[itype]*jn[itype,pairs[:,itype]]
 
-    return jx, jy
+    return npa(list(zip(jx, jy)))
