@@ -497,6 +497,140 @@ def thermal_sum(path: str, q0_corrs) -> dict[str, np.ndarray]:
     return result_dict
 
 
+def symmetry_checks(result_dict):
+    atol = 1e-3
+    # ============Electrical============================
+    xx = result_dict["JNJN"][0].mean(0)
+    yy = result_dict["JNJN"][1].mean(0)
+    xy = result_dict["JNJN"][2].mean(0)
+    yx = result_dict["JNJN"][3].mean(0)
+
+    # JXJX is mostly real
+    assert np.linalg.norm(xx.imag / xx.real) < atol
+    assert np.linalg.norm(yy.imag / yy.real) < atol
+
+    # JXJY is mostly imag, but only do this check when not all zero
+    if not (np.allclose(xy, 0, atol=atol) and np.allclose(yx, 0, atol=atol)):
+        assert (
+            np.linalg.norm(xy.real / xy.imag) < atol
+        ), f"{np.linalg.norm(xy.real/xy.imag)}"
+        assert (
+            np.linalg.norm(yx.real / yx.imag) < atol
+        ), f"{np.linalg.norm(xy.real/xy.imag)}"
+    else:
+        assert np.allclose(xy, 0, atol=atol)
+        assert np.allclose(yx, 0, atol=atol)
+
+    # C4 symmetry
+    assert np.allclose(xx, yy, atol=atol)
+    assert np.allclose(xy, -yx, atol=atol)
+
+    # =============Thermal===========================
+    xx = result_dict["JQJQ"][0].mean(0)
+    yy = result_dict["JQJQ"][1].mean(0)
+    xy = result_dict["JQJQ"][2].mean(0)
+    yx = result_dict["JQJQ"][3].mean(0)
+
+    # JQXJQX is mostly real
+    assert (
+        np.linalg.norm(xx.imag / xx.real) < atol
+    ), f"{np.linalg.norm(xx.imag/xx.real)}"
+    assert (
+        np.linalg.norm(yy.imag / yy.real) < atol
+    ), f"{np.linalg.norm(yy.imag/yy.real)}"
+
+    # JQXJQY is mostly imag, but only do this check when not all zero
+    if not (np.allclose(xy, 0, atol=atol) and np.allclose(yx, 0, atol=atol)):
+        assert (
+            np.linalg.norm(xy.real / xy.imag) < atol
+        ), f"{np.linalg.norm(xy.real/xy.imag)}"
+        assert (
+            np.linalg.norm(yx.real / yx.imag) < atol
+        ), f"{np.linalg.norm(xy.real/xy.imag)}"
+    else:
+        assert np.allclose(xy, 0, atol=atol)
+        assert np.allclose(yx, 0, atol=atol)
+
+    # C4 symmetry
+    assert np.allclose(xx, yy, atol=atol), f"{np.linalg.norm(xx-yy)}"
+    assert np.allclose(xy, -yx, atol=atol)
+
+    # =============Mixed===========================
+    xx = result_dict["JNJQ"][0].mean(0)
+    yy = result_dict["JNJQ"][1].mean(0)
+    xy = result_dict["JNJQ"][2].mean(0)
+    yx = result_dict["JNJQ"][3].mean(0)
+
+    xx2 = result_dict["JQJN"][0].mean(0)
+    yy2 = result_dict["JQJN"][1].mean(0)
+    xy2 = result_dict["JQJN"][2].mean(0)
+    yx2 = result_dict["JQJN"][3].mean(0)
+
+    # JXJQX is mostly real, but only do this check when not all zero
+    if not (np.allclose(xx, 0, atol=atol) and np.allclose(yy, 0, atol=atol)):
+        assert (
+            np.linalg.norm(xx.imag / xx.real) < atol
+        ), f"{np.linalg.norm(xx.imag/xx.real)}"
+        assert (
+            np.linalg.norm(yy.imag / yy.real) < atol
+        ), f"{np.linalg.norm(yy.imag/yy.real)}"
+    else:
+        assert np.allclose(xx, 0, atol=atol)
+        assert np.allclose(yy, 0, atol=atol)
+
+    # JQXJX is mostly real, but only do this check when not all zero
+    if not (np.allclose(xx2, 0, atol=atol) and np.allclose(yy2, 0, atol=atol)):
+        assert (
+            np.linalg.norm(xx2.imag / xx2.real) < atol
+        ), f"{np.linalg.norm(xx2.imag/xx2.real)}"
+        assert (
+            np.linalg.norm(yy2.imag / yy2.real) < atol
+        ), f"{np.linalg.norm(yy2.imag/yy2.real)}"
+    else:
+        assert np.allclose(xx2, 0, atol=atol)
+        assert np.allclose(yy2, 0, atol=atol)
+
+    # JXJQY is mostly imag, but only do this check when not all zero
+    if not (np.allclose(xy, 0, atol=atol) and np.allclose(yx, 0, atol=atol)):
+        assert (
+            np.linalg.norm(xy.real / xy.imag) < atol
+        ), f"{np.linalg.norm(xy.real/xy.imag)}"
+        assert (
+            np.linalg.norm(yx.real / yx.imag) < atol
+        ), f"{np.linalg.norm(xy.real/xy.imag)}"
+    else:
+        assert np.allclose(xy, 0, atol=atol)
+        assert np.allclose(yx, 0, atol=atol)
+
+    # JQXJY is mostly imag, but only do this check when not all zero
+    if not (np.allclose(xy2, 0, atol=atol) and np.allclose(yx2, 0, atol=atol)):
+        assert (
+            np.linalg.norm(xy2.real / xy2.imag) < atol
+        ), f"{np.linalg.norm(xy2.real/xy2.imag)}"
+        assert (
+            np.linalg.norm(yx2.real / yx2.imag) < atol
+        ), f"{np.linalg.norm(yx2.real/yx2.imag)}"
+    else:
+        assert np.allclose(xy2, 0, atol=atol)
+        assert np.allclose(yx2, 0, atol=atol)
+
+    # C4 symmetry within one block
+    assert np.allclose(xx, yy, atol=atol)
+    assert np.allclose(xy, -yx, atol=atol)
+
+    # C4 symmetry within one block
+    assert np.allclose(xx2, yy2, atol=atol)
+    assert np.allclose(xy2, -yx2, atol=atol)
+
+    # Onsager symmetry across blocks
+    assert np.allclose(xx, xx2, atol=atol)
+    assert np.allclose(yy, yy2, atol=atol)
+
+    # Onsager symmetry across blocks
+    assert np.allclose(xy, xy2, atol=atol)
+    assert np.allclose(yx, yx2, atol=atol)
+
+
 def my_correlators(path: str) -> dict[str, np.ndarray]:
     """
     Given path with trailing backslash, run get_component() and thermal_sum()
