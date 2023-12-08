@@ -1,14 +1,5 @@
 import numpy as np
-from scipy import linalg as la
-import matplotlib.pyplot as plt
-
-import sys
-import os
-
-src = os.environ["SRC"]
-if not src + "edwin/util" in sys.path:
-    sys.path.insert(0, src + "edwin/util")
-import util  # Edwin's util file
+import util
 import data_analysis as da
 
 # one-hop bond dx, dy
@@ -16,7 +7,7 @@ dx_arr = [1, 0, 1, -1]
 dy_arr = [0, 1, 1, 1]
 
 
-def get_component(path, name="j2j2"):
+def get_component(path: str, name: str = "j2j2"):
     """
     Address RAM overflow kill:
         By separating components out, python only keeps full
@@ -68,7 +59,7 @@ def get_component(path, name="j2j2"):
     return correlator_q0
 
 
-def thermal_sum(path, q0_corrs):
+def thermal_sum(path: str, q0_corrs) -> dict[str, np.ndarray]:
     """
     Take tuple of correlators, each element of shape (Nbin_completed, L, b[2]ps, b[2]ps),
     Perform appropriate summation over bond types to obtain JNJN, JQJN, JNJQ, JQJQ
@@ -480,7 +471,7 @@ def thermal_sum(path, q0_corrs):
     result_dict["jjn"] = np.stack((jjn_xx, jjn_yy, jjn_xy, jjn_yx), axis=0)
     result_dict["jj"] = np.stack((jj_xx, jj_yy, jj_xy, jj_yx), axis=0)
     result_dict["JQJQ"] = np.stack((xx, yy, xy, yx), axis=0)
-    result_dict["metadata"] = (L, dt)
+    result_dict["metadata"] = np.array((L, dt))
 
     # ==========================================================================
     # prefactors same for JQ(tau)JN(0),JN(tau)JQ(0)
@@ -506,34 +497,7 @@ def thermal_sum(path, q0_corrs):
     return result_dict
 
 
-def plot_components(result_dict):
-    L, dt = result_dict["metadata"]
-    taus = range(L) * dt
-    for k, v in result_dict.items():
-        if k == "metadata":
-            continue
-        else:
-            xx, yy = v[0], v[1]
-            # print(np.linalg.norm(xx.real),np.linalg.norm(xx.imag))
-            plt.figure()
-            plt.title(k)
-            plt.errorbar(
-                taus, (xx.real).mean(0), yerr=xx.std(0), fmt="s-", label="xx real"
-            )
-            plt.errorbar(
-                taus, (xx.imag).mean(0), yerr=xx.std(0), fmt=".", label="xx imag"
-            )
-            plt.errorbar(
-                taus, (yy.real).mean(0), yerr=yy.std(0), fmt="s-", label="yy real"
-            )
-            plt.errorbar(
-                taus, (yy.imag).mean(0), yerr=yy.std(0), fmt=".", label="yy imag"
-            )
-            plt.xlabel(r"$\tau$")
-            plt.legend()
-
-
-def my_correlators(path):
+def my_correlators(path: str) -> dict[str, np.ndarray]:
     """
     Given path with trailing backslash, run get_component() and thermal_sum()
     to get a dictionary with JNJN, JQJN, JNJQ, JQJQ
@@ -543,7 +507,7 @@ def my_correlators(path):
     """
 
     if da.info(path, uneqlt=True, show=True, imagtol=1e-2) == 1:
-        return None
+        raise ValueError("failed to obtain correlator")
 
     U, mu, beta, Nx, Ny, bps, b2ps, nflux, tp, N, L, dt = util.load_firstfile(
         path,
@@ -565,7 +529,7 @@ def my_correlators(path):
         jjn_q0 = get_component(path, "jjn")
         jnj_q0 = get_component(path, "jnj")
     except KeyError as e:
-        print(f"KeyError: {e}, using legacy names")
+        print(f"caught KeyError: {e}, using legacy names new_jjn and new_jnj")
         jjn_q0 = get_component(path, "new_jjn")
         jnj_q0 = get_component(path, "new_jnj")
 
@@ -578,7 +542,7 @@ def my_correlators(path):
     jj_q0 = get_component(path, "jj")
 
     # TODO: generate grid range based on U?
-    dm_dict, de_dict = da.eqlt_meas_1(path, ["density"])
+    dm_dict, de_dict = da.eqlt_meas_i(path, ["density"])
     dm = dm_dict["density"].real
     de = de_dict["density"]
     # tt = fr"{Nx}x{Ny} nflux={nflux} n={dm.real:.7g} t'={tp} U={U} $\beta$={beta:.3g}"
@@ -618,175 +582,7 @@ def my_correlators(path):
     return thermal_sum(path, q0_corrs)
 
 
-def plotcorr(my_dict):
-    L, dt = my_dict["metadata"]
-
-    xx = my_dict["JQJQ"][0]
-    yy = my_dict["JQJQ"][1]
-    xy = my_dict["JQJQ"][2]
-    yx = my_dict["JQJQ"][3]
-
-    plt.figure()
-    plt.title(r"$ \langle J_Q(\tau)J_Q \rangle $")
-    plt.errorbar(
-        range(L) * dt, (xx.real).mean(0), yerr=xx.std(0), fmt="s-", label="xx real"
-    )
-    plt.errorbar(
-        range(L) * dt, (xx.imag).mean(0), yerr=xx.std(0), fmt=".", label="xx imag"
-    )
-    plt.errorbar(
-        range(L) * dt, (yy.real).mean(0), yerr=yy.std(0), fmt="s-", label="yy real"
-    )
-    plt.errorbar(
-        range(L) * dt, (yy.imag).mean(0), yerr=yy.std(0), fmt=".", label="yy imag"
-    )
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-    plt.figure()
-    plt.title(r"$\langle J_Q(\tau)J_Q \rangle $")
-    plt.errorbar(
-        range(L) * dt, (xy.real).mean(0), yerr=xy.std(0), fmt="s-", label="xy real"
-    )
-    plt.errorbar(
-        range(L) * dt, (xy.imag).mean(0), yerr=xy.std(0), fmt=".", label="xy imag"
-    )
-    plt.errorbar(
-        range(L) * dt, (yx.real).mean(0), yerr=yx.std(0), fmt="s-", label="yx real"
-    )
-    plt.errorbar(
-        range(L) * dt, (yx.imag).mean(0), yerr=yx.std(0), fmt=".", label="yx imag"
-    )
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-    # ==============================================================
-
-    xx = my_dict["JQJN"][0]
-    yy = my_dict["JQJN"][1]
-    xy = my_dict["JQJN"][2]
-    yx = my_dict["JQJN"][3]
-
-    plt.figure()
-    plt.title(r"$ \langle J_Q(\tau)J_N \rangle $")
-    plt.errorbar(
-        range(L) * dt, (xx.real).mean(0), yerr=xx.std(0), fmt="s-", label="xx real"
-    )
-    plt.errorbar(
-        range(L) * dt, (xx.imag).mean(0), yerr=xx.std(0), fmt=".", label="xx imag"
-    )
-    plt.errorbar(
-        range(L) * dt, (yy.real).mean(0), yerr=yy.std(0), fmt="s-", label="yy real"
-    )
-    plt.errorbar(
-        range(L) * dt, (yy.imag).mean(0), yerr=yy.std(0), fmt=".", label="yy imag"
-    )
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-    plt.figure()
-    plt.title(r"$ \langle J_Q(\tau)J_N \rangle $")
-    plt.errorbar(
-        range(L) * dt, (xy.real).mean(0), yerr=xy.std(0), fmt="s-", label="xy real"
-    )
-    plt.errorbar(
-        range(L) * dt, (xy.imag).mean(0), yerr=xy.std(0), fmt=".", label="xy imag"
-    )
-    plt.errorbar(
-        range(L) * dt, (yx.real).mean(0), yerr=yx.std(0), fmt="s-", label="yx real"
-    )
-    plt.errorbar(
-        range(L) * dt, (yx.imag).mean(0), yerr=yx.std(0), fmt=".", label="yx imag"
-    )
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-    # ==========================================================
-    xx = my_dict["JNJQ"][0]
-    yy = my_dict["JNJQ"][1]
-    xy = my_dict["JNJQ"][2]
-    yx = my_dict["JNJQ"][3]
-
-    plt.figure()
-    plt.title(r"$ \langle J_N(\tau)J_Q \rangle $")
-    plt.errorbar(
-        range(L) * dt, (xx.real).mean(0), yerr=xx.std(0), fmt="s-", label="xx real"
-    )
-    plt.errorbar(
-        range(L) * dt, (xx.imag).mean(0), yerr=xx.std(0), fmt=".", label="xx imag"
-    )
-    plt.errorbar(
-        range(L) * dt, (yy.real).mean(0), yerr=yy.std(0), fmt="s-", label="yy real"
-    )
-    plt.errorbar(
-        range(L) * dt, (yy.imag).mean(0), yerr=yy.std(0), fmt=".", label="yy imag"
-    )
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-    plt.figure()
-    plt.title(r"$ \langle J_N(\tau)J_Q \rangle $")
-    plt.errorbar(
-        range(L) * dt, (xy.real).mean(0), yerr=xy.std(0), fmt="s-", label="xy real"
-    )
-    plt.errorbar(
-        range(L) * dt, (xy.imag).mean(0), yerr=xy.std(0), fmt=".", label="xy imag"
-    )
-    plt.errorbar(
-        range(L) * dt, (yx.real).mean(0), yerr=yx.std(0), fmt="s-", label="yx real"
-    )
-    plt.errorbar(
-        range(L) * dt, (yx.imag).mean(0), yerr=yx.std(0), fmt=".", label="yx imag"
-    )
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-    plt.show()
-
-    # =============================================================
-    xx = my_dict["JNJN"][0]
-    yy = my_dict["JNJN"][1]
-    xy = my_dict["JNJN"][2]
-    yx = my_dict["JNJN"][3]
-
-    plt.figure()
-    plt.title(r"$ \langle J_N(\tau)J_N \rangle $")
-    plt.errorbar(
-        range(L) * dt, (xx.real).mean(0), yerr=xx.std(0), fmt="s-", label="xx real"
-    )
-    plt.errorbar(
-        range(L) * dt, (xx.imag).mean(0), yerr=xx.std(0), fmt=".", label="xx imag"
-    )
-    plt.errorbar(
-        range(L) * dt, (yy.real).mean(0), yerr=yy.std(0), fmt="s-", label="yy real"
-    )
-    plt.errorbar(
-        range(L) * dt, (yy.imag).mean(0), yerr=yy.std(0), fmt=".", label="yy imag"
-    )
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-    plt.figure()
-    plt.title(r"$ \langle J_N(\tau)J_N \rangle $")
-    plt.errorbar(
-        range(L) * dt, (xy.real).mean(0), yerr=xy.std(0), fmt="s-", label="xy real"
-    )
-    plt.errorbar(
-        range(L) * dt, (xy.imag).mean(0), yerr=xy.std(0), fmt=".", label="xy imag"
-    )
-    plt.errorbar(
-        range(L) * dt, (yx.real).mean(0), yerr=yx.std(0), fmt="s-", label="yx real"
-    )
-    plt.errorbar(
-        range(L) * dt, (yx.imag).mean(0), yerr=yx.std(0), fmt=".", label="yx imag"
-    )
-    plt.xlabel(r"$\tau$")
-    plt.legend()
-
-    plt.show()
-
-
-def compare(my_dict, wen_dict):
+def compare(my_dict: dict[str, np.ndarray], wen_dict: dict[str, np.ndarray]):
     print(np.max(np.abs(my_dict["JQJQ"] - wen_dict["JQJQ"])))
     print(np.max(np.abs(my_dict["JQJN"] - wen_dict["JQJN"])))
     print(np.max(np.abs(my_dict["JNJQ"] - wen_dict["JNJQ"])))

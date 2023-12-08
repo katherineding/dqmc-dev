@@ -1,15 +1,5 @@
 import numpy as np
-from scipy import linalg as la
-import matplotlib.pyplot as plt
-
-import sys
-import os
-
-src = os.environ["SRC"]
-if not src + "edwin/util" in sys.path:
-    sys.path.insert(0, src + "edwin/util")
-import util  # Edwin's util file
-import data_analysis as da
+import util
 
 time_slice = 0
 
