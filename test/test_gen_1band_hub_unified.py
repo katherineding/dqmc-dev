@@ -19,6 +19,10 @@ seed = 1234
 # Bug is fixed in commit d0c3425
 refhash = "c91ba61"
 
+# This version has bond-dependent uneqlt measurements for square lattice
+# and chiral eqlt measurements for square and triangular
+refhash2 = "b535e68"
+
 # @pytest.fixture(scope="session",autouse=True)
 # def setup():
 #     print("this is setup")
@@ -169,6 +173,50 @@ def compare_meta(path1, path2):
         assert np.allclose(meta_ref[i], meta_c[i])
 
 
+def compare_meta_extra(path1, path2):
+    meta_ref = util.load(
+        path1,
+        "metadata/Norb",
+        "metadata/b2ps",
+        "metadata/plaq_per_cell",
+        "metadata/t''",
+        "metadata/twistx",
+        "metadata/twisty",
+        "metadata/mu",
+        "metadata/h",
+        "metadata/trans_sym",
+    )
+
+    meta_c = util.load(
+        path2,
+        "metadata/Norb",
+        "metadata/b2ps",
+        "metadata/plaq_per_cell",
+        "metadata/t''",
+        "metadata/twistx",
+        "metadata/twisty",
+        "metadata/mu",
+        "metadata/h",
+        "metadata/trans_sym",
+    )
+
+    for i in range(len(meta_ref)):
+        assert np.allclose(meta_ref[i], meta_c[i])
+
+    # np.allclose can't be used to compare an array of (byte) strings
+    g_ref = util.load_firstfile(
+        path1,
+        "metadata/geometry",
+    )[0]
+
+    g_c = util.load_firstfile(
+        path2,
+        "metadata/geometry",
+    )[0]
+
+    assert g_ref == g_c
+
+
 def compare_state(path1, path2):
     state_ref = util.load(
         path1, "state/sweep", "state/init_rng", "state/rng", "state/hs"
@@ -205,6 +253,42 @@ def compare_eqlt_meas(path1, path2):
         "meas_eqlt/xx",
         "meas_eqlt/zz",
         "meas_eqlt/pair_sw",
+    )
+
+    for i in range(len(meas_ref)):
+        assert np.allclose(meas_ref[i], meas_c[i])
+
+
+def compare_eqlt_meas_extra(path1, path2):
+    meas_ref = util.load(
+        path1,
+        "meas_eqlt/density_u",
+        "meas_eqlt/density_d",
+        "meas_eqlt/g00_u",
+        "meas_eqlt/g00_d",
+    )
+
+    meas_c = util.load(
+        path2,
+        "meas_eqlt/density_u",
+        "meas_eqlt/density_d",
+        "meas_eqlt/g00_u",
+        "meas_eqlt/g00_d",
+    )
+
+    for i in range(len(meas_ref)):
+        assert np.allclose(meas_ref[i], meas_c[i])
+
+
+def compare_eqlt_meas_chi(path1, path2):
+    meas_ref = util.load(
+        path1,
+        "meas_eqlt/chi",
+    )
+
+    meas_c = util.load(
+        path2,
+        "meas_eqlt/chi",
     )
 
     for i in range(len(meas_ref)):
@@ -261,6 +345,23 @@ def compare_uneqlt_meas(path1, path2):
         assert np.allclose(meas_ref[i], meas_c[i])
 
 
+def compare_uneqlt_meas_extra(path1, path2):
+    meas_ref = util.load(
+        path1,
+        "meas_uneqlt/gt0_u",
+        "meas_uneqlt/gt0_d",
+    )
+
+    meas_c = util.load(
+        path2,
+        "meas_uneqlt/gt0_u",
+        "meas_uneqlt/gt0_d",
+    )
+
+    for i in range(len(meas_ref)):
+        assert np.allclose(meas_ref[i], meas_c[i])
+
+
 def compare_uneqlt_bond_meas(path1, path2):
     meas_ref = util.load(
         path1,
@@ -278,6 +379,56 @@ def compare_uneqlt_bond_meas(path1, path2):
         "meas_uneqlt/jsjs",
         "meas_uneqlt/kk",
         "meas_uneqlt/ksks",
+    )
+
+    for i in range(len(meas_ref)):
+        assert np.allclose(meas_ref[i], meas_c[i])
+
+
+def compare_uneqlt_thermal_meas(path1, path2):
+    meas_ref = util.load(
+        path1,
+        "meas_uneqlt/j2jn",
+        "meas_uneqlt/jnj2",
+        "meas_uneqlt/jnjn",
+        "meas_uneqlt/jjn",
+        "meas_uneqlt/jnj",
+    )
+
+    meas_c = util.load(
+        path2,
+        "meas_uneqlt/j2jn",
+        "meas_uneqlt/jnj2",
+        "meas_uneqlt/jnjn",
+        "meas_uneqlt/jjn",
+        "meas_uneqlt/jnj",
+    )
+
+    for i in range(len(meas_ref)):
+        assert np.allclose(meas_ref[i], meas_c[i])
+
+
+def compare_uneqlt_2bond_meas(path1, path2):
+    meas_ref = util.load(
+        path1,
+        "meas_uneqlt/j2j2",
+        "meas_uneqlt/j2j",
+        "meas_uneqlt/jj2",
+        "meas_uneqlt/pair_b2b2",
+        "meas_uneqlt/js2js2",
+        "meas_uneqlt/k2k2",
+        "meas_uneqlt/ks2ks2",
+    )
+
+    meas_c = util.load(
+        path2,
+        "meas_uneqlt/j2j2",
+        "meas_uneqlt/j2j",
+        "meas_uneqlt/jj2",
+        "meas_uneqlt/pair_b2b2",
+        "meas_uneqlt/js2js2",
+        "meas_uneqlt/k2k2",
+        "meas_uneqlt/ks2ks2",
     )
 
     for i in range(len(meas_ref)):
@@ -386,6 +537,65 @@ def compare_params(path1, path2):
         assert np.allclose(params_ref[i], params_c[i])
 
 
+def compare_params_extra(path1, path2):
+    params_ref = util.load(
+        path1,
+        "params/bond2s",
+        "params/map_plaq",
+        "params/plaqs",
+        "params/map_b2b",
+        "params/map_bb2",
+        "params/map_b2b2",
+        "params/pp_u",
+        "params/pp_d",
+        "params/ppr_u",
+        "params/ppr_d",
+        "params/meas_thermal",
+        "params/meas_2bond_corr",
+        "params/meas_chiral",
+        "params/num_plaq",
+        "params/num_plaq_accum",
+        "params/num_b2",
+        "params/num_b2b",
+        "params/num_bb2",
+        "params/num_b2b2",
+        "params/degen_plaq",
+        "params/degen_bb2",
+        "params/degen_b2b",
+        "params/degen_b2b2",
+    )
+
+    params_c = util.load(
+        path2,
+        "params/bond2s",
+        "params/map_plaq",
+        "params/plaqs",
+        "params/map_b2b",
+        "params/map_bb2",
+        "params/map_b2b2",
+        "params/pp_u",
+        "params/pp_d",
+        "params/ppr_u",
+        "params/ppr_d",
+        "params/meas_thermal",
+        "params/meas_2bond_corr",
+        "params/meas_chiral",
+        "params/num_plaq",
+        "params/num_plaq_accum",
+        "params/num_b2",
+        "params/num_b2b",
+        "params/num_bb2",
+        "params/num_b2b2",
+        "params/degen_plaq",
+        "params/degen_bb2",
+        "params/degen_b2b",
+        "params/degen_b2b2",
+    )
+
+    for i in range(len(params_ref)):
+        assert np.allclose(params_ref[i], params_c[i])
+
+
 @pytest.mark.parametrize("nflux", nflux_list)
 def test_square_ref(nflux):
     """Check against a known good state"""
@@ -407,24 +617,73 @@ def test_square_ref(nflux):
 
     run_dqmc(nflux)
 
-    # ========== metadata, params ======================
+    # ========== metadata, params, state ======================
+    refpath = src + f"test/ref/{refhash}/{geometry}_nflux{nflux}/"
+    compare_state(refpath, "")
+    compare_meta(refpath, "")
+    compare_params(refpath, "")
 
-    compare_state(src + f"test/ref/{refhash}/{geometry}_nflux{nflux}/", "")
-    compare_meta(src + f"test/ref/{refhash}/{geometry}_nflux{nflux}/", "")
-    compare_params(src + f"test/ref/{refhash}/{geometry}_nflux{nflux}/", "")
-    compare_eqlt_meas(src + f"test/ref/{refhash}/{geometry}_nflux{nflux}/", "")
-
-    compare_uneqlt_meas(src + f"test/ref/{refhash}/{geometry}_nflux{nflux}/", "")
-    compare_uneqlt_bond_meas(src + f"test/ref/{refhash}/{geometry}_nflux{nflux}/", "")
-    compare_uneqlt_energy_meas(src + f"test/ref/{refhash}/{geometry}_nflux{nflux}/", "")
+    # ========== measurements ======================
+    compare_eqlt_meas(refpath, "")
+    compare_uneqlt_meas(refpath, "")
+    compare_uneqlt_bond_meas(refpath, "")
+    compare_uneqlt_energy_meas(refpath, "")
 
     # I don't care about nematic correlators so I'm not checking them
 
     if nflux == 3:
         pytest.xfail("known bug in complex vv and vn equal time correlator")
-        compare_eqlt_energy_meas(
-            src + f"test/ref/{refhash}/{geometry}_nflux{nflux}/", ""
-        )
+        compare_eqlt_energy_meas(refpath, "")
+
+
+@pytest.mark.parametrize("geometry", geometry_list)
+@pytest.mark.parametrize("nflux", nflux_list)
+def test_ref(geometry, nflux):
+    """Check against a known good state"""
+    # TODO: other geometries
+    ghub.create_batch(
+        geometry=geometry,
+        seed=seed,
+        prefix=f"{ghub.hash_short}_{geometry}_{seed}_nflux{nflux}",
+        overwrite=1,
+        n_sweep_warm=20,
+        n_sweep_meas=20,
+        period_uneqlt=2,
+        meas_bond_corr=1,
+        meas_energy_corr=1,
+        meas_thermal=1,
+        meas_2bond_corr=1,
+        meas_chiral=1,
+        nflux=nflux,
+        Nfiles=3,
+    )
+
+    run_dqmc(complex=nflux)
+
+    # ========== metadata, params ======================
+    refpath = src + f"test/ref/{refhash2}/{geometry}_nflux{nflux}/"
+    compare_state(refpath, "")
+    compare_meta(refpath, "")
+    compare_meta_extra(refpath, "")
+    compare_params(refpath, "")
+    compare_params_extra(refpath, "")
+
+    # ============ measurements ========================
+    compare_eqlt_meas(refpath, "")
+    compare_eqlt_meas_extra(refpath, "")
+    compare_eqlt_meas_chi(refpath, "")
+    compare_uneqlt_meas(refpath, "")
+    compare_uneqlt_meas_extra(refpath, "")
+
+    # Only square lattice has correct bond correlator definitions
+    if geometry == "square":
+        compare_uneqlt_bond_meas(refpath, "")
+        compare_uneqlt_2bond_meas(refpath, "")
+        compare_uneqlt_thermal_meas(refpath, "")
+        compare_uneqlt_energy_meas(refpath, "")
+        compare_eqlt_energy_meas(refpath, "")
+
+    # I don't care about nematic correlators so I'm not checking them
 
 
 @pytest.mark.skip(reason="need to find good reference for this")
