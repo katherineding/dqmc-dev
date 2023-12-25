@@ -2,7 +2,7 @@ CC = cc
 
 CFLAGS = -std=gnu11 -Wall -Wextra -Ofast -axCORE-AVX2,MIC-AVX512
 CFLAGS += -DMKL_DIRECT_CALL_SEQ -mkl=sequential
-CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
+CFLAGS += -DGIT_ID=\"$(shell git rev-parse --short HEAD)\"
 CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
 CFLAGS += -DOMP_MEAS_NUM_THREADS=2
 CFLAGS += -DPROFILE_ENABLE

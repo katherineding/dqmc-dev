@@ -23,7 +23,7 @@ hash_short = repo.git.rev_parse(repo.head, short=True)
 # FIXME: are plaquettes constrained by requiring nonzero hopping element
 # to connect sites, or can plaquettes be defined for arbitrary 3 sites?
 plaq_per_cell_dict = {}
-plaq_per_cell_dict["square"] = 1  # PLACEHOLDER
+plaq_per_cell_dict["square"] = 2  # PLACEHOLDER
 plaq_per_cell_dict["triangular"] = 2
 plaq_per_cell_dict["honeycomb"] = 1  # PLACEHOLDER
 plaq_per_cell_dict["kagome"] = 2  # PLACEHOLDER
@@ -109,6 +109,9 @@ def create_1(
     Ny: int = 4,
     mu: float = 0.0,
     tp: float = 0.0,
+    tpp: float = 0.0,
+    # Careful: tpp will add more bonds to transport or other measurements. These parts are not included in this code.
+    # adding tpp, currently, the measurments are not enough to get whole bond-anything correlations.
     U: float = 6.0,
     dt: float = 0.1,
     L: int = 40,
@@ -164,7 +167,7 @@ def create_1(
         map_i = np.zeros(N, dtype=np.int32)
         # translation average for each orbital
         for orb in range(Norb):
-            map_i[Ncell * orb : Ncell * (orb + 1)] = orb  
+            map_i[Ncell * orb : Ncell * (orb + 1)] = orb
         degen_i = np.full(Norb, Ncell, dtype=np.int32)
     else:
         map_i = np.arange(N, dtype=np.int32)
@@ -178,7 +181,7 @@ def create_1(
 
     plaq_per_cell = plaq_per_cell_dict[geometry]
     num_plaq_total = plaq_per_cell * Nx * Ny
-    # plaquette definitions 
+    # plaquette definitions
     plaqs = np.zeros((3, num_plaq_total), dtype=np.int32)  # NOTE: placeholder
 
     # per plaquette (per site) measurement mapping
@@ -200,6 +203,19 @@ def create_1(
 
     if geometry == "square":
 
+        # Use same plaquette definition as triangular TODO: check correctness
+        for iy in range(Ny):
+            for ix in range(Nx):
+                i = ix + Nx * iy
+                iy1 = (iy + 1) % Ny
+                ix1 = (ix + 1) % Nx
+                plaqs[0, i] = i  # i0 = i
+                plaqs[1, i] = ix1 + Nx * iy  # i1 = i + x
+                plaqs[2, i] = ix + Nx * iy1  # i2 = i + y // counterclockwise
+                plaqs[0, i + Nx * Ny] = ix1 + Nx * iy  # i0 = i + x
+                plaqs[1, i + Nx * Ny] = ix1 + Nx * iy1  # i1 = i + x + y
+                plaqs[2, i + Nx * Ny] = ix + Nx * iy1  # i2 = i + y //counterclockwise
+        
         # 2 site mapping: site r = (x,y) has total (column order) index x + Nx * y
         map_ij = np.zeros((N, N), dtype=np.int32)
         num_ij = N if trans_sym else N * N
@@ -509,7 +525,15 @@ def create_1(
         assert num_b2b == map_b2b.max() + 1
 
         kij, peierls = tight_binding.H_periodic_square(
-            Nx, Ny, t=1, tp=tp, nflux=nflux, alpha=1 / 2, twistx=twistx, twisty=twisty
+            Nx,
+            Ny,
+            t=1,
+            tp=tp,
+            tpp=tpp,
+            nflux=nflux,
+            alpha=1 / 2,
+            twistx=twistx,
+            twisty=twisty,
         )
         # phases accumulated by two-hop processes
         # Here: types 0,1 include t' factors
@@ -517,6 +541,7 @@ def create_1(
         #   Types 8,9: sum of four paths
         #   Types 10,11: one path each
         #   ZF case: 1+2*tp, 1+2*tp, 2, 2, 2, 2, 2, 2, 4, 4, 1, 1
+        # non-zero tpp case is not considered yet.
         thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
         for i in range(N):
             for btype in range(b2ps):
@@ -543,7 +568,6 @@ def create_1(
                 thermal_phases[btype, i] = pp
 
     elif geometry == "triangular":
-
         # fill in plaquette definition! TODO: check correctness
         for iy in range(Ny):
             for ix in range(Nx):
@@ -556,8 +580,6 @@ def create_1(
                 plaqs[0, i + Nx * Ny] = ix1 + Nx * iy  # i0 = i + x
                 plaqs[1, i + Nx * Ny] = ix1 + Nx * iy1  # i1 = i + x + y
                 plaqs[2, i + Nx * Ny] = ix + Nx * iy1  # i2 = i + y //counterclockwise
-
-        print(plaqs)
 
         # 2 site mapping
         map_ij = np.zeros((N, N), dtype=np.int32)
@@ -621,14 +643,13 @@ def create_1(
         degen_b2b = np.zeros(num_b2b, dtype=np.int32)
 
         kij, peierls = tight_binding.H_periodic_triangular(
-            Nx, Ny, t=1, tp=tp, nflux=nflux, alpha=1 / 2
+            Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
         )
 
         # NOTE: placeholder
         thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
 
     elif geometry == "honeycomb":
-
         # 2 site mapping
         map_ij = np.zeros((N, N), dtype=np.int32)
         num_ij = Norb * Norb * Ny * Nx if trans_sym else N * N
@@ -703,14 +724,13 @@ def create_1(
         degen_b2b = np.zeros(num_b2b, dtype=np.int32)
 
         kij, peierls = tight_binding.H_periodic_honeycomb(
-            Nx, Ny, t=1, tp=tp, nflux=nflux, alpha=1 / 2
+            Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
         )
 
         # phases accumulated by two-hop processes NOTE: placeholder
         thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
 
     elif geometry == "kagome":
-
         # plaquette definitions TODO: check correctness
         for iy in range(Ny):
             for ix in range(Nx):
@@ -725,7 +745,6 @@ def create_1(
                 plaqs[2, i + Nx * Ny] = (
                     ix + Nx * iy1 + Nx * Ny * 1
                 )  # i2 = i+y(B) //counterclockwise
-
 
         # 2 site mapping
         map_ij = np.zeros((N, N), dtype=np.int32)
@@ -803,7 +822,7 @@ def create_1(
         degen_b2b = np.zeros(num_b2b, dtype=np.int32)
 
         kij, peierls = tight_binding.H_periodic_kagome(
-            Nx, Ny, t=1, tp=tp, nflux=nflux, alpha=1 / 2
+            Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
         )
 
         # phases accumulated by two-hop processes NOTE: placeholder
@@ -820,7 +839,7 @@ def create_1(
 
     # Zeeman interaction
     Kd = Ku.copy()
-    for i in range(Ny * Nx):
+    for i in range(N):
         Ku[i, i] -= mu - h
         Kd[i, i] -= mu + h
 
@@ -857,6 +876,7 @@ def create_1(
         f["metadata"]["plaq_per_cell"] = plaq_per_cell
         f["metadata"]["U"] = U
         f["metadata"]["t'"] = tp
+        f["metadata"]["t''"] = tpp
         f["metadata"]["nflux"] = nflux
         f["metadata"]["twistx"] = twistx
         f["metadata"]["twisty"] = twisty
@@ -1125,6 +1145,13 @@ if __name__ == "__main__":
         default=0.0,
         metavar="X",
         help="Next nearest hopping integral",
+    )
+    group1.add_argument(
+        "--tpp",
+        type=float,
+        default=0.0,
+        metavar="X",
+        help="Third nearest hopping integral",
     )
     group1.add_argument(
         "--nflux",
