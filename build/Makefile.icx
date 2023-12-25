@@ -2,7 +2,7 @@ CC = icx
 
 CFLAGS = -std=gnu17 -Ofast #-v -Wl,--verbose#-xHost
 CFLAGS += -Wall -Wextra -Wno-unused-variable #-Wno-unused-parameter
-CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
+CFLAGS += -DGIT_ID=\"$(shell git rev-parse --short HEAD)\"
 CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
 CFLAGS += -DOMP_MEAS_NUM_THREADS=2
 CFLAGS += -DPROFILE_ENABLE

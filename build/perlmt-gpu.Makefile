@@ -5,7 +5,7 @@
 CC = cc #use nvc to compile all files
 
 CFLAGS = -fast -mp=gpu -gpu=cc80,cuda11.7 -Minfo=mp 
-CFLAGS += -DGIT_ID=\"$(shell git describe --always)\"
+CFLAGS += -DGIT_ID=\"$(shell git rev-parse --short HEAD)\"
 CFLAGS += -DPROFILE_ENABLE 
 CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
 CFLAGS += -DOMP_MEAS_NUM_THREADS=2
