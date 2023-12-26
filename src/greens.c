@@ -50,7 +50,7 @@ int get_lwork_eq_g(const int N)
 	num lwork;
 	int info = 0;
 	int max_lwork = N*N; // can be smaller if mul_seq doesn't use work
-
+#ifdef USE_CPLX
 	xgeqp3(N, N, NULL, N, NULL, NULL, &lwork, -1, NULL, &info);
 	if (creal(lwork) > max_lwork) max_lwork = (int)lwork;
 
@@ -62,6 +62,19 @@ int get_lwork_eq_g(const int N)
 
 	xunmqr("R", "C", N, N, N, NULL, N, NULL, NULL, N, &lwork, -1, &info);
 	if (creal(lwork) > max_lwork) max_lwork = (int)lwork;
+#else
+	xgeqp3(N, N, NULL, N, NULL, NULL, &lwork, -1, NULL, &info);
+	if (lwork > max_lwork) max_lwork = (int)lwork;
+
+	xgeqrf(N, N, NULL, N, NULL, &lwork, -1, &info);
+	if (lwork > max_lwork) max_lwork = (int)lwork;
+
+	xunmqr("R", "N", N, N, N, NULL, N, NULL, NULL, N, &lwork, -1, &info);
+	if (lwork > max_lwork) max_lwork = (int)lwork;
+
+	xunmqr("R", "C", N, N, N, NULL, N, NULL, NULL, N, &lwork, -1, &info);
+	if (lwork > max_lwork) max_lwork = (int)lwork;
+#endif
 
 	return max_lwork;
 }
@@ -117,13 +130,21 @@ num calc_eq_g(const int l, const int N, const int L, const int n_mul,
 		for (int j = 0; j < N; j++) { // use d for norms
 			d[j] = 0.0;
 			for (int i = 0; i < N; i++)
+				#ifdef USE_CPLX
 				d[j] += g[i + j*N] * conj(g[i + j*N]);
+				#else
+				d[j] += g[i + j*N] * g[i + j*N];
+				#endif
 		}
 
 		pvt[0] = 0;
 		for (int i = 1; i < N; i++) { // insertion sort
 			int j;
+			#ifdef USE_CPLX
 			for (j = i; j > 0 && creal(d[pvt[j-1]]) < creal(d[i]); j--)
+			#else
+			for (j = i; j > 0 && d[pvt[j-1]] < d[i]; j--)
+			#endif
 				pvt[j] = pvt[j-1];
 			pvt[j] = i;
 		}
@@ -197,8 +218,13 @@ num calc_eq_g(const int l, const int N, const int L, const int n_mul,
 		phase *= c/fabs(c);
 		double vv = 1.0;
 		for (int j = i + 1; j < N; j++)
+			#ifdef USE_CPLX
 			vv += creal(Q[j + i*N])*creal(Q[j + i*N])
 			    + cimag(Q[j + i*N])*cimag(Q[j + i*N]);
+			#else
+			vv += Q[j + i*N]*Q[j + i*N]
+			    + Q[j + i*N]*Q[j + i*N];
+			#endif
 		const num ref = 1.0 - tau[i]*vv;
 		phase *= fabs(ref)/ref;
 		if (pvt[i] != i+1) phase *= -1.0;
@@ -217,6 +243,7 @@ int get_lwork_ue_g(const int N, const int L)
 	int info = 0;
 	int max_lwork = N*N; // can start smaller if mul_seq doesn't use work
 
+#ifdef USE_CPLX
 	if (L == 1) {  // then bsofi doesn't use QR
 		xgetri(N, NULL, N, NULL, &lwork, -1, &info);
 		if (creal(lwork) > max_lwork) max_lwork = (int)lwork;
@@ -240,6 +267,31 @@ int get_lwork_ue_g(const int N, const int L)
 
 	xunmqr("R", "C", NL, N2, N, NULL, N2, NULL, NULL, NL, &lwork, -1, &info);
 	if (creal(lwork) > max_lwork) max_lwork = (int)lwork;
+#else
+	if (L == 1) {  // then bsofi doesn't use QR
+		xgetri(N, NULL, N, NULL, &lwork, -1, &info);
+		if (lwork > max_lwork) max_lwork = (int)lwork;
+		return max_lwork;
+	}
+
+	const int NL = N*L;
+	const int N2 = 2*N;
+
+	xgeqrf(N2, N, NULL, NL, NULL, &lwork, -1, &info);
+	if (lwork > max_lwork) max_lwork = (int)lwork;
+
+	xunmqr("L", "C", N2, N, N, NULL, NL, NULL, NULL, NL, &lwork, -1, &info);
+	if (lwork > max_lwork) max_lwork = (int)lwork;
+
+	xgeqrf(N2, N2, NULL, NL, NULL, &lwork, -1, &info);
+	if (lwork > max_lwork) max_lwork = (int)lwork;
+
+	xunmqr("R", "C", NL, N2, N2, NULL, N2, NULL, NULL, NL, &lwork, -1, &info);
+	if (lwork > max_lwork) max_lwork = (int)lwork;
+
+	xunmqr("R", "C", NL, N2, N, NULL, N2, NULL, NULL, NL, &lwork, -1, &info);
+	if (lwork > max_lwork) max_lwork = (int)lwork;
+#endif
 
 	return max_lwork;
 }
