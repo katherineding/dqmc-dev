@@ -11,12 +11,13 @@ CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
 CFLAGS += -DOMP_MEAS_NUM_THREADS=2
 CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 
-# Linear algebra library
+# Linear algebra library FIXME: change lapacke.h -> lapack.h
 CFLAGS += -I/opt/nvidia/hpc_sdk/Linux_x86_64/23.5/compilers/include/lp64/
-LDFLAGS = -lopenblas
+LDFLAGS += -lopenblas
 
 # HDF5
 CFLAGS += -I/usr/include/hdf5/serial
+LDFLAGS += -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 LDFLAGS += -lhdf5 -lhdf5_hl
 
 SRCFILES = meas.o updates.o greens.o dqmc.o data.o prof.o sig.o

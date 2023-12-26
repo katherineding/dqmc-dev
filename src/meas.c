@@ -575,7 +575,7 @@ void measure_uneqlt(const struct params *const restrict p,
 		{
 			// this loop must be sequential
 			// we are doing some redundant work
-			#pragma omp target teams num_teams(L) loop
+			#pragma omp target teams loop num_teams(L) 
 			for (int t = 0; t < L; t++) {
 				const int delta_t = (t == 0);
 				//this loop has to be sequential //TODO: how to specify this?
