@@ -521,6 +521,11 @@ void measure_uneqlt(const struct params *const restrict p,
 	num * _j2j =  m->j2j;
 	num * _j2j2 = m->j2j2;
 
+	num * _pair_b2b2 = m->pair_b2b2;
+	num * _js2js2 = m->js2js2;
+	num * _k2k2 = m->k2k2;
+	num * _ks2ks2 = m->ks2ks2;
+
 	num * _jnj2 = m->jnj2;
 	num * _jj2 =  m->jj2;
 	
@@ -561,6 +566,10 @@ void measure_uneqlt(const struct params *const restrict p,
 			_j2jn[:num_b2b*L],\
 			_j2j[:num_b2b*L],\
 			_j2j2[:num_b2b2*L],\
+			_pair_b2b2[:num_b2b2*L],\
+			_js2js2[:num_b2b2*L],\
+			_k2k2[:num_b2b2*L],\
+			_ks2ks2[:num_b2b2*L],\
 			_jnj2[:num_bb2*L],\
 			_jj2[:num_bb2*L]) \
 		map(to:_peierlsu[:N*N], _peierlsd[:N*N],\
@@ -843,34 +852,6 @@ void measure_uneqlt(const struct params *const restrict p,
 						const num gdj1j0 = Gdtt[j1 + j0*N + N*N*0];
 						const num gdj0j1 = Gdtt[j0 + j1*N + N*N*0]; //zero time
 						if (meas_thermal) {
-// =======	
-// 						#Wen's CPU version: TODO: add this to GPU
-//                      m->pair_b2b2[bb + num_b2b2*t] += 0.5*pre*(gui0j0*gdi2j2 + gui2j0*gdi0j2 + gui0j2*gdi2j0 + gui2j2*gdi0j0);
-// 						const num x = ppui0i2*ppuj0j2*(delta_i0j2 - guj2i0)*gui2j0 +
-// 									  ppui2i0*ppuj2j0*(delta_i2j0 - guj0i2)*gui0j2 +
-// 									  ppdi0i2*ppdj0j2*(delta_i0j2 - gdj2i0)*gdi2j0 +
-// 									  ppdi2i0*ppdj2j0*(delta_i2j0 - gdj0i2)*gdi0j2;
-// 						const num y = ppui0i2*ppuj2j0*(delta_i0j0 - guj0i0)*gui2j2 +
-// 						              ppui2i0*ppuj0j2*(delta_i2j2 - guj2i2)*gui0j0 +
-// 						              ppdi0i2*ppdj2j0*(delta_i0j0 - gdj0i0)*gdi2j2 +
-// 						              ppdi2i0*ppdj0j2*(delta_i2j2 - gdj2i2)*gdi0j0;
-// 						m->j2j2[bb + num_b2b2*t] += 
-// 							pre*((ppui2i0*gui0i2 - ppui0i2*gui2i0 + ppdi2i0*gdi0i2 - ppdi0i2*gdi2i0)
-// 						        *(ppuj2j0*guj0j2 - ppuj0j2*guj2j0 + ppdj2j0*gdj0j2 - ppdj0j2*gdj2j0) 
-// 						        + x - y);
-//                      m->js2js2[bb + num_b2b2*t] += 
-//                                             pre*((ppui2i0*gui0i2 - ppui0i2*gui2i0 - ppdi2i0*gdi0i2 + ppdi0i2*gdi2i0)
-// 					              *(ppuj2j0*guj0j2 - ppuj0j2*guj2j0 - ppdj2j0*gdj0j2 + ppdj0j2*gdj2j0)
-//                                               + x - y);
-// 			            m->k2k2[bb + num_b2b2*t]  += 
-//                                             pre*((ppui2i0*gui0i2 + ppui0i2*gui2i0 + ppdi2i0*gdi0i2 + ppdi0i2*gdi2i0)
-// 					             *(ppuj2j0*guj0j2 + ppuj0j2*guj2j0 + ppdj2j0*gdj0j2 + ppdj0j2*gdj2j0)
-//                                              + x + y);
-// 			            m->ks2ks2[bb + num_b2b2*t] += 
-//                                              pre*((ppui2i0*gui0i2 + ppui0i2*gui2i0 - ppdi2i0*gdi0i2 - ppdi0i2*gdi2i0)
-// 					             *(ppuj2j0*guj0j2 + ppuj0j2*guj2j0 - ppdj2j0*gdj0j2 - ppdj0j2*gdj2j0)
-//                                              + x + y);
-// >>>>>>> master
 
 							const num guj0j0 = Gutt[j0 + j0*N + N*N*0];
 							const num guj1j1 = Gutt[j1 + j1*N + N*N*0];
@@ -981,6 +962,8 @@ void measure_uneqlt(const struct params *const restrict p,
 							const num gdj2i2 = Gd0t[j2 + i2*N + N*N*t];
 							const num gdj2j0 = Gdtt[j2 + j0*N + N*N*0];
 							const num gdj0j2 = Gdtt[j0 + j2*N + N*N*0];
+							
+							_pair_b2b2[bb + num_b2b2*t] += 0.5*pre*(gui0j0*gdi2j2 + gui2j0*gdi0j2 + gui0j2*gdi2j0 + gui2j2*gdi0j0);
 
 							const num x = ppui0i2*ppuj0j2*(delta_i0j2 - guj2i0)*gui2j0 +
 										  ppui2i0*ppuj2j0*(delta_i2j0 - guj0i2)*gui0j2 +
@@ -992,9 +975,20 @@ void measure_uneqlt(const struct params *const restrict p,
 							              ppdi2i0*ppdj0j2*(delta_i2j2 - gdj2i2)*gdi0j0;
 							_j2j2[bb + num_b2b2*t] += 
 								pre*((ppui2i0*gui0i2 - ppui0i2*gui2i0 + ppdi2i0*gdi0i2 - ppdi0i2*gdi2i0)
-							        *(ppuj2j0*guj0j2 - ppuj0j2*guj2j0 + ppdj2j0*gdj0j2 - ppdj0j2*gdj2j0) 
-							        + x - y);
-
+									*(ppuj2j0*guj0j2 - ppuj0j2*guj2j0 + ppdj2j0*gdj0j2 - ppdj0j2*gdj2j0) 
+									+ x - y);
+							_js2js2[bb + num_b2b2*t] += 
+								pre*((ppui2i0*gui0i2 - ppui0i2*gui2i0 - ppdi2i0*gdi0i2 + ppdi0i2*gdi2i0)
+									*(ppuj2j0*guj0j2 - ppuj0j2*guj2j0 - ppdj2j0*gdj0j2 + ppdj0j2*gdj2j0)
+									+ x - y);
+							_k2k2[bb + num_b2b2*t]  += 
+								pre*((ppui2i0*gui0i2 + ppui0i2*gui2i0 + ppdi2i0*gdi0i2 + ppdi0i2*gdi2i0)
+									*(ppuj2j0*guj0j2 + ppuj0j2*guj2j0 + ppdj2j0*gdj0j2 + ppdj0j2*gdj2j0)
+                                     + x + y);
+							_ks2ks2[bb + num_b2b2*t] += 
+								pre*((ppui2i0*gui0i2 + ppui0i2*gui2i0 - ppdi2i0*gdi0i2 - ppdi0i2*gdi2i0)
+									*(ppuj2j0*guj0j2 + ppuj0j2*guj2j0 - ppdj2j0*gdj0j2 - ppdj0j2*gdj2j0)
+									+ x + y);
 						}
 					}
 					// t <- [0, L): 
