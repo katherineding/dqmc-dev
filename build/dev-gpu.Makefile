@@ -4,16 +4,16 @@
 #module load cray-libsci
 CC = nvc #use nvc to compile all files
 
-CFLAGS = -dI -O0 -g -mp=gpu -gpu=cc75,cuda11.8 -Minfo=mp 
+CFLAGS = -fast -tp=native -mp=gpu -gpu=cc75,cuda11.8 -Minfo=mp #optimized flags
 CFLAGS += -DGIT_ID=\"$(shell git rev-parse --short HEAD)\"
 CFLAGS += -DPROFILE_ENABLE 
 CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
 CFLAGS += -DOMP_MEAS_NUM_THREADS=2
 CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 
-# Linear algebra library FIXME: change lapacke.h -> lapack.h
-CFLAGS += -I/opt/nvidia/hpc_sdk/Linux_x86_64/23.5/compilers/include/lp64/
-LDFLAGS += -lopenblas
+# Linear algebra library
+LDFLAGS = -fast -lopenblas #-llapack #-lgfortran #-Wl,--no-as-needed -Wl,--verbose
+#REQUIRE: LD_LIBRARY_PATH includes /opt/nvidia/hpc_sdk/Linux_x86_64/23.5/compilers/lib/
 
 # HDF5
 CFLAGS += -I/usr/include/hdf5/serial

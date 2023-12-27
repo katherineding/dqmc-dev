@@ -1,7 +1,7 @@
 CC = gcc
 
 #remember to adjust march flag before compiling
-CFLAGS = -std=gnu17 -O0 -g -march=native
+CFLAGS = -std=gnu17 -Ofast -march=native #optimized flags
 CFLAGS += -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter
 CFLAGS += -DMKL_DIRECT_CALL_SEQ 
 CFLAGS += -DGIT_ID=\"$(shell git rev-parse --short HEAD)\"
@@ -11,8 +11,7 @@ CFLAGS += -DPROFILE_ENABLE
 CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 CFLAGS += -fopenmp  
 
-# Linear algebra library: FIXME: change lapacke.h -> lapack.h
-CFLAGS += -I/opt/nvidia/hpc_sdk/Linux_x86_64/23.5/compilers/include/lp64/
+# Linear algebra library
 LDFLAGS = -lm -lopenblas
 
 # HDF5
