@@ -6,6 +6,7 @@ CFLAGS += -DGIT_ID=\"$(shell git rev-parse --short HEAD)\"
 CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
 CFLAGS += -DOMP_MEAS_NUM_THREADS=2
 CFLAGS += -DPROFILE_ENABLE
+CFLAGS += -DGENERIC_LINALG
 CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 CFLAGS += -qopenmp  # to disable openmp, use -qopenmp-stubs
 
