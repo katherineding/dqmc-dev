@@ -6,8 +6,8 @@
 *.css
 
 # DQMC executable
-dqmc_1
-dqmc_stack
+dqmc_1*
+dqmc_stack*
 
 #generated data files used in testing
 *.h5
@@ -82,7 +82,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
+# build/
 develop-eggs/
 dist/
 downloads/

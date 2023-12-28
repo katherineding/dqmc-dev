@@ -72,6 +72,8 @@ def run_dqmc(complex: bool = False):
         stdout=subprocess.PIPE,
     )
     process.wait()
+    # for line in process.stdout:
+    #     print(line)
 
 
 @pytest.mark.parametrize("geometry", geometry_list)
@@ -139,8 +141,6 @@ def test_batch_seed_basic_real(geometry):
     assert np.allclose(hs, hs_ref.hs_init[geometry])
 
     run_dqmc(complex=False)
-    # for line in process.stdout:
-    #     print(line)
 
     hs_end = util.load_file("sim_0.h5", "state/hs")[0]
     assert np.allclose(hs_end, hs_ref.hs_end[geometry])
@@ -256,6 +256,7 @@ def compare_eqlt_meas(path1, path2):
     )
 
     for i in range(len(meas_ref)):
+        print("max diff:", np.abs(np.max(meas_ref[i] - meas_c[i])))
         assert np.allclose(meas_ref[i], meas_c[i])
 
 
@@ -277,6 +278,7 @@ def compare_eqlt_meas_extra(path1, path2):
     )
 
     for i in range(len(meas_ref)):
+        print("max diff:", np.abs(np.max(meas_ref[i] - meas_c[i])))
         assert np.allclose(meas_ref[i], meas_c[i])
 
 
@@ -292,6 +294,7 @@ def compare_eqlt_meas_chi(path1, path2):
     )
 
     for i in range(len(meas_ref)):
+        print("max diff:", np.abs(np.max(meas_ref[i] - meas_c[i])))
         assert np.allclose(meas_ref[i], meas_c[i])
 
 
@@ -315,6 +318,7 @@ def compare_eqlt_energy_meas(path1, path2):
     )
 
     for i in range(len(meas_ref)):
+        print("max diff:", np.abs(np.max(meas_ref[i] - meas_c[i])))
         assert np.allclose(meas_ref[i], meas_c[i])
 
 
@@ -342,6 +346,7 @@ def compare_uneqlt_meas(path1, path2):
     )
 
     for i in range(len(meas_ref)):
+        print("max diff:", np.abs(np.max(meas_ref[i] - meas_c[i])))
         assert np.allclose(meas_ref[i], meas_c[i])
 
 
@@ -359,6 +364,7 @@ def compare_uneqlt_meas_extra(path1, path2):
     )
 
     for i in range(len(meas_ref)):
+        print("max diff:", np.abs(np.max(meas_ref[i] - meas_c[i])))
         assert np.allclose(meas_ref[i], meas_c[i])
 
 
@@ -382,6 +388,10 @@ def compare_uneqlt_bond_meas(path1, path2):
     )
 
     for i in range(len(meas_ref)):
+        # print(i)
+        # print("norm:",np.linalg.norm(meas_ref[i]))
+        # print("current:",meas_c[i])
+        print("max diff:", np.abs(np.max(meas_ref[i] - meas_c[i])))
         assert np.allclose(meas_ref[i], meas_c[i])
 
 
@@ -405,6 +415,7 @@ def compare_uneqlt_thermal_meas(path1, path2):
     )
 
     for i in range(len(meas_ref)):
+        print("max diff:", np.abs(np.max(meas_ref[i] - meas_c[i])))
         assert np.allclose(meas_ref[i], meas_c[i])
 
 
@@ -432,7 +443,9 @@ def compare_uneqlt_2bond_meas(path1, path2):
     )
 
     for i in range(len(meas_ref)):
-        assert np.allclose(meas_ref[i], meas_c[i])
+        # TODO: is it possible to make atol tighter?
+        print("max diff:", np.abs(np.max(meas_ref[i] - meas_c[i])))
+        assert np.allclose(meas_ref[i], meas_c[i])  # ,atol=1e-7)
 
 
 def compare_uneqlt_energy_meas(path1, path2):
@@ -453,6 +466,7 @@ def compare_uneqlt_energy_meas(path1, path2):
     )
 
     for i in range(len(meas_ref)):
+        print("max diff:", np.abs(np.max(meas_ref[i] - meas_c[i])))
         assert np.allclose(meas_ref[i], meas_c[i])
 
 
