@@ -6,9 +6,10 @@ CC = nvc #use nvc to compile all files
 
 CFLAGS = -fast -tp=native -mp=gpu -gpu=cc75,cuda11.8 -Minfo=mp #optimized flags
 CFLAGS += -DGIT_ID=\"$(shell git rev-parse --short HEAD)\"
-CFLAGS += -DPROFILE_ENABLE 
 CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
 CFLAGS += -DOMP_MEAS_NUM_THREADS=2
+CFLAGS += -DPROFILE_ENABLE 
+CFLAGS += -DGENERIC_LINALG
 CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 
 # Linear algebra library
