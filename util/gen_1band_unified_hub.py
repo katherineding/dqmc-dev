@@ -281,6 +281,7 @@ def create_1(
                         map_bb[j + N * jb, i + N * ib] = kk
                         degen_bb[kk] += 1
         assert num_bb == map_bb.max() + 1
+        assert np.all(degen_bb == degen_bb[0])
 
         # 2-bond definition is modified -- NOT consistent with Wen's!
         # Now only bonds defined by two hopping steps.
@@ -495,6 +496,8 @@ def create_1(
                         map_b2b2[j + N * jb, i + N * ib] = kk
                         degen_b2b2[kk] += 1
         assert num_b2b2 == map_b2b2.max() + 1
+        #print(map_b2b2.shape, degen_b2b2.shape)
+        assert np.all(degen_b2b2==degen_b2b2[0])
 
         # bond 2-bond mapping
         num_bb2 = bps * b2ps * N if trans_sym else num_b * num_b2
@@ -509,6 +512,7 @@ def create_1(
                         map_bb2[j + N * jb, i + N * ib] = kk
                         degen_bb2[kk] += 1
         assert num_bb2 == map_bb2.max() + 1
+        assert np.all(degen_bb2==degen_bb2[0])
 
         # 2-bond bond mapping
         num_b2b = b2ps * bps * N if trans_sym else num_b2 * num_b
@@ -523,6 +527,7 @@ def create_1(
                         map_b2b[j + N * jb, i + N * ib] = kk
                         degen_b2b[kk] += 1
         assert num_b2b == map_b2b.max() + 1
+        assert np.all(degen_b2b==degen_b2b[0])
 
         kij, peierls = tight_binding.H_periodic_square(
             Nx,
@@ -944,10 +949,10 @@ def create_1(
         f["params"]["degen_ij"] = degen_ij
         f["params"]["degen_plaq"] = degen_plaq
         f["params"]["degen_bs"] = degen_bs
-        f["params"]["degen_bb"] = degen_bb
-        f["params"]["degen_bb2"] = degen_bb2
-        f["params"]["degen_b2b"] = degen_b2b
-        f["params"]["degen_b2b2"] = degen_b2b2
+        f["params"]["degen_bb"] = degen_bb[0]
+        f["params"]["degen_bb2"] = degen_bb2[0]
+        f["params"]["degen_b2b"] = degen_b2b[0]
+        f["params"]["degen_b2b2"] = degen_b2b2[0]
         f["params"]["exp_Ku"] = exp_Ku
         f["params"]["exp_Kd"] = exp_Kd
         f["params"]["inv_exp_Ku"] = inv_exp_Ku

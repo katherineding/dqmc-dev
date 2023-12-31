@@ -164,10 +164,10 @@ int get_memory_req(const char *file) {
 		+ num_i    * sizeof(int)
 		+ num_ij   * sizeof(int)
 		+ num_bs   * sizeof(int)
-		+ num_bb   * sizeof(int)
-		+ num_b2b2   * sizeof(int)
-		+ num_b2b   * sizeof(int)
-		+ num_bb2   * sizeof(int)
+		+ 1   * sizeof(int)
+		+ 1   * sizeof(int)
+		+ 1   * sizeof(int)
+		+ 12   * sizeof(int)
 		+ N*N      * sizeof(num)
 		+ N*N      * sizeof(num)
 		+ N*N      * sizeof(num)
@@ -387,18 +387,18 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	sim->p.map_bb2      = my_calloc(num_b*num_b2 * sizeof(int));
 	sim->p.peierlsu      = my_calloc(N*N      * sizeof(num));
 	sim->p.peierlsd      = my_calloc(N*N      * sizeof(num));
-	sim->p.pp_u      = my_calloc(N*num_b2/N * sizeof(num));
-	sim->p.pp_d      = my_calloc(N*num_b2/N * sizeof(num));
-	sim->p.ppr_u      = my_calloc(N*num_b2/N * sizeof(num));
-	sim->p.ppr_d      = my_calloc(N*num_b2/N * sizeof(num));
+	sim->p.pp_u      = my_calloc(num_b2 * sizeof(num));
+	sim->p.pp_d      = my_calloc(num_b2 * sizeof(num));
+	sim->p.ppr_u      = my_calloc(num_b2 * sizeof(num));
+	sim->p.ppr_d      = my_calloc(num_b2 * sizeof(num));
 	sim->p.degen_i       = my_calloc(num_i    * sizeof(int));
 	sim->p.degen_plaq    = my_calloc(num_plaq_accum * sizeof(int));
 	sim->p.degen_ij      = my_calloc(num_ij   * sizeof(int));
 	sim->p.degen_bs      = my_calloc(num_bs   * sizeof(int));
-	sim->p.degen_bb      = my_calloc(num_bb   * sizeof(int));
-	sim->p.degen_b2b2    = my_calloc(num_b2b2   * sizeof(int));
-	sim->p.degen_b2b    = my_calloc(num_b2b   * sizeof(int));
-	sim->p.degen_bb2    = my_calloc(num_bb2   * sizeof(int));
+	sim->p.degen_bb      = my_calloc(1   * sizeof(int));
+	sim->p.degen_b2b2    = my_calloc(1   * sizeof(int));
+	sim->p.degen_b2b    = my_calloc(1   * sizeof(int));
+	sim->p.degen_bb2    = my_calloc(1   * sizeof(int));
 	sim->p.exp_Ku        = my_calloc(N*N      * sizeof(num));
 	sim->p.exp_Kd        = my_calloc(N*N      * sizeof(num));
 	sim->p.inv_exp_Ku    = my_calloc(N*N      * sizeof(num));

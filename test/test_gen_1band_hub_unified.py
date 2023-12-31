@@ -503,7 +503,7 @@ def compare_params(path1, path2):
         "params/degen_i",
         "params/degen_ij",
         "params/degen_bs",
-        "params/degen_bb",
+        # "params/degen_bb",
         "params/exp_lambda",
         "params/del",
         "params/F",
@@ -541,7 +541,7 @@ def compare_params(path1, path2):
         "params/degen_i",
         "params/degen_ij",
         "params/degen_bs",
-        "params/degen_bb",
+        # "params/degen_bb",
         "params/exp_lambda",
         "params/del",
         "params/F",
@@ -574,9 +574,6 @@ def compare_params_extra(path1, path2):
         "params/num_bb2",
         "params/num_b2b2",
         "params/degen_plaq",
-        "params/degen_bb2",
-        "params/degen_b2b",
-        "params/degen_b2b2",
     )
 
     params_c = util.load(
@@ -601,9 +598,6 @@ def compare_params_extra(path1, path2):
         "params/num_bb2",
         "params/num_b2b2",
         "params/degen_plaq",
-        "params/degen_bb2",
-        "params/degen_b2b",
-        "params/degen_b2b2",
     )
 
     for i in range(len(params_ref)):
