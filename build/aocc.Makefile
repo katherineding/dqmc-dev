@@ -16,6 +16,7 @@ LDFLAGS = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/
 LDFLAGS += -lhdf5 -lhdf5_hl 
 
 LDFLAGS += -lamdlibm -fsclrlib=AMDLIBM -lamdlibmfast -lm -lopenblas
+# LDFLAGS += -lblis -lpthread -lflame
 #LDFLAGS += -Wl,--verbose
 
 #multithreaded version of MKL

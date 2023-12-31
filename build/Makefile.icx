@@ -1,6 +1,6 @@
 CC = icx
 
-CFLAGS = -std=gnu17 -Ofast #-v -Wl,--verbose#-xHost
+CFLAGS = -std=gnu17 -Ofast -g -axCORE-AVX2,CORE-AVX512#-v -Wl,--verbose#-xHost
 CFLAGS += -Wall -Wextra -Wno-unused-variable #-Wno-unused-parameter
 CFLAGS += -DGIT_ID=\"$(shell git rev-parse --short HEAD)\"
 CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
