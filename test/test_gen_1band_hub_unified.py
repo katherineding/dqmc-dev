@@ -648,7 +648,10 @@ def test_square_ref(nflux):
 @pytest.mark.parametrize("nflux", nflux_list)
 def test_ref(geometry, nflux):
     """Check against a known good state"""
-    # TODO: other geometries
+    if geometry == "square":
+        tp = -0.25
+    else:
+        tp=0
     ghub.create_batch(
         geometry=geometry,
         seed=seed,
@@ -663,6 +666,7 @@ def test_ref(geometry, nflux):
         meas_2bond_corr=1,
         meas_chiral=1,
         nflux=nflux,
+        tp=tp,
         Nfiles=3,
     )
 
