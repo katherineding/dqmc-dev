@@ -102,7 +102,6 @@ int consistency_check(const char *file, FILE * log){
  * if we are to run DQMC against this file. This is an estimate and doesn't 
  * account for -DCHECK_G_WRP, -DCHECK_G_ACC -DCHECK_G_UE
  * TODO: separate the sim vs calculation components?
- * TODO: this function is now outdated after new measurements
  * @param  char*  file_name of form <name>.h5
  * @return int heap memory requirement
  *         -1 if H5Fopen() failed
@@ -119,14 +118,17 @@ int get_memory_req(const char *file) {
 
 	// These params are used in sim_data mem allocation
 	int N, L, num_i, num_ij,
-		num_b, num_b2, num_bs, num_bb, num_b2b, num_bb2, num_b2b2;
+		num_b, num_b2, num_bs, num_bb, num_b2b, num_bb2, num_b2b2,
+		num_plaq_accum, num_plaq;
 	int period_uneqlt, meas_bond_corr,meas_thermal,meas_2bond_corr,
-		meas_energy_corr, meas_nematic_corr;
+		meas_energy_corr, meas_nematic_corr, meas_chiral;
 
 	my_read(_int, "/params/N",        &N);
 	my_read(_int, "/params/L",        &L);
 	my_read(_int, "/params/num_i",    &num_i);
 	my_read(_int, "/params/num_ij",   &num_ij);
+	my_read(_int, "/params/num_plaq_accum",   &num_plaq_accum);
+	my_read(_int, "/params/num_plaq",   &num_plaq);
 	my_read(_int, "/params/num_b",    &num_b);
 	my_read(_int, "/params/num_b2",   &num_b2);
 	my_read(_int, "/params/num_bs",   &num_bs);
@@ -140,16 +142,16 @@ int get_memory_req(const char *file) {
 	my_read(_int, "/params/meas_2bond_corr",   &meas_2bond_corr);
 	my_read(_int, "/params/meas_energy_corr",  &meas_energy_corr);
 	my_read(_int, "/params/meas_nematic_corr", &meas_nematic_corr);
+	my_read(_int, "/params/meas_chiral",       &meas_chiral);
 
 	size_t sim_alloc_in_bytes = 0;
 	sim_alloc_in_bytes +=
 		+ N        * sizeof(int)
 		+ N*N      * sizeof(int)
 		+ num_b*2  * sizeof(int)
-		+ N        * sizeof(int)
-		+ N*N      * sizeof(int)
-		+ num_b*2  * sizeof(int)
 		+ num_b2*2  * sizeof(int)
+		+ num_plaq*3* sizeof(int)
+		+ num_plaq  * sizeof(int)
 		+ num_b*N  * sizeof(int)
 		+ num_b*num_b * sizeof(int)
 		+ num_b2*num_b2 * sizeof(int)
@@ -157,35 +159,27 @@ int get_memory_req(const char *file) {
 		+ num_b*num_b2 * sizeof(int)
 		+ N*N      * sizeof(num)
 		+ N*N      * sizeof(num)
-		+ N*num_b2/N * sizeof(num)
-		+ N*num_b2/N * sizeof(num)
-		+ N*num_b2/N * sizeof(num)
-		+ N*num_b2/N * sizeof(num)
+		+ num_b2 * sizeof(num)
+		+ num_b2 * sizeof(num)
+		+ num_b2 * sizeof(num)
+		+ num_b2 * sizeof(num)
 		+ num_i    * sizeof(int)
+		+ num_plaq_accum   * sizeof(int)
 		+ num_ij   * sizeof(int)
 		+ num_bs   * sizeof(int)
 		+ 1   * sizeof(int)
 		+ 1   * sizeof(int)
 		+ 1   * sizeof(int)
-		+ 12   * sizeof(int)
-		+ N*N      * sizeof(num)
-		+ N*N      * sizeof(num)
-		+ N*N      * sizeof(num)
-		+ N*N      * sizeof(num)
-		+ N*N      * sizeof(num)
-		+ N*N      * sizeof(num)
-		+ N*N      * sizeof(num)
-		+ N*N      * sizeof(num)
+		+ 1   * sizeof(int)
+		+ N*N*8    * sizeof(num)
 		+ N*2      * sizeof(double)
 		+ N*2      * sizeof(double)
 		+ N*L      * sizeof(int)
-		+ num_i    * sizeof(num)
-		+ num_i    * sizeof(num)
-		+ num_ij   * sizeof(num)
-		+ num_ij   * sizeof(num)
-		+ num_ij   * sizeof(num)
-		+ num_ij   * sizeof(num)
-		+ num_ij   * sizeof(num);
+		+ num_i*4  * sizeof(num)
+		+ num_ij*7 * sizeof(num);
+	if (meas_chiral) {
+		sim_alloc_in_bytes += num_plaq_accum * sizeof(num);
+	}
 	if (meas_energy_corr) {
 		sim_alloc_in_bytes +=
 			+ num_bb * sizeof(num)
@@ -196,18 +190,10 @@ int get_memory_req(const char *file) {
 	}
 	if (period_uneqlt > 0) {
 		sim_alloc_in_bytes +=
-			+ num_ij*L * sizeof(num)
-			+ num_ij*L * sizeof(num)
-			+ num_ij*L * sizeof(num)
-			+ num_ij*L * sizeof(num)
-			+ num_ij*L * sizeof(num);
+			+ num_ij*L*7 * sizeof(num);
 		if (meas_bond_corr) {
 			sim_alloc_in_bytes +=
-			+ num_bb*L * sizeof(num)
-			+ num_bb*L * sizeof(num)
-			+ num_bb*L * sizeof(num)
-			+ num_bb*L * sizeof(num)
-			+ num_bb*L * sizeof(num);
+			+ num_bb*L*5 * sizeof(num);
 		}
 		if (meas_thermal) {
 			sim_alloc_in_bytes +=

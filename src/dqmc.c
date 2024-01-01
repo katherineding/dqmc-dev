@@ -1,5 +1,6 @@
 #include <tgmath.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <assert.h>
 #include "greens.h"
 #include "linalg.h"
@@ -580,6 +581,9 @@ int dqmc_wrapper(const char *sim_file, const char *log_file,
 	struct sim_data *sim = my_calloc(sizeof(struct sim_data));
 	sim->file=sim_file;
 	fprintf(log, "opening %s\n", sim_file); 
+	struct stat info;
+	stat(sim_file, &info);
+	fprintf(log, "size of this hdf5 file: %.2f MB\n", ((double) info.st_size)*1e-6);
 	fflush(log);
 	const int read_status = sim_data_read_alloc(sim);
 	// Fail might be b/c sim_file doesnt exist:
