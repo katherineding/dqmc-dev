@@ -67,8 +67,8 @@ void measure_eqlt(const struct params *const restrict p, const num phase,
                   struct meas_eqlt *const restrict m) {
   m->n_sample++;
   m->sign += phase;
-  const int N = p->N, num_i = p->num_i, num_ij = p->num_ij;
-  const int num_b = p->num_b, num_bs = p->num_bs, num_bb = p->num_bb;
+  const int N = p->N;
+  const int num_b = p->num_b;
   const int meas_energy_corr = p->meas_energy_corr;
 
   // 1 site measurements
@@ -117,7 +117,6 @@ void measure_eqlt(const struct params *const restrict p, const num phase,
     }
   }
 
-  const int num_plaq_accum = p->num_plaq_accum;
   const int num_plaq = p->num_plaq;
   const int meas_chiral = p->meas_chiral;
 
@@ -649,548 +648,12 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
    * * nematic correlators: nem_nnnn, nem_ssss (8 fermions, 2 phases) - not complexified
    */
 
-  /**
-   * minor optimization: handle t = 0 separately, since there are no delta
-   * functions for t > 0. not really needed in 2-site measurements above
-   * as those are fast anyway.
-   */
-
-  //====================================================================
-  // t = 0:
-  // meas_bond_corr => pair_bb, jj, jsjs, kk, ksks (4 fermion, 2 phases)
-  // meas_thermal   => jnjn                        (8 fermion, 2 phases)
-  //                   jjn, jnj                    (6 fermion, 2 phases)
-  if (meas_bond_corr || meas_thermal) {
-    for (int c = 0; c < num_b; c++) {
-      const int j0 = p->bonds[c];
-      const int j1 = p->bonds[c + num_b];
-#ifdef USE_PEIERLS
-      const num puj0j1 = p->peierlsu[j0 + N * j1];
-      const num puj1j0 = p->peierlsu[j1 + N * j0];
-      const num pdj0j1 = p->peierlsd[j0 + N * j1];
-      const num pdj1j0 = p->peierlsd[j1 + N * j0];
-#endif
-      for (int b = 0; b < num_b; b++) {
-        const int i0 = p->bonds[b];
-        const int i1 = p->bonds[b + num_b];
-#ifdef USE_PEIERLS
-        const num pui0i1 = p->peierlsu[i0 + N * i1];
-        const num pui1i0 = p->peierlsu[i1 + N * i0];
-        const num pdi0i1 = p->peierlsd[i0 + N * i1];
-        const num pdi1i0 = p->peierlsd[i1 + N * i0];
-#endif
-        const int bb = p->map_bb[b + c * num_b];
-        const num pre = phase / p->degen_bb[0];
-        const int delta_i0j0 = (i0 == j0);
-        const int delta_i1j0 = (i1 == j0);
-        const int delta_i0j1 = (i0 == j1);
-        const int delta_i1j1 = (i1 == j1);
-        const int delta_i0i1 = 0;
-        const int delta_j0j1 = 0;
-        const num gui1i0 = Gu00[i1 + i0 * N];
-        const num gui0i1 = Gu00[i0 + i1 * N];
-        const num gui0j0 = Gu00[i0 + j0 * N];
-        const num gui1j0 = Gu00[i1 + j0 * N];
-        const num gui0j1 = Gu00[i0 + j1 * N];
-        const num gui1j1 = Gu00[i1 + j1 * N];
-        const num guj0i0 = Gu00[j0 + i0 * N];
-        const num guj1i0 = Gu00[j1 + i0 * N];
-        const num guj0i1 = Gu00[j0 + i1 * N];
-        const num guj1i1 = Gu00[j1 + i1 * N];
-        const num guj1j0 = Gu00[j1 + j0 * N];
-        const num guj0j1 = Gu00[j0 + j1 * N];
-        const num gdi1i0 = Gd00[i1 + i0 * N];
-        const num gdi0i1 = Gd00[i0 + i1 * N];
-        const num gdi0j0 = Gd00[i0 + j0 * N];
-        const num gdi1j0 = Gd00[i1 + j0 * N];
-        const num gdi0j1 = Gd00[i0 + j1 * N];
-        const num gdi1j1 = Gd00[i1 + j1 * N];
-        const num gdj0i0 = Gd00[j0 + i0 * N];
-        const num gdj1i0 = Gd00[j1 + i0 * N];
-        const num gdj0i1 = Gd00[j0 + i1 * N];
-        const num gdj1i1 = Gd00[j1 + i1 * N];
-        const num gdj1j0 = Gd00[j1 + j0 * N];
-        const num gdj0j1 = Gd00[j0 + j1 * N];
-        // t = 0: pair_bb, jj, jsjs, kk, ksks
-        if (meas_bond_corr) {
-          m->pair_bb[bb] +=
-              0.5 * pre * (gui0j0 * gdi1j1 + gui1j0 * gdi0j1 + gui0j1 * gdi1j0 + gui1j1 * gdi0j0);
-          const num x = pui0i1 * puj0j1 * (delta_i0j1 - guj1i0) * gui1j0 +
-                        pui1i0 * puj1j0 * (delta_i1j0 - guj0i1) * gui0j1 +
-                        pdi0i1 * pdj0j1 * (delta_i0j1 - gdj1i0) * gdi1j0 +
-                        pdi1i0 * pdj1j0 * (delta_i1j0 - gdj0i1) * gdi0j1;
-          const num y = pui0i1 * puj1j0 * (delta_i0j0 - guj0i0) * gui1j1 +
-                        pui1i0 * puj0j1 * (delta_i1j1 - guj1i1) * gui0j0 +
-                        pdi0i1 * pdj1j0 * (delta_i0j0 - gdj0i0) * gdi1j1 +
-                        pdi1i0 * pdj0j1 * (delta_i1j1 - gdj1i1) * gdi0j0;
-
-          m->jj[bb] +=
-              pre * ((pui1i0 * gui0i1 - pui0i1 * gui1i0 + pdi1i0 * gdi0i1 - pdi0i1 * gdi1i0) *
-                         (puj1j0 * guj0j1 - puj0j1 * guj1j0 + pdj1j0 * gdj0j1 - pdj0j1 * gdj1j0) +
-                     x - y);
-          m->jsjs[bb] +=
-              pre * ((pui1i0 * gui0i1 - pui0i1 * gui1i0 - pdi1i0 * gdi0i1 + pdi0i1 * gdi1i0) *
-                         (puj1j0 * guj0j1 - puj0j1 * guj1j0 - pdj1j0 * gdj0j1 + pdj0j1 * gdj1j0) +
-                     x - y);
-          m->kk[bb] +=
-              pre * ((pui1i0 * gui0i1 + pui0i1 * gui1i0 + pdi1i0 * gdi0i1 + pdi0i1 * gdi1i0) *
-                         (puj1j0 * guj0j1 + puj0j1 * guj1j0 + pdj1j0 * gdj0j1 + pdj0j1 * gdj1j0) +
-                     x + y);
-          m->ksks[bb] +=
-              pre * ((pui1i0 * gui0i1 + pui0i1 * gui1i0 - pdi1i0 * gdi0i1 - pdi0i1 * gdi1i0) *
-                         (puj1j0 * guj0j1 + puj0j1 * guj1j0 - pdj1j0 * gdj0j1 - pdj0j1 * gdj1j0) +
-                     x + y);
-        }
-        // thermal: t = 0
-        if (meas_thermal) {
-          const num gui0i0 = Gu00[i0 + i0 * N];
-          const num gui1i1 = Gu00[i1 + i1 * N];
-          const num guj0j0 = Gu00[j0 + j0 * N];
-          const num guj1j1 = Gu00[j1 + j1 * N];
-          const num gdi0i0 = Gd00[i0 + i0 * N];
-          const num gdi1i1 = Gd00[i1 + i1 * N];
-          const num gdj0j0 = Gd00[j0 + j0 * N];
-          const num gdj1j1 = Gd00[j1 + j1 * N];
-
-          // jn(i0i1)j(j0j1): 6 fermion product, 2 phases, t = 0
-          // TODO: further group these expressions together?
-          num _wick_jn = (2 - gui0i0 - gui1i1) * (pdi0i1 * gdi1i0 - pdi1i0 * gdi0i1) +
-                         (2 - gdi0i0 - gdi1i1) * (pui0i1 * gui1i0 - pui1i0 * gui0i1);
-          num _wick_j = -puj1j0 * guj0j1 + puj0j1 * guj1j0 - pdj1j0 * gdj0j1 + pdj0j1 * gdj1j0;
-
-          num t1 = ((delta_i0j1 - guj1i0) * gui0j0 + (delta_i1j1 - guj1i1) * gui1j0) * puj0j1 *
-                   (pdi1i0 * gdi0i1 - pdi0i1 * gdi1i0);
-          num t2 = ((delta_i0j0 - guj0i0) * gui0j1 + (delta_i1j0 - guj0i1) * gui1j1) * puj1j0 *
-                   (pdi0i1 * gdi1i0 - pdi1i0 * gdi0i1);
-          num t3 = ((delta_i0j1 - gdj1i0) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi1j0) * pdj0j1 *
-                   (pui1i0 * gui0i1 - pui0i1 * gui1i0);
-          num t4 = ((delta_i0j0 - gdj0i0) * gdi0j1 + (delta_i1j0 - gdj0i1) * gdi1j1) * pdj1j0 *
-                   (pui0i1 * gui1i0 - pui1i0 * gui0i1);
-          num t5 = (2 - gui0i0 - gui1i1) * (+pdi0i1 * pdj0j1 * (delta_i0j1 - gdj1i0) * gdi1j0 -
-                                            pdi0i1 * pdj1j0 * (delta_i0j0 - gdj0i0) * gdi1j1 -
-                                            pdi1i0 * pdj0j1 * (delta_i1j1 - gdj1i1) * gdi0j0 +
-                                            pdi1i0 * pdj1j0 * (delta_i1j0 - gdj0i1) * gdi0j1);
-          num t6 = (2 - gdi0i0 - gdi1i1) * (+pui0i1 * puj0j1 * (delta_i0j1 - guj1i0) * gui1j0 -
-                                            pui0i1 * puj1j0 * (delta_i0j0 - guj0i0) * gui1j1 -
-                                            pui1i0 * puj0j1 * (delta_i1j1 - guj1i1) * gui0j0 +
-                                            pui1i0 * puj1j0 * (delta_i1j0 - guj0i1) * gui0j1);
-
-          m->jnj[bb] += pre * (_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
-
-          // j(i0i1)jn(j0j1), 6 fermion product, 2 phases, t = 0
-          _wick_j = -pui1i0 * gui0i1 + pui0i1 * gui1i0 - pdi1i0 * gdi0i1 + pdi0i1 * gdi1i0;
-          _wick_jn = (2 - guj0j0 - guj1j1) * (pdj0j1 * gdj1j0 - pdj1j0 * gdj0j1) +
-                     (2 - gdj0j0 - gdj1j1) * (puj0j1 * guj1j0 - puj1j0 * guj0j1);
-
-          t5 = (2 - gdj0j0 - gdj1j1) * (+pui0i1 * puj0j1 * (delta_i0j1 - guj1i0) * gui1j0 -
-                                        pui0i1 * puj1j0 * (delta_i0j0 - guj0i0) * gui1j1 -
-                                        pui1i0 * puj0j1 * (delta_i1j1 - guj1i1) * gui0j0 +
-                                        pui1i0 * puj1j0 * (delta_i1j0 - guj0i1) * gui0j1);
-
-          t6 = (2 - guj0j0 - guj1j1) * (+pdi0i1 * pdj0j1 * (delta_i0j1 - gdj1i0) * gdi1j0 -
-                                        pdi0i1 * pdj1j0 * (delta_i0j0 - gdj0i0) * gdi1j1 -
-                                        pdi1i0 * pdj0j1 * (delta_i1j1 - gdj1i1) * gdi0j0 +
-                                        pdi1i0 * pdj1j0 * (delta_i1j0 - gdj0i1) * gdi0j1);
-
-          t1 = ((delta_i0j0 - guj0i0) * gui1j0 + (delta_i0j1 - guj1i0) * gui1j1) * pui0i1 *
-               (pdj1j0 * gdj0j1 - pdj0j1 * gdj1j0);
-          t2 = ((delta_i1j0 - guj0i1) * gui0j0 + (delta_i1j1 - guj1i1) * gui0j1) * pui1i0 *
-               (pdj0j1 * gdj1j0 - pdj1j0 * gdj0j1);
-          t3 = ((delta_i0j0 - gdj0i0) * gdi1j0 + (delta_i0j1 - gdj1i0) * gdi1j1) * pdi0i1 *
-               (puj1j0 * guj0j1 - puj0j1 * guj1j0);
-          t4 = ((delta_i1j0 - gdj0i1) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi0j1) * pdi1i0 *
-               (puj0j1 * guj1j0 - puj1j0 * guj0j1);
-
-          m->jjn[bb] += pre * (_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
-
-          // TODO further simplify this expression for faster measurements?
-          // TODO: declare these constant earlier?
-          const num _wick_jn_i = (2 - gui0i0 - gui1i1) * (pdi0i1 * gdi1i0 - pdi1i0 * gdi0i1) +
-                                 (2 - gdi0i0 - gdi1i1) * (pui0i1 * gui1i0 - pui1i0 * gui0i1);
-
-          const num _wick_jn_j = (2 - guj0j0 - guj1j1) * (pdj0j1 * gdj1j0 - pdj1j0 * gdj0j1) +
-                                 (2 - gdj0j0 - gdj1j1) * (puj0j1 * guj1j0 - puj1j0 * guj0j1);
-
-          const num c1 = ((delta_i0j0 - guj0i0) * gui0j0 + (delta_i1j0 - guj0i1) * gui1j0 +
-                          (delta_i0j1 - guj1i0) * gui0j1 + (delta_i1j1 - guj1i1) * gui1j1) *
-                         (pdi0i1 * pdj0j1 * (gdi1i0 * gdj1j0 + (delta_i0j1 - gdj1i0) * gdi1j0) -
-                          pdi0i1 * pdj1j0 * (gdi1i0 * gdj0j1 + (delta_i0j0 - gdj0i0) * gdi1j1) -
-                          pdi1i0 * pdj0j1 * (gdi0i1 * gdj1j0 + (delta_i1j1 - gdj1i1) * gdi0j0) +
-                          pdi1i0 * pdj1j0 * (gdi0i1 * gdj0j1 + (delta_i1j0 - gdj0i1) * gdi0j1));
-
-          const num c3 = ((delta_i0j0 - gdj0i0) * gdi0j0 + (delta_i1j0 - gdj0i1) * gdi1j0 +
-                          (delta_i0j1 - gdj1i0) * gdi0j1 + (delta_i1j1 - gdj1i1) * gdi1j1) *
-                         (+pui0i1 * puj0j1 * (gui1i0 * guj1j0 + (delta_i0j1 - guj1i0) * gui1j0) -
-                          pui0i1 * puj1j0 * (gui1i0 * guj0j1 + (delta_i0j0 - guj0i0) * gui1j1) -
-                          pui1i0 * puj0j1 * (gui0i1 * guj1j0 + (delta_i1j1 - guj1i1) * gui0j0) +
-                          pui1i0 * puj1j0 * (gui0i1 * guj0j1 + (delta_i1j0 - guj0i1) * gui0j1));
-
-          const num c2 = (2 - gui0i0 - gui1i1) * (2 - guj0j0 - guj1j1) *
-                         (pdi0i1 * pdj0j1 * (delta_i0j1 - gdj1i0) * gdi1j0 -
-                          pdi0i1 * pdj1j0 * (delta_i0j0 - gdj0i0) * gdi1j1 -
-                          pdi1i0 * pdj0j1 * (delta_i1j1 - gdj1i1) * gdi0j0 +
-                          pdi1i0 * pdj1j0 * (delta_i1j0 - gdj0i1) * gdi0j1);
-
-          const num c4 = (2 - gdi0i0 - gdi1i1) * (2 - gdj0j0 - gdj1j1) *
-                         (+pui0i1 * puj0j1 * (delta_i0j1 - guj1i0) * gui1j0 -
-                          pui0i1 * puj1j0 * (delta_i0j0 - guj0i0) * gui1j1 -
-                          pui1i0 * puj0j1 * (delta_i1j1 - guj1i1) * gui0j0 +
-                          pui1i0 * puj1j0 * (delta_i1j0 - guj0i1) * gui0j1);
-
-          const num b1 =
-              (+pdi0i1 * ((-gdi1i0) * (2 - gdj0j0 - gdj1j1) + (delta_i0j0 - gdj0i0) * gdi1j0 +
-                          (delta_i0j1 - gdj1i0) * gdi1j1) -
-               pdi1i0 * ((-gdi0i1) * (2 - gdj0j0 - gdj1j1) + (delta_i1j0 - gdj0i1) * gdi0j0 +
-                         (delta_i1j1 - gdj1i1) * gdi0j1)) *
-              (+puj0j1 * ((delta_i0j1 - guj1i0) * gui0j0 + (delta_i1j1 - guj1i1) * gui1j0) -
-               puj1j0 * ((delta_i0j0 - guj0i0) * gui0j1 + (delta_i1j0 - guj0i1) * gui1j1));
-
-          const num b3 =
-              (+pui0i1 * ((-gui1i0) * (2 - guj0j0 - guj1j1) + (delta_i0j0 - guj0i0) * gui1j0 +
-                          (delta_i0j1 - guj1i0) * gui1j1) -
-               pui1i0 * ((-gui0i1) * (2 - guj0j0 - guj1j1) + (delta_i1j0 - guj0i1) * gui0j0 +
-                         (delta_i1j1 - guj1i1) * gui0j1)) *
-              (+pdj0j1 * ((delta_i0j1 - gdj1i0) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi1j0) -
-               pdj1j0 * ((delta_i0j0 - gdj0i0) * gdi0j1 + (delta_i1j0 - gdj0i1) * gdi1j1));
-
-          const num b2 =
-              (2 - gui0i0 - gui1i1) * (puj0j1 * (-guj1j0) - puj1j0 * (-guj0j1)) *
-              (+pdi0i1 * ((delta_i0j0 - gdj0i0) * gdi1j0 + (delta_i0j1 - gdj1i0) * gdi1j1) -
-               pdi1i0 * ((delta_i1j0 - gdj0i1) * gdi0j0 + (delta_i1j1 - gdj1i1) * gdi0j1));
-
-          const num b4 =
-              (2 - gdi0i0 - gdi1i1) * (pdj0j1 * (-gdj1j0) - pdj1j0 * (-gdj0j1)) *
-              (+pui0i1 * ((delta_i0j0 - guj0i0) * gui1j0 + (delta_i0j1 - guj1i0) * gui1j1) -
-               pui1i0 * ((delta_i1j0 - guj0i1) * gui0j0 + (delta_i1j1 - guj1i1) * gui0j1));
-
-          m->jnjn[bb] += pre * (_wick_jn_i * _wick_jn_j + c1 + c2 + c3 + c4 + b1 + b2 + b3 + b4);
-        }
-      }
-    }
-  }
-
-  // t = 0: meas_2bond_corr => j2j2 (4 fermion, 4 phases)
-  if (meas_2bond_corr) {
-    for (int c = 0; c < num_b2; c++) {
-      const int jtype = c / N;
-      const int j = c % N;
-
-      const num ppuj0j2 = p->pp_u[j + N * jtype];
-      const num ppuj2j0 = p->ppr_u[j + N * jtype];
-      const num ppdj0j2 = p->pp_d[j + N * jtype];
-      const num ppdj2j0 = p->ppr_d[j + N * jtype];
-
-      const int j0 = p->bond2s[c];
-      const int j2 = p->bond2s[c + num_b2];
-      for (int b = 0; b < num_b2; b++) {
-        const int itype = b / N;
-        const int i = b % N;
-
-        const num ppui0i2 = p->pp_u[i + N * itype];
-        const num ppui2i0 = p->ppr_u[i + N * itype];
-        const num ppdi0i2 = p->pp_d[i + N * itype];
-        const num ppdi2i0 = p->ppr_d[i + N * itype];
-
-        const int i0 = p->bond2s[b];
-        const int i2 = p->bond2s[b + num_b2];
-
-        const int bb = p->map_b2b2[b + c * num_b2];
-        const num pre = phase / p->degen_b2b2[0];
-
-        const int delta_i0j0 = (i0 == j0);
-        const int delta_i2j0 = (i2 == j0);
-        const int delta_i0j2 = (i0 == j2);
-        const int delta_i2j2 = (i2 == j2);
-        const num gui2i0 = Gu00[i2 + i0 * N];
-        const num gui0i2 = Gu00[i0 + i2 * N];
-        const num gui0j0 = Gu00[i0 + j0 * N];
-        const num gui2j0 = Gu00[i2 + j0 * N];
-        const num gui0j2 = Gu00[i0 + j2 * N];
-        const num gui2j2 = Gu00[i2 + j2 * N];
-        const num guj0i0 = Gu00[j0 + i0 * N];
-        const num guj2i0 = Gu00[j2 + i0 * N];
-        const num guj0i2 = Gu00[j0 + i2 * N];
-        const num guj2i2 = Gu00[j2 + i2 * N];
-        const num guj2j0 = Gu00[j2 + j0 * N];
-        const num guj0j2 = Gu00[j0 + j2 * N];
-        const num gdi2i0 = Gd00[i2 + i0 * N];
-        const num gdi0i2 = Gd00[i0 + i2 * N];
-        const num gdi0j0 = Gd00[i0 + j0 * N];
-        const num gdi2j0 = Gd00[i2 + j0 * N];
-        const num gdi0j2 = Gd00[i0 + j2 * N];
-        const num gdi2j2 = Gd00[i2 + j2 * N];
-        const num gdj0i0 = Gd00[j0 + i0 * N];
-        const num gdj2i0 = Gd00[j2 + i0 * N];
-        const num gdj0i2 = Gd00[j0 + i2 * N];
-        const num gdj2i2 = Gd00[j2 + i2 * N];
-        const num gdj2j0 = Gd00[j2 + j0 * N];
-        const num gdj0j2 = Gd00[j0 + j2 * N];
-
-        m->pair_b2b2[bb] +=
-            0.5 * pre * (gui0j0 * gdi2j2 + gui2j0 * gdi0j2 + gui0j2 * gdi2j0 + gui2j2 * gdi0j0);
-        const num x = ppui0i2 * ppuj0j2 * (delta_i0j2 - guj2i0) * gui2j0 +
-                      ppui2i0 * ppuj2j0 * (delta_i2j0 - guj0i2) * gui0j2 +
-                      ppdi0i2 * ppdj0j2 * (delta_i0j2 - gdj2i0) * gdi2j0 +
-                      ppdi2i0 * ppdj2j0 * (delta_i2j0 - gdj0i2) * gdi0j2;
-        const num y = ppui0i2 * ppuj2j0 * (delta_i0j0 - guj0i0) * gui2j2 +
-                      ppui2i0 * ppuj0j2 * (delta_i2j2 - guj2i2) * gui0j0 +
-                      ppdi0i2 * ppdj2j0 * (delta_i0j0 - gdj0i0) * gdi2j2 +
-                      ppdi2i0 * ppdj0j2 * (delta_i2j2 - gdj2i2) * gdi0j0;
-
-        const num tt[8] = {
-            ppui2i0 * gui0i2, ppui0i2 * gui2i0, ppdi2i0 * gdi0i2, ppdi0i2 * gdi2i0,
-            ppuj2j0 * guj0j2, ppuj0j2 * guj2j0, ppdj2j0 * gdj0j2, ppdj0j2 * gdj2j0,
-        };
-
-        m->j2j2[bb] +=
-            pre * ((tt[0] - tt[1] + tt[2] - tt[3]) * (tt[4] - tt[5] + tt[6] - tt[7]) + x - y);
-        m->js2js2[bb] +=
-            pre * ((tt[0] - tt[1] - tt[2] + tt[3]) * (tt[4] - tt[5] - tt[6] + tt[7]) + x - y);
-        m->k2k2[bb] +=
-            pre * ((tt[0] + tt[1] + tt[2] + tt[3]) * (tt[4] + tt[5] + tt[6] + tt[7]) + x + y);
-        m->ks2ks2[bb] +=
-            pre * ((tt[0] + tt[1] - tt[2] - tt[3]) * (tt[4] + tt[5] - tt[6] - tt[7]) + x + y);
-      }
-    }
-  }
-
-  // t = 0:
-  // meas_thermal    => jnj2 (6 fermion, 3 phases)
-  // meas_2bond_corr => jj2  (4 fermion, 3 phases)
-  // i = i0 <-> i1
-  // j = j0 <-> j1 <-> j2
-  // Essentially matrix[j,i] = bond(i) x bond2(j) TODO check this?
-  if (meas_thermal || meas_2bond_corr) {
-    for (int c = 0; c < num_b2; c++) {
-      const int jtype = c / N;
-      const int j = c % N;
-
-      const num ppuj0j2 = p->pp_u[j + N * jtype];
-      const num ppuj2j0 = p->ppr_u[j + N * jtype];
-      const num ppdj0j2 = p->pp_d[j + N * jtype];
-      const num ppdj2j0 = p->ppr_d[j + N * jtype];
-
-      const int j0 = p->bond2s[c];
-      const int j2 = p->bond2s[c + num_b2];
-      for (int b = 0; b < num_b; b++) {
-        const int i0 = p->bonds[b];
-        const int i1 = p->bonds[b + num_b];
-#ifdef USE_PEIERLS
-        const num pui0i1 = p->peierlsu[i0 + N * i1];
-        const num pui1i0 = p->peierlsu[i1 + N * i0];
-        const num pdi0i1 = p->peierlsd[i0 + N * i1];
-        const num pdi1i0 = p->peierlsd[i1 + N * i0];
-#endif
-        const int bb = p->map_b2b[b + c * num_b];
-        const num pre = phase / p->degen_b2b[0];
-
-        const int delta_i0j0 = (i0 == j0);
-        const int delta_i1j0 = (i1 == j0);
-        const int delta_i0j2 = (i0 == j2);
-        const int delta_i1j2 = (i1 == j2);
-
-        const num gui1i0 = Gu00[i1 + i0 * N];
-        const num gui0i1 = Gu00[i0 + i1 * N];
-        const num gui0j0 = Gu00[i0 + j0 * N];
-        const num gui1j0 = Gu00[i1 + j0 * N];
-        const num gui0j2 = Gu00[i0 + j2 * N];
-        const num gui1j2 = Gu00[i1 + j2 * N];
-        const num guj0i0 = Gu00[j0 + i0 * N];
-        const num guj2i0 = Gu00[j2 + i0 * N];
-        const num guj0i1 = Gu00[j0 + i1 * N];
-        const num guj2i1 = Gu00[j2 + i1 * N];
-        const num guj2j0 = Gu00[j2 + j0 * N];
-        const num guj0j2 = Gu00[j0 + j2 * N];
-        const num gdi1i0 = Gd00[i1 + i0 * N];
-        const num gdi0i1 = Gd00[i0 + i1 * N];
-        const num gdi0j0 = Gd00[i0 + j0 * N];
-        const num gdi1j0 = Gd00[i1 + j0 * N];
-        const num gdi0j2 = Gd00[i0 + j2 * N];
-        const num gdi1j2 = Gd00[i1 + j2 * N];
-        const num gdj0i0 = Gd00[j0 + i0 * N];
-        const num gdj2i0 = Gd00[j2 + i0 * N];
-        const num gdj0i1 = Gd00[j0 + i1 * N];
-        const num gdj2i1 = Gd00[j2 + i1 * N];
-        const num gdj2j0 = Gd00[j2 + j0 * N];
-        const num gdj0j2 = Gd00[j0 + j2 * N];
-
-        // jn(i0i1)-j2(j0j1j2): 6 fermion product, 3 phases, t = 0
-        if (meas_thermal) {
-          const num gui0i0 = Gu00[i0 + i0 * N];
-          const num gui1i1 = Gu00[i1 + i1 * N];
-          const num gdi0i0 = Gd00[i0 + i0 * N];
-          const num gdi1i1 = Gd00[i1 + i1 * N];
-
-          // TODO: further group these expressions together?
-          const num _wick_jn = (2 - gui0i0 - gui1i1) * (pdi0i1 * gdi1i0 - pdi1i0 * gdi0i1) +
-                               (2 - gdi0i0 - gdi1i1) * (pui0i1 * gui1i0 - pui1i0 * gui0i1);
-          const num _wick_j =
-              -ppuj2j0 * guj0j2 + ppuj0j2 * guj2j0 - ppdj2j0 * gdj0j2 + ppdj0j2 * gdj2j0;
-
-          const num t1 = ((delta_i0j2 - guj2i0) * gui0j0 + (delta_i1j2 - guj2i1) * gui1j0) *
-                         ppuj0j2 * (pdi1i0 * gdi0i1 - pdi0i1 * gdi1i0);
-          const num t2 = ((delta_i0j0 - guj0i0) * gui0j2 + (delta_i1j0 - guj0i1) * gui1j2) *
-                         ppuj2j0 * (pdi0i1 * gdi1i0 - pdi1i0 * gdi0i1);
-          const num t3 = ((delta_i0j2 - gdj2i0) * gdi0j0 + (delta_i1j2 - gdj2i1) * gdi1j0) *
-                         ppdj0j2 * (pui1i0 * gui0i1 - pui0i1 * gui1i0);
-          const num t4 = ((delta_i0j0 - gdj0i0) * gdi0j2 + (delta_i1j0 - gdj0i1) * gdi1j2) *
-                         ppdj2j0 * (pui0i1 * gui1i0 - pui1i0 * gui0i1);
-          const num t5 =
-              (2 - gui0i0 - gui1i1) * (+pdi0i1 * ppdj0j2 * (delta_i0j2 - gdj2i0) * gdi1j0 -
-                                       pdi0i1 * ppdj2j0 * (delta_i0j0 - gdj0i0) * gdi1j2 -
-                                       pdi1i0 * ppdj0j2 * (delta_i1j2 - gdj2i1) * gdi0j0 +
-                                       pdi1i0 * ppdj2j0 * (delta_i1j0 - gdj0i1) * gdi0j2);
-          const num t6 =
-              (2 - gdi0i0 - gdi1i1) * (+pui0i1 * ppuj0j2 * (delta_i0j2 - guj2i0) * gui1j0 -
-                                       pui0i1 * ppuj2j0 * (delta_i0j0 - guj0i0) * gui1j2 -
-                                       pui1i0 * ppuj0j2 * (delta_i1j2 - guj2i1) * gui0j0 +
-                                       pui1i0 * ppuj2j0 * (delta_i1j0 - guj0i1) * gui0j2);
-
-          m->jnj2[bb] += pre * (_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
-        }
-        // j(i0i1) -j2(j0j1j2): 4 fermion product, 3 phases, t = 0
-        if (meas_2bond_corr) {
-          const num x = pui0i1 * ppuj0j2 * (delta_i0j2 - guj2i0) * gui1j0 +
-                        pui1i0 * ppuj2j0 * (delta_i1j0 - guj0i1) * gui0j2 +
-                        pdi0i1 * ppdj0j2 * (delta_i0j2 - gdj2i0) * gdi1j0 +
-                        pdi1i0 * ppdj2j0 * (delta_i1j0 - gdj0i1) * gdi0j2;
-          const num y = pui0i1 * ppuj2j0 * (delta_i0j0 - guj0i0) * gui1j2 +
-                        pui1i0 * ppuj0j2 * (delta_i1j2 - guj2i1) * gui0j0 +
-                        pdi0i1 * ppdj2j0 * (delta_i0j0 - gdj0i0) * gdi1j2 +
-                        pdi1i0 * ppdj0j2 * (delta_i1j2 - gdj2i1) * gdi0j0;
-          m->jj2[bb] +=
-              pre *
-              ((pui1i0 * gui0i1 - pui0i1 * gui1i0 + pdi1i0 * gdi0i1 - pdi0i1 * gdi1i0) *
-                   (ppuj2j0 * guj0j2 - ppuj0j2 * guj2j0 + ppdj2j0 * gdj0j2 - ppdj0j2 * gdj2j0) +
-               x - y);
-        }
-      }
-    }
-  }
-
-  // t = 0:
-  // meas_thermal    => j2jn (6 fermion, 3 phases)
-  // meas_2bond_corr => j2j  (4 fermion, 3 phases)
-  // i = i0 <-> i1 <-> i2
-  // j = j0 <-> j1
-  // Essentially matrix[j,i] = bond2(i) x bond(j) TODO check this?
-  if (meas_thermal || meas_2bond_corr) {
-    for (int c = 0; c < num_b; c++) {
-      const int j0 = p->bonds[c];
-      const int j1 = p->bonds[c + num_b];
-#ifdef USE_PEIERLS
-      const num puj0j1 = p->peierlsu[j0 + N * j1];
-      const num puj1j0 = p->peierlsu[j1 + N * j0];
-      const num pdj0j1 = p->peierlsd[j0 + N * j1];
-      const num pdj1j0 = p->peierlsd[j1 + N * j0];
-#endif
-
-      for (int b = 0; b < num_b2; b++) {
-        const int itype = b / N;
-        const int i = b % N;
-
-        const num ppui0i2 = p->pp_u[i + N * itype];
-        const num ppui2i0 = p->ppr_u[i + N * itype];
-        const num ppdi0i2 = p->pp_d[i + N * itype];
-        const num ppdi2i0 = p->ppr_d[i + N * itype];
-        // printf("ppui0i2 = %f\n",ppui0i2);
-
-        const int i0 = p->bond2s[b];
-        const int i2 = p->bond2s[b + num_b2];
-
-        const int bb = p->map_bb2[b + c * num_b2];
-        const num pre = phase / p->degen_bb2[0];
-
-        const int delta_i0j0 = (i0 == j0);
-        const int delta_i2j0 = (i2 == j0);
-        const int delta_i0j1 = (i0 == j1);
-        const int delta_i2j1 = (i2 == j1);
-
-        const num gui2i0 = Gu00[i2 + i0 * N];
-        const num gui0i2 = Gu00[i0 + i2 * N];
-        const num gui0j0 = Gu00[i0 + j0 * N];
-        const num gui2j0 = Gu00[i2 + j0 * N];
-        const num gui0j1 = Gu00[i0 + j1 * N];
-        const num gui2j1 = Gu00[i2 + j1 * N];
-        const num guj0i0 = Gu00[j0 + i0 * N];
-        const num guj1i0 = Gu00[j1 + i0 * N];
-        const num guj0i2 = Gu00[j0 + i2 * N];
-        const num guj1i2 = Gu00[j1 + i2 * N];
-        const num guj1j0 = Gu00[j1 + j0 * N];
-        const num guj0j1 = Gu00[j0 + j1 * N];
-        const num gdi2i0 = Gd00[i2 + i0 * N];
-        const num gdi0i2 = Gd00[i0 + i2 * N];
-        const num gdi0j0 = Gd00[i0 + j0 * N];
-        const num gdi2j0 = Gd00[i2 + j0 * N];
-        const num gdi0j1 = Gd00[i0 + j1 * N];
-        const num gdi2j1 = Gd00[i2 + j1 * N];
-        const num gdj0i0 = Gd00[j0 + i0 * N];
-        const num gdj1i0 = Gd00[j1 + i0 * N];
-        const num gdj0i2 = Gd00[j0 + i2 * N];
-        const num gdj1i2 = Gd00[j1 + i2 * N];
-        const num gdj1j0 = Gd00[j1 + j0 * N];
-        const num gdj0j1 = Gd00[j0 + j1 * N];
-        // j2(i0i1i2)-jn(j0j1): 6 fermion product, 3 phases, t = 0
-        if (meas_thermal) {
-          const num guj0j0 = Gu00[j0 + j0 * N];
-          const num guj1j1 = Gu00[j1 + j1 * N];
-          const num gdj0j0 = Gd00[j0 + j0 * N];
-          const num gdj1j1 = Gd00[j1 + j1 * N];
-
-          const num _wick_j =
-              -ppui2i0 * gui0i2 + ppui0i2 * gui2i0 - ppdi2i0 * gdi0i2 + ppdi0i2 * gdi2i0;
-          const num _wick_jn = (2 - guj0j0 - guj1j1) * (pdj0j1 * gdj1j0 - pdj1j0 * gdj0j1) +
-                               (2 - gdj0j0 - gdj1j1) * (puj0j1 * guj1j0 - puj1j0 * guj0j1);
-
-          const num t5 =
-              (2 - gdj0j0 - gdj1j1) * (+ppui0i2 * puj0j1 * (delta_i0j1 - guj1i0) * gui2j0 -
-                                       ppui0i2 * puj1j0 * (delta_i0j0 - guj0i0) * gui2j1 -
-                                       ppui2i0 * puj0j1 * (delta_i2j1 - guj1i2) * gui0j0 +
-                                       ppui2i0 * puj1j0 * (delta_i2j0 - guj0i2) * gui0j1);
-
-          const num t6 =
-              (2 - guj0j0 - guj1j1) * (+ppdi0i2 * pdj0j1 * (delta_i0j1 - gdj1i0) * gdi2j0 -
-                                       ppdi0i2 * pdj1j0 * (delta_i0j0 - gdj0i0) * gdi2j1 -
-                                       ppdi2i0 * pdj0j1 * (delta_i2j1 - gdj1i2) * gdi0j0 +
-                                       ppdi2i0 * pdj1j0 * (delta_i2j0 - gdj0i2) * gdi0j1);
-
-          const num t1 = ((delta_i0j0 - guj0i0) * gui2j0 + (delta_i0j1 - guj1i0) * gui2j1) *
-                         ppui0i2 * (pdj1j0 * gdj0j1 - pdj0j1 * gdj1j0);
-          const num t2 = ((delta_i2j0 - guj0i2) * gui0j0 + (delta_i2j1 - guj1i2) * gui0j1) *
-                         ppui2i0 * (pdj0j1 * gdj1j0 - pdj1j0 * gdj0j1);
-          const num t3 = ((delta_i0j0 - gdj0i0) * gdi2j0 + (delta_i0j1 - gdj1i0) * gdi2j1) *
-                         ppdi0i2 * (puj1j0 * guj0j1 - puj0j1 * guj1j0);
-          const num t4 = ((delta_i2j0 - gdj0i2) * gdi0j0 + (delta_i2j1 - gdj1i2) * gdi0j1) *
-                         ppdi2i0 * (puj0j1 * guj1j0 - puj1j0 * guj0j1);
-
-          m->j2jn[bb] += pre * (_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
-        }
-        // j2(i0i1i2)- j(j0j1): 4 fermion product, 3 phases, t = 0
-        if (meas_2bond_corr) {
-          const num x = ppui0i2 * puj0j1 * (delta_i0j1 - guj1i0) * gui2j0 +
-                        ppui2i0 * puj1j0 * (delta_i2j0 - guj0i2) * gui0j1 +
-                        ppdi0i2 * pdj0j1 * (delta_i0j1 - gdj1i0) * gdi2j0 +
-                        ppdi2i0 * pdj1j0 * (delta_i2j0 - gdj0i2) * gdi0j1;
-          const num y = ppui0i2 * puj1j0 * (delta_i0j0 - guj0i0) * gui2j1 +
-                        ppui2i0 * puj0j1 * (delta_i2j1 - guj1i2) * gui0j0 +
-                        ppdi0i2 * pdj1j0 * (delta_i0j0 - gdj0i0) * gdi2j1 +
-                        ppdi2i0 * pdj0j1 * (delta_i2j1 - gdj1i2) * gdi0j0;
-          m->j2j[bb] +=
-              pre * ((ppui2i0 * gui0i2 - ppui0i2 * gui2i0 + ppdi2i0 * gdi0i2 - ppdi0i2 * gdi2i0) *
-                         (puj1j0 * guj0j1 - puj0j1 * guj1j0 + pdj1j0 * gdj0j1 - pdj0j1 * gdj1j0) +
-                     x - y);
-        }
-      }
-    }
-  }
-
-  //=======================================================================
-  // now handle t > 0 case: no delta functions here.
   profile_begin(meas_uneq_sub);
 
   if (meas_bond_corr || meas_thermal || meas_2bond_corr) {
 #pragma omp parallel for num_threads(OMP_MEAS_NUM_THREADS)
-    for (int t = 1; t < L; t++) {
+    for (int t = 0; t < L; t++) {
+      const int delta_t = (t == 0);
       // int id = omp_get_thread_num();
       // printf("Hello from thread %d out of %d threads\n", id, OMP_MEAS_NUM_THREADS);
       const num *const restrict Gu0t_t = Gu0t + N * N * t;
@@ -1209,7 +672,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
         const num pdj0j1 = p->peierlsd[j0 + N * j1];
         const num pdj1j0 = p->peierlsd[j1 + N * j0];
 #endif
-        // t <- [1, L):
+        // t <- [0, L):
         // meas_bond_corr => pair_bb, jj, jsjs, kk, ksks (4 fermion, 2 phases)
         // meas_thermal   => jnjn                        (8 fermion, 2 phases)
         //                   jjn, jnj                    (6 fermion, 2 phases)
@@ -1249,21 +712,35 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
           const num gdj1j0 = Gd00[j1 + j0 * N];
           const num gdj0j1 = Gd00[j0 + j1 * N];
 
-          const int delta_i0i1 = 0;
-          const int delta_j0j1 = 0;
-          const int delta_i0j0 = 0;
-          const int delta_i0j1 = 0;
-          const int delta_i1j0 = 0;
-          const int delta_i1j1 = 0;
+          // const int delta_i0i1 = 0;
+          // const int delta_j0j1 = 0;
+          // const int delta_i0j0 = 0;
+          // const int delta_i0j1 = 0;
+          // const int delta_i1j0 = 0;
+          // const int delta_i1j1 = 0;
+          const int delta_i0j0 = delta_t * (i0 == j0);
+          const int delta_i1j0 = delta_t * (i1 == j0);
+          const int delta_i0j1 = delta_t * (i0 == j1);
+          const int delta_i1j1 = delta_t * (i1 == j1);
+
+          const num arr[8] = {
+              (delta_i0j1 - gdj1i0) * gdi1j0, (delta_i0j0 - gdj0i0) * gdi1j1,
+              (delta_i1j1 - gdj1i1) * gdi0j0, (delta_i1j0 - gdj0i1) * gdi0j1,
+              (delta_i0j1 - guj1i0) * gui1j0, (delta_i0j0 - guj0i0) * gui1j1,
+              (delta_i1j1 - guj1i1) * gui0j0, (delta_i1j0 - guj0i1) * gui0j1,
+          };
+
+          const num arrp[8] = {pdi0i1 * pdj0j1 * arr[0], pdi0i1 * pdj1j0 * arr[1],
+                               pdi1i0 * pdj0j1 * arr[2], pdi1i0 * pdj1j0 * arr[3],
+                               pui0i1 * puj0j1 * arr[4], pui0i1 * puj1j0 * arr[5],
+                               pui1i0 * puj0j1 * arr[6], pui1i0 * puj1j0 * arr[7]};
+
           // 1 bond -- 1 bond correlator measurements, t > 0
           if (meas_bond_corr) {
             m->pair_bb[bb + num_bb * t] +=
                 0.5 * pre * (gui0j0 * gdi1j1 + gui1j0 * gdi0j1 + gui0j1 * gdi1j0 + gui1j1 * gdi0j0);
-            const num x = -pui0i1 * puj0j1 * guj1i0 * gui1j0 - pui1i0 * puj1j0 * guj0i1 * gui0j1 -
-                          pdi0i1 * pdj0j1 * gdj1i0 * gdi1j0 - pdi1i0 * pdj1j0 * gdj0i1 * gdi0j1;
-            const num y = -pui0i1 * puj1j0 * guj0i0 * gui1j1 - pui1i0 * puj0j1 * guj1i1 * gui0j0 -
-                          pdi0i1 * pdj1j0 * gdj0i0 * gdi1j1 - pdi1i0 * pdj0j1 * gdj1i1 * gdi0j0;
-
+            const num x = arrp[0] + arrp[3] + arrp[4] + arrp[7];
+            const num y = arrp[1] + arrp[2] + arrp[5] + arrp[6];
             const num tt[8] = {
                 pui1i0 * gui0i1, pui0i1 * gui1i0, pdi1i0 * gdi0i1, pdi0i1 * gdi1i0,
                 puj1j0 * guj0j1, puj0j1 * guj1j0, pdj1j0 * gdj0j1, pdj0j1 * gdj1j0,
@@ -1303,13 +780,6 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
                 (delta_i1j0 - gdj0i1) * gdi0j0, (delta_i1j1 - gdj1i1) * gdi0j1,
             };
 
-            const num arr[8] = {
-                (delta_i0j1 - gdj1i0) * gdi1j0, (delta_i0j0 - gdj0i0) * gdi1j1,
-                (delta_i1j1 - gdj1i1) * gdi0j0, (delta_i1j0 - gdj0i1) * gdi0j1,
-                (delta_i0j1 - guj1i0) * gui1j0, (delta_i0j0 - guj0i0) * gui1j1,
-                (delta_i1j1 - guj1i1) * gui0j0, (delta_i1j0 - guj0i1) * gui0j1,
-            };
-
             const num d[4] = {
                 pdi0i1 * gdi1i0 - pdi1i0 * gdi0i1,
                 pui0i1 * gui1i0 - pui1i0 * gui0i1,
@@ -1328,31 +798,27 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
             const num _wick_jn_i = mt[0] * d[0] + mt[1] * d[1];
             const num _wick_j_i = d[2] + d[3];
 
-            num t1 = (ta[0] + ta[1]) * puj0j1 * (-d[0]);
-            num t2 = (ta[2] + ta[3]) * puj1j0 * d[0];
-            num t3 = (ta[4] + ta[5]) * pdj0j1 * (-d[1]);
-            num t4 = (ta[6] + ta[7]) * pdj1j0 * d[1];
-            num t5 = mt[0] * (+pdi0i1 * pdj0j1 * arr[0] - pdi0i1 * pdj1j0 * arr[1] -
-                              pdi1i0 * pdj0j1 * arr[2] + pdi1i0 * pdj1j0 * arr[3]);
-            num t6 = mt[1] * (+pui0i1 * puj0j1 * arr[4] - pui0i1 * puj1j0 * arr[5] -
-                              pui1i0 * puj0j1 * arr[6] + pui1i0 * puj1j0 * arr[7]);
+            // num t1 = (ta[0] + ta[1]) * puj0j1 * (-d[0]);
+            num t2 = ((ta[2] + ta[3]) * puj1j0 - (ta[0] + ta[1]) * puj0j1) * d[0];
+            // num t3 =  * (-d[1]);
+            num t4 = ((ta[6] + ta[7]) * pdj1j0 - (ta[4] + ta[5]) * pdj0j1) * d[1];
+            num t5 = mt[0] * (arrp[0] - arrp[1] - arrp[2] + arrp[3]);
+            num t6 = mt[1] * (arrp[4] - arrp[5] - arrp[6] + arrp[7]);
 
             // j(i0i1)jn(j0j1), 6 fermion product, 2 phases, t > 0
-            m->jnj[bb + num_bb * t] += pre * (_wick_j_i * _wick_jn_i + t1 + t2 + t3 + t4 + t5 + t6);
+            m->jnj[bb + num_bb * t] += pre * (_wick_j_i * _wick_jn_i + t2 + t4 + t5 + t6);
 
             const num _wick_jn_j = mt[2] * d[2] + mt[3] * d[3];
             const num _wick_j_j = d[0] + d[1];
 
-            t1 = (tb[0] + tb[1]) * pui0i1 * (-d[2]);
-            t2 = (tb[2] + tb[3]) * pui1i0 * d[2];
-            t3 = (tb[4] + tb[5]) * pdi0i1 * (-d[3]);
-            t4 = (tb[6] + tb[7]) * pdi1i0 * d[3];
-            t5 = mt[2] * (+pdi0i1 * pdj0j1 * arr[0] - pdi0i1 * pdj1j0 * arr[1] -
-                          pdi1i0 * pdj0j1 * arr[2] + pdi1i0 * pdj1j0 * arr[3]);
-            t6 = mt[3] * (+pui0i1 * puj0j1 * arr[4] - pui0i1 * puj1j0 * arr[5] -
-                          pui1i0 * puj0j1 * arr[6] + pui1i0 * puj1j0 * arr[7]);
+            // t1 = * (-d[2]);
+            t2 = ((tb[2] + tb[3]) * pui1i0 - (tb[0] + tb[1]) * pui0i1) * d[2];
+            // t3 =  * (-d[3]);
+            t4 = ((tb[6] + tb[7]) * pdi1i0 - (tb[4] + tb[5]) * pdi0i1) * d[3];
+            t5 = mt[2] * (arrp[0] - arrp[1] - arrp[2] + arrp[3]);
+            t6 = mt[3] * (arrp[4] - arrp[5] - arrp[6] + arrp[7]);
 
-            m->jjn[bb + num_bb * t] += pre * (_wick_j_j * _wick_jn_j + t1 + t2 + t3 + t4 + t5 + t6);
+            m->jjn[bb + num_bb * t] += pre * (_wick_j_j * _wick_jn_j + t2 + t4 + t5 + t6);
 
             // thermal: jnjn, t > 0. TODO: simplify this expression for faster measurements
             // const num _wick_jn_i = (m[0]) * d[0] + (m[1]) * d[1];
@@ -1372,33 +838,29 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
                             pui1i0 * puj0j1 * (gui0i1 * guj1j0 + arr[6]) +
                             pui1i0 * puj1j0 * (gui0i1 * guj0j1 + arr[7]));
 
-            const num c2 = mt[0] * mt[2] *
-                           (pdi0i1 * pdj0j1 * arr[0] - pdi0i1 * pdj1j0 * arr[1] -
-                            pdi1i0 * pdj0j1 * arr[2] + pdi1i0 * pdj1j0 * arr[3]);
+            const num c2 = mt[0] * mt[2] * (arrp[0] - arrp[1] - arrp[2] + arrp[3]);
 
-            const num c4 = mt[1] * mt[3] *
-                           (+pui0i1 * puj0j1 * arr[4] - pui0i1 * puj1j0 * arr[5] -
-                            pui1i0 * puj0j1 * arr[6] + pui1i0 * puj1j0 * arr[7]);
+            const num c4 = mt[1] * mt[3] * (arrp[4] - arrp[5] - arrp[6] + arrp[7]);
 
-            const num b1 = (+pdi0i1 * ((-gdi1i0) * mt[3] + tb[4] + tb[5]) -
-                            pdi1i0 * ((-gdi0i1) * mt[3] + tb[6] + tb[7])) *
+            const num b1 = (+pdi0i1 * (-gdi1i0 * mt[3] + tb[4] + tb[5]) -
+                            pdi1i0 * (-gdi0i1 * mt[3] + tb[6] + tb[7])) *
                            (+puj0j1 * (ta[0] + ta[1]) - puj1j0 * (ta[2] + ta[3]));
 
-            const num b3 = (+pui0i1 * ((-gui1i0) * mt[2] + tb[0] + tb[1]) -
-                            pui1i0 * ((-gui0i1) * mt[2] + tb[2] + tb[3])) *
+            const num b3 = (+pui0i1 * (-gui1i0 * mt[2] + tb[0] + tb[1]) -
+                            pui1i0 * (-gui0i1 * mt[2] + tb[2] + tb[3])) *
                            (+pdj0j1 * (ta[4] + ta[5]) - pdj1j0 * (ta[6] + ta[7]));
 
-            const num b2 = mt[0] * (puj0j1 * (-guj1j0) - puj1j0 * (-guj0j1)) *
+            const num b2 = mt[0] * (-puj0j1 * guj1j0 + puj1j0 * guj0j1) *
                            (+pdi0i1 * (tb[4] + tb[5]) - pdi1i0 * (tb[6] + tb[7]));
 
-            const num b4 = mt[1] * (pdj0j1 * (-gdj1j0) - pdj1j0 * (-gdj0j1)) *
+            const num b4 = mt[1] * (-pdj0j1 * gdj1j0 + pdj1j0 * gdj0j1) *
                            (+pui0i1 * (tb[0] + tb[1]) - pui1i0 * (tb[2] + tb[3]));
 
             m->jnjn[bb + num_bb * t] +=
                 pre * (_wick_jn_i * _wick_jn_j + c1 + c2 + c3 + c4 + b1 + b2 + b3 + b4);
           }
         }
-        // t <- [1, L):
+        // t <- [0, L):
         // meas_thermal    => j2jn (6 fermion, 3 phases)
         // meas_2bond_corr => j2j  (4 fermion, 3 phases)
         // i = i0 <-> i1 <-> i2
@@ -1419,10 +881,15 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
           const int bb = p->map_bb2[b + c * num_b2];
           const num pre = phase / p->degen_bb2[0];
 
-          const int delta_i0j0 = 0;
-          const int delta_i2j0 = 0;
-          const int delta_i0j1 = 0;
-          const int delta_i2j1 = 0;
+          // const int delta_i0j0 = 0;
+          // const int delta_i2j0 = 0;
+          // const int delta_i0j1 = 0;
+          // const int delta_i2j1 = 0;
+
+          const int delta_i0j0 = delta_t * (i0 == j0);
+          const int delta_i2j0 = delta_t * (i2 == j0);
+          const int delta_i0j1 = delta_t * (i0 == j1);
+          const int delta_i2j1 = delta_t * (i2 == j1);
 
           const num gui2i0 = Gutt_t[i2 + i0 * N];
           const num gui0i2 = Gutt_t[i0 + i2 * N];
@@ -1451,14 +918,15 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
 
           const num arr[4] = {puj1j0 * guj0j1, puj0j1 * guj1j0, pdj1j0 * gdj0j1, pdj0j1 * gdj1j0};
 
-          const num term[8] = {ppui0i2 * puj0j1 * (delta_i0j1 - guj1i0) * gui2j0,
-                               ppui0i2 * puj1j0 * (delta_i0j0 - guj0i0) * gui2j1,
-                               ppui2i0 * puj0j1 * (delta_i2j1 - guj1i2) * gui0j0,
-                               ppui2i0 * puj1j0 * (delta_i2j0 - guj0i2) * gui0j1,
-                               ppdi0i2 * pdj0j1 * (delta_i0j1 - gdj1i0) * gdi2j0,
-                               ppdi0i2 * pdj1j0 * (delta_i0j0 - gdj0i0) * gdi2j1,
-                               ppdi2i0 * pdj0j1 * (delta_i2j1 - gdj1i2) * gdi0j0,
-                               ppdi2i0 * pdj1j0 * (delta_i2j0 - gdj0i2) * gdi0j1};
+          const num dd[8] = {delta_i0j1 - guj1i0, delta_i0j0 - guj0i0, delta_i2j1 - guj1i2,
+                             delta_i2j0 - guj0i2, delta_i0j1 - gdj1i0, delta_i0j0 - gdj0i0,
+                             delta_i2j1 - gdj1i2, delta_i2j0 - gdj0i2};
+
+          const num term[8] = {
+              ppui0i2 * puj0j1 * dd[0] * gui2j0, ppui0i2 * puj1j0 * dd[1] * gui2j1,
+              ppui2i0 * puj0j1 * dd[2] * gui0j0, ppui2i0 * puj1j0 * dd[3] * gui0j1,
+              ppdi0i2 * pdj0j1 * dd[4] * gdi2j0, ppdi0i2 * pdj1j0 * dd[5] * gdi2j1,
+              ppdi2i0 * pdj0j1 * dd[6] * gdi0j0, ppdi2i0 * pdj1j0 * dd[7] * gdi0j1};
 
           const num _wick_j =
               -ppui2i0 * gui0i2 + ppui0i2 * gui2i0 - ppdi2i0 * gdi0i2 + ppdi0i2 * gdi2i0;
@@ -1469,25 +937,24 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
             const num gdj0j0 = Gd00[j0 + j0 * N];
             const num gdj1j1 = Gd00[j1 + j1 * N];
 
+            const num md[2] = {2 - guj0j0 - guj1j1, 2 - gdj0j0 - gdj1j1};
+
             // j2(i0i1i2)-jn(j0j1): 6 fermion product, 3 phases, t > 0
 
-            const num _wick_jn = (2 - guj0j0 - guj1j1) * (arr[3] - arr[2]) +
-                                 (2 - gdj0j0 - gdj1j1) * (arr[1] - arr[0]);
+            const num _wick_jn = md[0] * (arr[3] - arr[2]) + md[1] * (arr[1] - arr[0]);
 
-            const num t5 = (2 - gdj0j0 - gdj1j1) * (+term[0] - term[1] - term[2] + term[3]);
+            const num t5 = md[1] * (+term[0] - term[1] - term[2] + term[3]);
 
-            const num t6 = (2 - guj0j0 - guj1j1) * (+term[4] - term[5] - term[6] + term[7]);
+            const num t6 = md[0] * (+term[4] - term[5] - term[6] + term[7]);
 
-            const num t1 = ((delta_i0j0 - guj0i0) * gui2j0 + (delta_i0j1 - guj1i0) * gui2j1) *
-                           ppui0i2 * (arr[2] - arr[3]);
-            const num t2 = ((delta_i2j0 - guj0i2) * gui0j0 + (delta_i2j1 - guj1i2) * gui0j1) *
-                           ppui2i0 * (arr[3] - arr[2]);
-            const num t3 = ((delta_i0j0 - gdj0i0) * gdi2j0 + (delta_i0j1 - gdj1i0) * gdi2j1) *
-                           ppdi0i2 * (arr[0] - arr[1]);
-            const num t4 = ((delta_i2j0 - gdj0i2) * gdi0j0 + (delta_i2j1 - gdj1i2) * gdi0j1) *
-                           ppdi2i0 * (arr[1] - arr[0]);
+            const num t1 = (-(dd[1] * gui2j0 + dd[0] * gui2j1) * ppui0i2 +
+                            (dd[3] * gui0j0 + dd[2] * gui0j1) * ppui2i0) *
+                           (arr[3] - arr[2]);
+            const num t3 = (-(dd[5] * gdi2j0 + dd[4] * gdi2j1) * ppdi0i2 +
+                            (dd[7] * gdi0j0 + dd[6] * gdi0j1) * ppdi2i0) *
+                           (arr[1] - arr[0]);
 
-            m->j2jn[bb + num_bb2 * t] += pre * (_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
+            m->j2jn[bb + num_bb2 * t] += pre * (_wick_j * _wick_jn + t1 + t3 + t5 + t6);
           }
           if (meas_2bond_corr) {
             // j2(i0i1i2)- j(j0j1): 4 fermion product, 3 phases, t > 0
@@ -1510,7 +977,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
 
         const int j0 = p->bond2s[c];
         const int j2 = p->bond2s[c + num_b2];
-        // t <- [1, L): meas_2bond_corr => j2j2 (4 fermion, 4 phases)
+        // t <- [0, L): meas_2bond_corr => j2j2 (4 fermion, 4 phases)
         if (meas_2bond_corr) {
           for (int b = 0; b < num_b2; b++) {
             const int itype = b / N;
@@ -1527,10 +994,15 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
             const int bb = p->map_b2b2[b + c * num_b2];
             const num pre = phase / p->degen_b2b2[0];
 
-            const int delta_i0j0 = 0;
-            const int delta_i2j0 = 0;
-            const int delta_i0j2 = 0;
-            const int delta_i2j2 = 0;
+            // const int delta_i0j0 = 0;
+            // const int delta_i2j0 = 0;
+            // const int delta_i0j2 = 0;
+            // const int delta_i2j2 = 0;
+            const int delta_i0j0 = delta_t * (i0 == j0);
+            const int delta_i2j0 = delta_t * (i2 == j0);
+            const int delta_i0j2 = delta_t * (i0 == j2);
+            const int delta_i2j2 = delta_t * (i2 == j2);
+
             const num gui2i0 = Gutt_t[i2 + i0 * N];
             const num gui0i2 = Gutt_t[i0 + i2 * N];
             const num gui0j0 = Gut0_t[i0 + j0 * N];
@@ -1582,7 +1054,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
                 pre * ((tt[0] + tt[1] - tt[2] - tt[3]) * (tt[4] + tt[5] - tt[6] - tt[7]) + x + y);
           }
         }
-        // t <- [1, L):
+        // t <- [0, L):
         // meas_thermal    => jnj2 (6 fermion, 3 phases)
         // meas_2bond_corr => jj2  (4 fermion, 3 phases)
         // i = i0 <-> i1
@@ -1599,10 +1071,16 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
 #endif
           const int bb = p->map_b2b[b + c * num_b];
           const num pre = phase / p->degen_b2b[0];
-          const int delta_i0j0 = 0;
-          const int delta_i1j0 = 0;
-          const int delta_i0j2 = 0;
-          const int delta_i1j2 = 0;
+          // const int delta_i0j0 = 0;
+          // const int delta_i1j0 = 0;
+          // const int delta_i0j2 = 0;
+          // const int delta_i1j2 = 0;
+
+          const int delta_i0j0 = delta_t * (i0 == j0);
+          const int delta_i1j0 = delta_t * (i1 == j0);
+          const int delta_i0j2 = delta_t * (i0 == j2);
+          const int delta_i1j2 = delta_t * (i1 == j2);
+
           const num gui1i0 = Gutt_t[i1 + i0 * N];
           const num gui0i1 = Gutt_t[i0 + i1 * N];
           const num gui0j0 = Gut0_t[i0 + j0 * N];
@@ -1630,15 +1108,15 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
 
           const num arr[4] = {pui1i0 * gui0i1, pui0i1 * gui1i0, pdi1i0 * gdi0i1, pdi0i1 * gdi1i0};
 
+          const num dd[8] = {
+              delta_i0j2 - gdj2i0, delta_i0j0 - gdj0i0, delta_i1j2 - gdj2i1, delta_i1j0 - gdj0i1,
+              delta_i0j2 - guj2i0, delta_i0j0 - guj0i0, delta_i1j2 - guj2i1, delta_i1j0 - guj0i1,
+          };
           const num term[8] = {
-              pdi0i1 * ppdj0j2 * (delta_i0j2 - gdj2i0) * gdi1j0,
-              pdi0i1 * ppdj2j0 * (delta_i0j0 - gdj0i0) * gdi1j2,
-              pdi1i0 * ppdj0j2 * (delta_i1j2 - gdj2i1) * gdi0j0,
-              pdi1i0 * ppdj2j0 * (delta_i1j0 - gdj0i1) * gdi0j2,
-              pui0i1 * ppuj0j2 * (delta_i0j2 - guj2i0) * gui1j0,
-              pui0i1 * ppuj2j0 * (delta_i0j0 - guj0i0) * gui1j2,
-              pui1i0 * ppuj0j2 * (delta_i1j2 - guj2i1) * gui0j0,
-              pui1i0 * ppuj2j0 * (delta_i1j0 - guj0i1) * gui0j2,
+              pdi0i1 * ppdj0j2 * dd[0] * gdi1j0, pdi0i1 * ppdj2j0 * dd[1] * gdi1j2,
+              pdi1i0 * ppdj0j2 * dd[2] * gdi0j0, pdi1i0 * ppdj2j0 * dd[3] * gdi0j2,
+              pui0i1 * ppuj0j2 * dd[4] * gui1j0, pui0i1 * ppuj2j0 * dd[5] * gui1j2,
+              pui1i0 * ppuj0j2 * dd[6] * gui0j0, pui1i0 * ppuj2j0 * dd[7] * gui0j2,
           };
 
           const num _wick_j =
@@ -1650,23 +1128,22 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
             const num gui1i1 = Gutt_t[i1 + i1 * N];
             const num gdi1i1 = Gdtt_t[i1 + i1 * N];
 
+            const num md[2] = {2 - gui0i0 - gui1i1, 2 - gdi0i0 - gdi1i1};
+
             // jn(i0i1)-j2(j0j1j2): 6 fermion product, 3 phases, t > 0
             // TODO: further group these expressions together?
-            const num _wick_jn = (2 - gui0i0 - gui1i1) * (arr[3] - arr[2]) +
-                                 (2 - gdi0i0 - gdi1i1) * (arr[1] - arr[0]);
+            const num _wick_jn = md[0] * (arr[3] - arr[2]) + md[1] * (arr[1] - arr[0]);
 
-            const num t1 = ((delta_i0j2 - guj2i0) * gui0j0 + (delta_i1j2 - guj2i1) * gui1j0) *
-                           ppuj0j2 * (arr[2] - arr[3]);
-            const num t2 = ((delta_i0j0 - guj0i0) * gui0j2 + (delta_i1j0 - guj0i1) * gui1j2) *
-                           ppuj2j0 * (arr[3] - arr[2]);
-            const num t3 = ((delta_i0j2 - gdj2i0) * gdi0j0 + (delta_i1j2 - gdj2i1) * gdi1j0) *
-                           ppdj0j2 * (arr[0] - arr[1]);
-            const num t4 = ((delta_i0j0 - gdj0i0) * gdi0j2 + (delta_i1j0 - gdj0i1) * gdi1j2) *
-                           ppdj2j0 * (arr[1] - arr[0]);
-            const num t5 = (2 - gui0i0 - gui1i1) * (+term[0] - term[1] - term[2] + term[3]);
-            const num t6 = (2 - gdi0i0 - gdi1i1) * (+term[4] - term[5] - term[6] + term[7]);
+            const num t1 = (-(dd[4] * gui0j0 + dd[6] * gui1j0) * ppuj0j2 +
+                            (dd[5] * gui0j2 + dd[7] * gui1j2) * ppuj2j0) *
+                           (arr[3] - arr[2]);
+            const num t3 = (-(dd[0] * gdi0j0 + dd[2] * gdi1j0) * ppdj0j2 +
+                            (dd[1] * gdi0j2 + dd[3] * gdi1j2) * ppdj2j0) *
+                           (arr[1] - arr[0]);
+            const num t5 = md[0] * (term[0] - term[1] - term[2] + term[3]);
+            const num t6 = md[1] * (term[4] - term[5] - term[6] + term[7]);
 
-            m->jnj2[bb + num_b2b * t] += pre * (_wick_j * _wick_jn + t1 + t2 + t3 + t4 + t5 + t6);
+            m->jnj2[bb + num_b2b * t] += pre * (_wick_j * _wick_jn + t1 + t3 + t5 + t6);
           }
           if (meas_2bond_corr) {
             // j(i0i1) -j2(j0j1j2): 4 fermion product, 3 phases, t > 0
