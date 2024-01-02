@@ -1,13 +1,22 @@
 import numpy as np
 import util
 import data_analysis as da
+from typing import Any
 
 # one-hop bond dx, dy
 dx_arr = [1, 0, 1, -1]
 dy_arr = [0, 1, 1, 1]
 
 
-def get_component(path: str, name: str = "j2j2"):
+def get_sign(path: str) -> np.ndarray:
+    ns, s = util.load(path, "meas_uneqlt/n_sample", "meas_uneqlt/sign")
+    # use only completed bins
+    mask = ns == ns.max()
+
+    return s[mask]
+
+
+def get_component(path: str, name: str) -> np.ndarray:
     """
     Address RAM overflow kill:
         By separating components out, python only keeps full
@@ -57,6 +66,63 @@ def get_component(path: str, name: str = "j2j2"):
     correlator_q0 = correlator.sum((-1, -2))
 
     return correlator_q0
+
+
+def electrical_sum(path: str, jj_q0: np.ndarray) -> np.ndarray:
+    """
+    Take jj_q0 of shape (Nbin_completed, L, bps, bps),
+    Perform appropriate summation over bonds to obtain
+    xx, yy, xy, yx componnents of jj correlator
+    Input is not divided by sign.
+
+    Args:
+        path (str): [description]
+        jj_q0 (np.ndarray): [description]
+
+    Returns:
+        np.ndarray: shape = (4, Nbin_complete, L)
+    """
+    bps, tp = util.load_firstfile(path, "metadata/bps", "metadata/t'")
+
+    # bond type t factors
+    t_arr = [1, 1, tp, tp]
+
+    # bond-bond types: jj, jnj, jjn, jnjn
+    jj_xx = jj_yy = 0
+    jj_xy = jj_yx = 0
+    for itype in range(bps):
+        for jtype in range(bps):
+            jj_xx += (
+                t_arr[itype]
+                * t_arr[jtype]
+                * dx_arr[itype]
+                * dx_arr[jtype]
+                * jj_q0[:, :, itype, jtype]
+            )
+            jj_yy += (
+                t_arr[itype]
+                * t_arr[jtype]
+                * dy_arr[itype]
+                * dy_arr[jtype]
+                * jj_q0[:, :, itype, jtype]
+            )
+
+            jj_xy += (
+                t_arr[itype]
+                * t_arr[jtype]
+                * dx_arr[itype]
+                * dy_arr[jtype]
+                * jj_q0[:, :, itype, jtype]
+            )
+            jj_yx += (
+                t_arr[itype]
+                * t_arr[jtype]
+                * dy_arr[itype]
+                * dx_arr[jtype]
+                * jj_q0[:, :, itype, jtype]
+            )
+
+    return np.stack((jj_xx, jj_yy, jj_xy, jj_yx), axis=0)
 
 
 def thermal_sum(path: str, q0_corrs) -> dict[str, np.ndarray]:
