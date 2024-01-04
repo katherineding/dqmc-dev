@@ -155,8 +155,8 @@ def thermal_sum(path: str, q0_corrs) -> dict[str, np.ndarray]:
     # bond type t factors
     t_arr = [1, 1, tp, tp]
     # 2bond type t factors
-    if "half-fill-tp" in path and nflux == 0:
-        print("using legacy t2_arr!")
+    if "tp-0.25_n1.0" in path and nflux == 0:
+        print("using legacy t2_arr for nflux=0 case")
         t2_arr = [
             1 + 2 * tp**2,
             1 + 2 * tp**2,
