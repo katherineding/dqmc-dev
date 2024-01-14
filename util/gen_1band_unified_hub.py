@@ -230,7 +230,7 @@ def create_1(
                 plaqs[0, i + Nx * Ny] = ix1 + Nx * iy  # i0 = i + x
                 plaqs[1, i + Nx * Ny] = ix1 + Nx * iy1  # i1 = i + x + y
                 plaqs[2, i + Nx * Ny] = ix + Nx * iy1  # i2 = i + y //counterclockwise
-        
+
         # 2 site mapping: site r = (x,y) has total (column order) index x + Nx * y
         map_ij = np.zeros((N, N), dtype=np.int32)
         num_ij = N if trans_sym else N * N
@@ -581,7 +581,7 @@ def create_1(
                 twistx=twistx,
                 twisty=twisty,
             )
-        if bc == 2:
+        elif bc == 2:
             kij, peierls = tight_binding.H_open_square(
                 Nx,
                 Ny,
