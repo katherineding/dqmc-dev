@@ -1,14 +1,19 @@
-#Prereq: 
-#module load PrgEnv-nvidia nvidia/22.7 cudatoolkit/11.7 craype-accel-nvidia80
-#module load cray-hdf5 (1.12) 
+#Prereq (add to .bashrc): 
+#module load PrgEnv-nvidia nvidia cudatoolkit craype-accel-nvidia80
+#module load cray-hdf5
 #module load cray-libsci
+
+# Compilation works with this module configuration:
+#  1) craype-x86-milan     4) xpmem/2.6.2-2.5_2.38__gd067c3f.shasta   7) gpu/1.0               10) PrgEnv-nvidia/8.5.0 (cpe)  13) cudatoolkit/12.2      (g)     16) cray-hdf5/1.12.2.3 (io)
+#  2) libfabric/1.15.2.0   5) perftools-base/23.12.0                  8) craype/2.7.30    (c)  11) nvidia/23.9         (g,c)  14) craype-accel-nvidia80
+#  3) craype-network-ofi   6) cpe/23.12                               9) cray-dsmml/0.2.2      12) cray-mpich/8.1.28   (mpi)  15) cray-libsci/23.12.5   (math)
 CC = cc #use nvc to compile all files
 
-CFLAGS = -fast -mp=gpu -gpu=cc80,cuda11.7 -Minfo=mp 
+CFLAGS = -fast -mp=gpu -gpu=cc80,cuda12.2 -Minfo=mp 
 CFLAGS += -DGIT_ID=\"$(shell git rev-parse --short HEAD)\"
 CFLAGS += -DPROFILE_ENABLE 
 CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
-CFLAGS += -DOMP_MEAS_NUM_THREADS=2
+CFLAGS += -DOMP_MEAS_NUM_THREADS=32
 CFLAGS += -DGENERIC_LINALG
 CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 
