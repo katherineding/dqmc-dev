@@ -1,17 +1,17 @@
-CC = cc
+CC = icc
 
-CFLAGS = -std=gnu11 -Wall -Wextra -Ofast -axCORE-AVX2,MIC-AVX512
+CFLAGS = -std=gnu11 -Wall -Wextra -Ofast -xHost
 CFLAGS += -DMKL_DIRECT_CALL_SEQ -mkl=sequential
 CFLAGS += -DGIT_ID=\"$(shell git rev-parse --short HEAD)\"
 CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
 CFLAGS += -DOMP_MEAS_NUM_THREADS=2
 CFLAGS += -DPROFILE_ENABLE
-CFLAGS += -DGENERIC_LINALG
-CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
+#CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 CFLAGS += -qopenmp  # to disable openmp, use -qopenmp-stubs
 
 LDFLAGS += -lhdf5 -lhdf5_hl
 
+#SRCFILES = data.o dqmc.o prof.o sig.o
 SRCFILES = data.o dqmc.o greens.o meas.o prof.o sig.o updates.o
 
 all: one stack

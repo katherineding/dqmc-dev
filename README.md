@@ -22,9 +22,9 @@ Unfortunately, as we are dealing with a variety of computing environments, both 
 	- `imkl` headers and library `>= 2019`
 	- `hdf5` headers and library `>= 1.10`
 	To get correct paths to these headers and libraries on Sherlock, add `module load hdf5/1.10.2 icc/2019 imkl/2019` to your .bashrc.
-2. [Perlmutter](https://docs.nersc.gov/systems/perlmutter/), CPU only: `perlmt-cpu` branch
-	*Note: this branch may be modified to use the AOCC compiler and AOCL math libraries when it becomes supported in the future*
-	- GNU Compiler `gcc`
+2. [Perlmutter](https://docs.nersc.gov/systems/perlmutter/), CPU only: `master` branch
+	*Note: to use AOCL, replace existing Linear algebra library link line with -lblis -lpthread -lflame*
+	- GNU Compiler `gcc` or `aocc`
 	- `cray-libsci` headers and library
 	- `hdf5` headers and library
 3. [Perlmutter](https://docs.nersc.gov/systems/perlmutter/), with GPU offloading: `perlmt-gpu` branch 

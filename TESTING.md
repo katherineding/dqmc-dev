@@ -26,7 +26,7 @@ It's a bit weird to use pytest to run this since I'm not asserting anything, but
 6. Run `pytest -v -s test_profiling.py`
 7. Move resulting log files with rough timing, memory and storage info into corresponding `test/prof/<branch>/<compiler>-<lib>-<gpuoffload>-<host>/` folder
 
-- Options for `branch`: {`master`, `perlmt-cpu`, `perlmt-gpu`}
+- Options for `branch`: {`master`, `perlmt-gpu`}
 - Options for `compiler`: {`icx`, `icc`, `gcc`, `nvc`}
 - Options for `lib`: {`imkl`, `openblas`, `libsci`(stands for `cray-libsci`)}
 - Options for `gpuoffload`: {`0`, `1`}

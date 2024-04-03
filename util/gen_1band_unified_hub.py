@@ -2,6 +2,7 @@ import os
 import shutil
 import sys
 import argparse
+import warnings
 
 import h5py
 import numpy as np
@@ -105,6 +106,7 @@ def create_1(
     file_params=None,
     init_rng=None,
     geometry: str = "square",
+    bc: int = 1,
     Nx: int = 4,
     Ny: int = 4,
     mu: float = 0.0,
@@ -132,6 +134,7 @@ def create_1(
     meas_thermal: int = 0,
     meas_2bond_corr: int = 0,
     meas_chiral: int = 0,
+    meas_local_JQ: int = 0,
     twistx: float = 0,
     twisty: float = 0,
 ):
@@ -201,8 +204,20 @@ def create_1(
     # print("degen",degen_plaq)
     # print("map",map_plaq)
 
-    if geometry == "square":
+    # placeholder until other boundaries implemented for non square lattices
+    if (bc != 1) and (geometry != "square"):
+        raise NotImplementedError(
+            "Non-periodic boundaries only implemented for square lattice"
+        )
 
+    # if non-periodic and trans_sym on, warn user that trans_sym will turn off
+    if (bc != 1) and trans_sym:
+        warnings.warn(
+            "Non-periodic boundaries not translationally symmetric: turning off trans_sym"
+        )
+        trans_sym = 0
+
+    if geometry == "square":
         # Use same plaquette definition as triangular TODO: check correctness
         for iy in range(Ny):
             for ix in range(Nx):
@@ -215,7 +230,7 @@ def create_1(
                 plaqs[0, i + Nx * Ny] = ix1 + Nx * iy  # i0 = i + x
                 plaqs[1, i + Nx * Ny] = ix1 + Nx * iy1  # i1 = i + x + y
                 plaqs[2, i + Nx * Ny] = ix + Nx * iy1  # i2 = i + y //counterclockwise
-        
+
         # 2 site mapping: site r = (x,y) has total (column order) index x + Nx * y
         map_ij = np.zeros((N, N), dtype=np.int32)
         num_ij = N if trans_sym else N * N
@@ -253,6 +268,18 @@ def create_1(
                     bonds[0, i + 3 * N] = ix1 + Nx * iy  # i0 = i + x
                     bonds[1, i + 3 * N] = ix + Nx * iy1  # i1 = i + y
 
+        # 1 bond mapping
+        if trans_sym:
+            # maps bond to degenerate bond type
+            # note that map_b only maps to the first four elements of degen_b, but for
+            # the sake of not having to define a new num_b vairable and allocating different amounts of
+            # memory for degen_b in data.c, I'm making degen_b the same size
+            map_b = np.tile(np.arange(bps, dtype=np.int32), (N, 1)).T.flatten()  # N*bps
+            degen_b = np.ones(num_b, dtype=np.int32) * N  # length N*bps
+        else:
+            map_b = np.arange(num_b, dtype=np.int32)  # N*bps
+            degen_b = np.ones(num_b, dtype=np.int32)  # length N*bps
+
         # 1 bond 1 site mapping
         # Translated to fortran order: [j,istuff] -> [istuff + num_b * j] -> [istuff,j]
         map_bs = np.zeros((N, num_b), dtype=np.int32)
@@ -281,6 +308,7 @@ def create_1(
                         map_bb[j + N * jb, i + N * ib] = kk
                         degen_bb[kk] += 1
         assert num_bb == map_bb.max() + 1
+        assert np.all(degen_bb == degen_bb[0])
 
         # 2-bond definition is modified -- NOT consistent with Wen's!
         # Now only bonds defined by two hopping steps.
@@ -331,6 +359,19 @@ def create_1(
                     # one t'^2 path [27]
                     bond2s[0, i + 11 * N] = ix2 + Nx * iy  # i0 = i + 2x   \
                     bond2s[1, i + 11 * N] = ix + Nx * iy2  # i1 = i + 2y    \
+
+        # 2 bond mapping
+        if trans_sym:
+            # note that map_b only maps to the first four elements of degen_b, but for
+            # the sake of not having to define a new num_b vairable and allocating different amounts of
+            # memory for degen_b in data.c, I'm making degen_b the same size
+            map_b2 = np.tile(
+                np.arange(b2ps, dtype=np.int32), (N, 1)
+            ).T.flatten()  # length N*b2ps
+            degen_b2 = np.ones(num_b2, dtype=np.int32) * N  # length N*b2ps
+        else:
+            map_b2 = np.arange(num_b2, dtype=np.int32)  # length N*b2ps
+            degen_b2 = np.ones(num_b2, dtype=np.int32)  # length N*b2ps
 
         # my definition: Bonds defined by two hopping steps
         # Keep track of intermediate point!
@@ -495,6 +536,8 @@ def create_1(
                         map_b2b2[j + N * jb, i + N * ib] = kk
                         degen_b2b2[kk] += 1
         assert num_b2b2 == map_b2b2.max() + 1
+        # print(map_b2b2.shape, degen_b2b2.shape)
+        assert np.all(degen_b2b2 == degen_b2b2[0])
 
         # bond 2-bond mapping
         num_bb2 = bps * b2ps * N if trans_sym else num_b * num_b2
@@ -509,6 +552,7 @@ def create_1(
                         map_bb2[j + N * jb, i + N * ib] = kk
                         degen_bb2[kk] += 1
         assert num_bb2 == map_bb2.max() + 1
+        assert np.all(degen_bb2 == degen_bb2[0])
 
         # 2-bond bond mapping
         num_b2b = b2ps * bps * N if trans_sym else num_b2 * num_b
@@ -523,18 +567,35 @@ def create_1(
                         map_b2b[j + N * jb, i + N * ib] = kk
                         degen_b2b[kk] += 1
         assert num_b2b == map_b2b.max() + 1
+        assert np.all(degen_b2b == degen_b2b[0])
 
-        kij, peierls = tight_binding.H_periodic_square(
-            Nx,
-            Ny,
-            t=1,
-            tp=tp,
-            tpp=tpp,
-            nflux=nflux,
-            alpha=1 / 2,
-            twistx=twistx,
-            twisty=twisty,
-        )
+        if bc == 1:
+            kij, peierls = tight_binding.H_periodic_square(
+                Nx,
+                Ny,
+                t=1,
+                tp=tp,
+                tpp=tpp,
+                nflux=nflux,
+                alpha=1 / 2,
+                twistx=twistx,
+                twisty=twisty,
+            )
+        elif bc == 2:
+            kij, peierls = tight_binding.H_open_square(
+                Nx,
+                Ny,
+                t=1,
+                tp=tp,
+                tpp=tpp,
+                nflux=nflux,
+                alpha=1 / 2,
+                twistx=twistx,
+                twisty=twisty,
+            )
+        else:
+            raise ValueError("Invalid bc choice, must be 1 for periodic or 2 for open")
+
         # phases accumulated by two-hop processes
         # Here: types 0,1 include t' factors
         #   Types 2-7: sum of two paths
@@ -604,6 +665,10 @@ def create_1(
         num_b = bps * N  # total bonds in cluster
         bonds = np.zeros((2, num_b), dtype=np.int32)
 
+        # 1 bond mapping NOTE: placeholder
+        map_b = np.zeros(num_b, dtype=np.int32)  # N*bps
+        degen_b = np.zeros(num_b, dtype=np.int32)  # length N*bps
+
         # 1 bond 1 site mapping NOTE: placeholder
         map_bs = np.zeros((N, num_b), dtype=np.int32)
         num_bs = bps * N if trans_sym else num_b * N
@@ -620,6 +685,10 @@ def create_1(
         b2ps = 12 if tp != 0.0 else 4  # 2-bonds per site
         num_b2 = b2ps * N  # total 2-bonds in cluster
         bond2s = np.zeros((2, num_b2), dtype=np.int32)
+
+        # 2 bond mapping NOTE: placeholder
+        map_b2 = np.zeros(num_b2, dtype=np.int32)  # N*b2ps
+        degen_b2 = np.zeros(num_b2, dtype=np.int32)  # length N*b2ps
 
         # my definition: Bonds defined by two hopping steps
         # NOTE: placeholder
@@ -685,6 +754,10 @@ def create_1(
         num_b = bps * Nx * Ny  # total bonds in cluster
         bonds = np.zeros((2, num_b), dtype=np.int32)
 
+        # 1 bond mapping NOTE: placeholder
+        map_b = np.zeros(num_b, dtype=np.int32)  # N*bps
+        degen_b = np.zeros(num_b, dtype=np.int32)  # length N*bps
+
         # 1 bond 1 site mapping NOTE: placeholder
         map_bs = np.zeros((N, num_b), dtype=np.int32)
         num_bs = bps * N if trans_sym else num_b * N
@@ -701,6 +774,10 @@ def create_1(
         b2ps = 12 if tp != 0.0 else 4  # 2-bonds per site
         num_b2 = b2ps * N  # total 2-bonds in cluster
         bond2s = np.zeros((2, num_b2), dtype=np.int32)
+
+        # 2 bond mapping NOTE: placeholder
+        map_b2 = np.zeros(num_b2, dtype=np.int32)  # N*b2ps
+        degen_b2 = np.zeros(num_b2, dtype=np.int32)  # length N*b2ps
 
         # my definition: Bonds defined by two hopping steps
         # NOTE: placeholder
@@ -783,6 +860,10 @@ def create_1(
         num_b = bps * N  # total bonds in cluster
         bonds = np.zeros((2, num_b), dtype=np.int32)
 
+        # 1 bond mapping NOTE: placeholder
+        map_b = np.zeros(num_b, dtype=np.int32)  # N*bps
+        degen_b = np.zeros(num_b, dtype=np.int32)  # length N*bps
+
         # 1 bond 1 site mapping NOTE: placeholder
         map_bs = np.zeros((N, num_b), dtype=np.int32)
         num_bs = bps * N if trans_sym else num_b * N
@@ -799,6 +880,10 @@ def create_1(
         b2ps = 12 if tp != 0.0 else 4  # 2-bonds per site
         num_b2 = b2ps * N  # total 2-bonds in cluster
         bond2s = np.zeros((2, num_b2), dtype=np.int32)
+
+        # 2 bond mapping NOTE: placeholder
+        map_b2 = np.zeros(num_b2, dtype=np.int32)  # N*b2ps
+        degen_b2 = np.zeros(num_b2, dtype=np.int32)  # length N*b2ps
 
         # my definition: Bonds defined by two hopping steps
         # NOTE: placeholder
@@ -885,6 +970,7 @@ def create_1(
         f["metadata"]["beta"] = L * dt
         f["metadata"]["trans_sym"] = trans_sym
         f["metadata"]["geometry"] = geometry
+        f["metadata"]["bc"] = bc
 
         # parameters used by dqmc code
         f.create_group("params")
@@ -897,8 +983,10 @@ def create_1(
         f["params"]["bond2s"] = bond2s
         f["params"]["plaqs"] = plaqs
         f["params"]["map_plaq"] = map_plaq
+        f["params"]["map_b"] = map_b
         f["params"]["map_bs"] = map_bs
         f["params"]["map_bb"] = map_bb
+        f["params"]["map_b2"] = map_b2
         f["params"]["map_b2b"] = map_b2b
         f["params"]["map_bb2"] = map_bb2
         f["params"]["map_b2b2"] = map_b2b2
@@ -926,6 +1014,7 @@ def create_1(
         f["params"]["meas_energy_corr"] = meas_energy_corr
         f["params"]["meas_nematic_corr"] = meas_nematic_corr
         f["params"]["meas_chiral"] = meas_chiral
+        f["params"]["meas_local_JQ"] = meas_local_JQ
         f["params"]["checkpoint_every"] = checkpoint_every
 
         # precalculated stuff
@@ -943,11 +1032,13 @@ def create_1(
         f["params"]["degen_i"] = degen_i
         f["params"]["degen_ij"] = degen_ij
         f["params"]["degen_plaq"] = degen_plaq
+        f["params"]["degen_b"] = degen_b
+        f["params"]["degen_b2"] = degen_b2
         f["params"]["degen_bs"] = degen_bs
-        f["params"]["degen_bb"] = degen_bb
-        f["params"]["degen_bb2"] = degen_bb2
-        f["params"]["degen_b2b"] = degen_b2b
-        f["params"]["degen_b2b2"] = degen_b2b2
+        f["params"]["degen_bb"] = degen_bb[0]
+        f["params"]["degen_bb2"] = degen_bb2[0]
+        f["params"]["degen_b2b"] = degen_b2b[0]
+        f["params"]["degen_b2b2"] = degen_b2b2[0]
         f["params"]["exp_Ku"] = exp_Ku
         f["params"]["exp_Kd"] = exp_Kd
         f["params"]["inv_exp_Ku"] = inv_exp_Ku
@@ -1000,6 +1091,11 @@ def create_1(
             f["meas_eqlt"]["kn"] = np.zeros(num_bs, dtype=dtype_num)
             f["meas_eqlt"]["vv"] = np.zeros(num_ij, dtype=dtype_num)
             f["meas_eqlt"]["vn"] = np.zeros(num_ij, dtype=dtype_num)
+
+        if meas_local_JQ:
+            f["meas_eqlt"]["j"] = np.zeros(num_b, dtype=dtype_num)
+            f["meas_eqlt"]["jn"] = np.zeros(num_b, dtype=dtype_num)
+            f["meas_eqlt"]["j2"] = np.zeros(num_b2, dtype=dtype_num)
 
         if period_uneqlt > 0:
             f.create_group("meas_uneqlt")
@@ -1167,7 +1263,13 @@ if __name__ == "__main__":
         metavar="X",
         help="On-site Hubbard repulsion strength",
     )
-
+    group1.add_argument(
+        "--bc",
+        type=int,
+        default=1,
+        metavar="X",
+        help="Boundary conditions, 1 for periodic, 2 for open",
+    )
     group1.add_argument(
         "--dt",
         type=float,
@@ -1189,7 +1291,6 @@ if __name__ == "__main__":
         metavar="X",
         help="Zeeman field strength. Down electrons feel net (mu+h) chemical potential",
     )
-
     group1.add_argument(
         "--twistx",
         type=float,
@@ -1234,7 +1335,6 @@ if __name__ == "__main__":
         metavar="X",
         help="Whether to print out parameter choices as .h5 files are created.",
     )
-
     group2.add_argument(
         "--overwrite",
         type=int,
@@ -1342,6 +1442,13 @@ if __name__ == "__main__":
         default=0,
         metavar="X",
         help="Whether to measure scalar spin chirality",
+    )
+    group3.add_argument(
+        "--meas_local_JQ",
+        type=int,
+        default=0,
+        metavar="X",
+        help="Whether to measure local JQ for energy magnetization contribution to thermal Hall",
     )
 
     # parser.add_argument

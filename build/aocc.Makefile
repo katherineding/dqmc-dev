@@ -1,11 +1,12 @@
-CC = icx
+CC = clang
 
-CFLAGS = -std=gnu17 -Ofast -g -axCORE-AVX2,CORE-AVX512#-v -Wl,--verbose#-xHost
+CFLAGS = -std=gnu17 -Ofast -g -march=znver3 #-xHost
 CFLAGS += -Wall -Wextra -Wno-unused-variable #-Wno-unused-parameter
 CFLAGS += -DGIT_ID=\"$(shell git rev-parse --short HEAD)\"
 CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
 CFLAGS += -DOMP_MEAS_NUM_THREADS=2
 CFLAGS += -DPROFILE_ENABLE
+CFLAGS += -DGENERIC_LINALG
 CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 CFLAGS += -fopenmp  # to disable openmp, use -qopenmp-stubs
 
@@ -14,18 +15,9 @@ CFLAGS += -I/usr/include/hdf5/serial/
 LDFLAGS = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/
 LDFLAGS += -lhdf5 -lhdf5_hl 
 
-#CFLAGS += -I/home/jxding/miniconda3/include/
-#LDFLAGS += -L/home/jxding/miniconda3/lib/
-#LDFLAGS += -lhdf5 -lhdf5_hl 
-
-# these lines are not necessary after running ICX setvars.sh, which sets
-# $CPATH and $LD_LIBRARY_PATH
-# CFLAGS += -I${MKLROOT}/include
-# LDFLAGS += -L${MKLROOT}/lib/intel64
-
-# sequential version of MKL
-CFLAGS += -DMKL_DIRECT_CALL_SEQ #-Wno-ignored-pragmas
-LDFLAGS += -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
+LDFLAGS += -lamdlibm -fsclrlib=AMDLIBM -lamdlibmfast -lm -lopenblas
+# LDFLAGS += -lblis -lpthread -lflame
+#LDFLAGS += -Wl,--verbose
 
 #multithreaded version of MKL
 # CFLAGS += -DMKL_DIRECT_CALL #-Wno-ignored-pragmas

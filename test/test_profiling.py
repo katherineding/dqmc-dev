@@ -24,7 +24,7 @@ meas_chiral = 1
 
 
 # valid options for folder names
-branches_list = ["master", "perlmt-cpu", "perlmt-gpu"]
+branches_list = ["master", "perlmt-gpu"]
 hosts_list = ["sherlock", "home", "laptop", "perlmt"]
 compilers_list = ["icx", "icc", "gcc", "nvc"]
 libs_list = ["imkl", "openblas", "libsci"]
