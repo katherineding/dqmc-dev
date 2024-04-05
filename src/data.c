@@ -119,7 +119,7 @@ int get_memory_req(const char *file) {
 	// These params are used in sim_data mem allocation
 	int N, L, num_i, num_ij,
 		num_b, num_b2, num_bs, num_bb, num_b2b, num_bb2, num_b2b2,
-		num_plaq_accum, num_plaq;
+		num_plaq_accum, num_b_accum, num_b2_accum, num_plaq;
 	int period_uneqlt, meas_bond_corr,meas_thermal,meas_2bond_corr,
 		meas_energy_corr, meas_nematic_corr, meas_chiral, meas_local_JQ;
 
@@ -128,8 +128,8 @@ int get_memory_req(const char *file) {
 	my_read(_int, "/params/num_i",    &num_i);
 	my_read(_int, "/params/num_ij",   &num_ij);
 	my_read(_int, "/params/num_plaq_accum",   &num_plaq_accum);
-	my_read(_int, "/params/num_b_accum",  &sim->p.num_b_accum);
-	my_read(_int, "/params/num_b2_accum",  &sim->p.num_b2_accum);
+	my_read(_int, "/params/num_b_accum",  &num_b_accum);
+	my_read(_int, "/params/num_b2_accum",  &num_b2_accum);
 	my_read(_int, "/params/num_plaq",   &num_plaq);
 	my_read(_int, "/params/num_b",    &num_b);
 	my_read(_int, "/params/num_b2",   &num_b2);
