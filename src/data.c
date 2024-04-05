@@ -128,6 +128,8 @@ int get_memory_req(const char *file) {
 	my_read(_int, "/params/num_i",    &num_i);
 	my_read(_int, "/params/num_ij",   &num_ij);
 	my_read(_int, "/params/num_plaq_accum",   &num_plaq_accum);
+	my_read(_int, "/params/num_b_accum",  &sim->p.num_b_accum);
+	my_read(_int, "/params/num_b2_accum",  &sim->p.num_b2_accum);
 	my_read(_int, "/params/num_plaq",   &num_plaq);
 	my_read(_int, "/params/num_b",    &num_b);
 	my_read(_int, "/params/num_b2",   &num_b2);
@@ -153,6 +155,8 @@ int get_memory_req(const char *file) {
 		+ num_b2*2  * sizeof(int)
 		+ num_plaq*3* sizeof(int)
 		+ num_plaq  * sizeof(int)
+		+ num_b  * sizeof(int)
+		+ num_b2  * sizeof(int)
 		+ num_b*N  * sizeof(int)
 		+ num_b*num_b * sizeof(int)
 		+ num_b2*num_b2 * sizeof(int)
@@ -164,14 +168,6 @@ int get_memory_req(const char *file) {
 		+ num_b2 * sizeof(num)
 		+ num_b2 * sizeof(num)
 		+ num_b2 * sizeof(num)
-		+ num_i    * sizeof(int)
-		+ num_plaq_accum   * sizeof(int)
-		+ num_ij   * sizeof(int)
-		+ num_bs   * sizeof(int)
-		+ 1   * sizeof(int)
-		+ 1   * sizeof(int)
-		+ 1   * sizeof(int)
-		+ 1   * sizeof(int)
 		+ N*N*8    * sizeof(num)
 		+ N*2      * sizeof(double)
 		+ N*2      * sizeof(double)
@@ -191,9 +187,9 @@ int get_memory_req(const char *file) {
 	}
 	if (meas_local_JQ) {
 		sim_alloc_in_bytes +=
-			+ num_b  * sizeof(num)
-			+ num_b  * sizeof(num)
-			+ num_b2 * sizeof(num);
+			+ num_b_accum  * sizeof(num)
+			+ num_b_accum  * sizeof(num)
+			+ num_b2_accum * sizeof(num);
 	}
 	if (period_uneqlt > 0) {
 		sim_alloc_in_bytes +=
@@ -340,6 +336,8 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	my_read(_int, "/params/num_i",  &sim->p.num_i);
 	my_read(_int, "/params/num_ij", &sim->p.num_ij);
 	my_read(_int, "/params/num_plaq_accum",  &sim->p.num_plaq_accum);
+	my_read(_int, "/params/num_b_accum",  &sim->p.num_b_accum);
+	my_read(_int, "/params/num_b2_accum",  &sim->p.num_b2_accum);
 	my_read(_int, "/params/num_plaq",&sim->p.num_plaq);
 	my_read(_int, "/params/num_b", &sim->p.num_b);
 	my_read(_int, "/params/num_b2", &sim->p.num_b2);
@@ -348,6 +346,18 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	my_read(_int, "/params/num_b2b", &sim->p.num_b2b);
 	my_read(_int, "/params/num_bb2", &sim->p.num_bb2);
 	my_read(_int, "/params/num_b2b2", &sim->p.num_b2b2);
+
+	my_read(_int, "/params/degen_i",&sim->p.degen_i);
+	my_read(_int, "/params/degen_ij",&sim->p.degen_ij);
+	my_read(_int, "/params/degen_plaq",&sim->p.degen_plaq);
+	my_read(_int, "/params/degen_b", &sim->p.degen_b);
+	my_read(_int, "/params/degen_b2", &sim->p.degen_b2);
+	my_read(_int, "/params/degen_bs", &sim->p.degen_bs);
+	my_read(_int, "/params/degen_bb", &sim->p.degen_bb);
+	my_read(_int, "/params/degen_b2b", &sim->p.degen_b2b);
+	my_read(_int, "/params/degen_bb2", &sim->p.degen_bb2);
+	my_read(_int, "/params/degen_b2b2", &sim->p.degen_b2b2);
+
 	my_read(_int, "/params/period_uneqlt", &sim->p.period_uneqlt);
 	my_read(_int, "/params/meas_bond_corr", &sim->p.meas_bond_corr);
 	my_read(_int, "/params/meas_thermal", &sim->p.meas_thermal);
@@ -361,6 +371,8 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	const int N = sim->p.N, L = sim->p.L;
 	const int num_i = sim->p.num_i, num_ij = sim->p.num_ij;
 	const int num_plaq_accum = sim->p.num_plaq_accum;
+	const int num_b_accum    = sim->p.num_b_accum;
+	const int num_b2_accum   = sim->p.num_b2_accum;
 	const int num_plaq       = sim->p.num_plaq;
 	const int num_b = sim->p.num_b, num_bs = sim->p.num_bs, num_bb = sim->p.num_bb;
 	const int num_b2 = sim->p.num_b2, num_b2b2 = sim->p.num_b2b2, 
@@ -386,16 +398,6 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	sim->p.pp_d      = my_calloc(num_b2 * sizeof(num));
 	sim->p.ppr_u      = my_calloc(num_b2 * sizeof(num));
 	sim->p.ppr_d      = my_calloc(num_b2 * sizeof(num));
-	sim->p.degen_i       = my_calloc(num_i    * sizeof(int));
-	sim->p.degen_plaq    = my_calloc(num_plaq_accum * sizeof(int));
-	sim->p.degen_ij      = my_calloc(num_ij   * sizeof(int));
-	sim->p.degen_b      = my_calloc(num_b   * sizeof(int));
-	sim->p.degen_b2      = my_calloc(num_b2   * sizeof(int));
-	sim->p.degen_bs      = my_calloc(num_bs   * sizeof(int));
-	sim->p.degen_bb      = my_calloc(1   * sizeof(int));
-	sim->p.degen_b2b2    = my_calloc(1   * sizeof(int));
-	sim->p.degen_b2b    = my_calloc(1   * sizeof(int));
-	sim->p.degen_bb2    = my_calloc(1   * sizeof(int));
 	sim->p.exp_Ku        = my_calloc(N*N      * sizeof(num));
 	sim->p.exp_Kd        = my_calloc(N*N      * sizeof(num));
 	sim->p.inv_exp_Ku    = my_calloc(N*N      * sizeof(num));
@@ -429,9 +431,9 @@ int sim_data_read_alloc(struct sim_data *sim) {
 		sim->m_eq.vn = my_calloc(num_ij * sizeof(num));
 	}
 	if (sim->p.meas_local_JQ) {
-		sim->m_eq.j   = my_calloc(num_b  * sizeof(num));
-		sim->m_eq.jn  = my_calloc(num_b  * sizeof(num));
-		sim->m_eq.j2  = my_calloc(num_b2 * sizeof(num));
+		sim->m_eq.j   = my_calloc(num_b_accum  * sizeof(num));
+		sim->m_eq.jn  = my_calloc(num_b_accum  * sizeof(num));
+		sim->m_eq.j2  = my_calloc(num_b2_accum * sizeof(num));
 	}
 	if (sim->p.period_uneqlt > 0) {
 		sim->m_ue.gt0     = my_calloc(num_ij*L * sizeof(num));
@@ -502,16 +504,6 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	my_read(_int,    "/params/n_sweep_warm",  &sim->p.n_sweep_warm);
 	my_read(_int,    "/params/n_sweep_meas",  &sim->p.n_sweep_meas);
 	my_read(_int,    "/params/period_eqlt",   &sim->p.period_eqlt);
-	my_read(_int,    "/params/degen_i",        sim->p.degen_i);
-	my_read(_int,    "/params/degen_ij",       sim->p.degen_ij);
-	my_read(_int,    "/params/degen_plaq",     sim->p.degen_plaq);
-	my_read(_int,    "/params/degen_bs",       sim->p.degen_bs);
-	my_read(_int,    "/params/degen_bb",       sim->p.degen_bb);
-	my_read(_int,    "/params/degen_b",       sim->p.degen_b);
-	my_read(_int,    "/params/degen_b2",       sim->p.degen_b2);
-	my_read(_int,    "/params/degen_b2b",       sim->p.degen_b2b);
-	my_read(_int,    "/params/degen_bb2",       sim->p.degen_bb2);
-	my_read(_int,    "/params/degen_b2b2",       sim->p.degen_b2b2);
 	my_read( , "/params/exp_Ku",     num_h5t,   sim->p.exp_Ku);
 	my_read( , "/params/exp_Kd",     num_h5t,   sim->p.exp_Kd);
 	my_read( , "/params/inv_exp_Ku", num_h5t,   sim->p.inv_exp_Ku);
@@ -800,16 +792,6 @@ void sim_data_free(const struct sim_data *sim) {
 	my_free(sim->p.inv_exp_Ku);
 	my_free(sim->p.exp_Kd);
 	my_free(sim->p.exp_Ku);
-	my_free(sim->p.degen_b2b2);
-	my_free(sim->p.degen_bb);
-	my_free(sim->p.degen_b);
-	my_free(sim->p.degen_b2);
-	my_free(sim->p.degen_bb2);
-	my_free(sim->p.degen_b2b);
-	my_free(sim->p.degen_bs);
-	my_free(sim->p.degen_plaq);
-	my_free(sim->p.degen_ij);
-	my_free(sim->p.degen_i);
 	my_free(sim->p.peierlsd);
 	my_free(sim->p.peierlsu);
 	my_free(sim->p.pp_u);

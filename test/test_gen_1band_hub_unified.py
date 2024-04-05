@@ -21,6 +21,7 @@ refhash = "c91ba61"
 
 # This version has bond-dependent uneqlt measurements for square lattice
 # and chiral eqlt measurements for square and triangular
+# Known bugs: honeycomb and kagome bps, num_b, b2ps and num_b2 are just placeholders
 refhash2 = "b535e68"
 
 # @pytest.fixture(scope="session",autouse=True)
@@ -500,10 +501,6 @@ def compare_params(path1, path2):
         "params/num_b",
         "params/num_bs",
         "params/num_bb",
-        "params/degen_i",
-        "params/degen_ij",
-        "params/degen_bs",
-        # "params/degen_bb",
         "params/exp_lambda",
         "params/del",
         "params/F",
@@ -538,10 +535,6 @@ def compare_params(path1, path2):
         "params/num_b",
         "params/num_bs",
         "params/num_bb",
-        "params/degen_i",
-        "params/degen_ij",
-        "params/degen_bs",
-        # "params/degen_bb",
         "params/exp_lambda",
         "params/del",
         "params/F",
@@ -573,7 +566,6 @@ def compare_params_extra(path1, path2):
         "params/num_b2b",
         "params/num_bb2",
         "params/num_b2b2",
-        "params/degen_plaq",
     )
 
     params_c = util.load(
@@ -597,11 +589,54 @@ def compare_params_extra(path1, path2):
         "params/num_b2b",
         "params/num_bb2",
         "params/num_b2b2",
-        "params/degen_plaq",
     )
 
     for i in range(len(params_ref)):
         assert np.allclose(params_ref[i], params_c[i])
+
+
+def compare_params_degen(path1, path2):
+    """Account for degen shape change introduced in ee61ee4"""
+    params_ref = util.load(
+        path1,
+        "params/degen_i",
+        "params/degen_ij",
+        "params/degen_bs",
+        "params/degen_bb",
+    )
+
+    params_c = util.load(
+        path2,
+        "params/degen_i",
+        "params/degen_ij",
+        "params/degen_bs",
+        "params/degen_bb",
+    )
+
+    for i in range(len(params_ref)):
+        assert np.allclose(params_ref[i][:, 0], params_c[i])
+
+
+def compare_params_degen_extra(path1, path2):
+    """Account for degen shape change introduced in ee61ee4"""
+    params_ref = util.load(
+        path1,
+        "params/degen_plaq",
+        "params/degen_bb2",
+        "params/degen_b2b",
+        "params/degen_b2b2",
+    )
+
+    params_c = util.load(
+        path2,
+        "params/degen_plaq",
+        "params/degen_bb2",
+        "params/degen_b2b",
+        "params/degen_b2b2",
+    )
+
+    for i in range(len(params_ref)):
+        assert np.allclose(params_ref[i][:, 0], params_c[i])
 
 
 @pytest.mark.parametrize("nflux", nflux_list)
@@ -627,9 +662,11 @@ def test_square_ref(nflux):
 
     # ========== metadata, params, state ======================
     refpath = src + f"test/ref/{refhash}/{geometry}_nflux{nflux}/"
+    print("reference commit:", refhash)
     compare_state(refpath, "")
     compare_meta(refpath, "")
     compare_params(refpath, "")
+    compare_params_degen(refpath, "")
 
     # ========== measurements ======================
     compare_eqlt_meas(refpath, "")
@@ -651,7 +688,7 @@ def test_ref(geometry, nflux):
     if geometry == "square":
         tp = -0.25
     else:
-        tp=0
+        tp = 0
     ghub.create_batch(
         geometry=geometry,
         seed=seed,
@@ -674,11 +711,14 @@ def test_ref(geometry, nflux):
 
     # ========== metadata, params ======================
     refpath = src + f"test/ref/{refhash2}/{geometry}_nflux{nflux}/"
+    print("reference commit:", refhash2)
     compare_state(refpath, "")
     compare_meta(refpath, "")
     compare_meta_extra(refpath, "")
     compare_params(refpath, "")
     compare_params_extra(refpath, "")
+    compare_params_degen(refpath, "")
+    compare_params_degen_extra(refpath, "")
 
     # ============ measurements ========================
     compare_eqlt_meas(refpath, "")
