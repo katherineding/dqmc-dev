@@ -19,17 +19,6 @@ path = os.path.dirname(os.path.abspath(__file__))
 repo = git.Repo(path, search_parent_directories=True)
 hash_short = repo.git.rev_parse(repo.head, short=True)
 
-
-# Set up geometry-specific parameters
-# FIXME: are plaquettes constrained by requiring nonzero hopping element
-# to connect sites, or can plaquettes be defined for arbitrary 3 sites?
-plaq_per_cell_dict = {}
-plaq_per_cell_dict["square"] = 2  # PLACEHOLDER
-plaq_per_cell_dict["triangular"] = 2
-plaq_per_cell_dict["honeycomb"] = 1  # PLACEHOLDER
-plaq_per_cell_dict["kagome"] = 2  # PLACEHOLDER
-
-
 Norb_per_cell_dict = {}
 Norb_per_cell_dict["square"] = 1
 Norb_per_cell_dict["triangular"] = 1
@@ -99,6 +88,241 @@ def rand_jump(rng):
 
     for j in range(16):
         rng[(np.uint64(j) + rng[16]) & np.uint64(15)] = t[j]
+
+
+# Set up geometry-specific parameters
+# FIXME: are plaquettes constrained by requiring nonzero hopping element
+# to connect sites, or can plaquettes be defined for arbitrary 3 sites?
+plaq_per_cell_dict = {}
+plaq_per_cell_dict["square"] = 2
+plaq_per_cell_dict["triangular"] = 2
+plaq_per_cell_dict["honeycomb"] = 1  # PLACEHOLDER
+plaq_per_cell_dict["kagome"] = 2
+
+
+def plaquette_params(
+    geometry: str, Nx: int, Ny: int, trans_sym: int
+) -> tuple[tuple[int, int, int], np.ndarray, np.ndarray, np.ndarray]:
+    """Geometry specific plaquette parameters. TODO: honeycomb
+    Returns:
+        (plaq_per_cell, num_plaq_total, num_plaq_accum), map_plaq, degen_plaq, plaqs
+    """
+    Ncell = Nx * Ny
+    plaq_per_cell = plaq_per_cell_dict[geometry]
+    num_plaq_total = plaq_per_cell * Ncell
+
+    # per plaquette (per CELL) measurement mapping
+    if trans_sym:
+        map_plaq = np.zeros(num_plaq_total, dtype=np.int32)
+        # translation average for each plaquette type
+        for p in range(plaq_per_cell):
+            map_plaq[Ncell * p : Ncell * (p + 1)] = p
+        degen_plaq = np.full(plaq_per_cell, Ncell, dtype=np.int32)
+    else:
+        map_plaq = np.arange(num_plaq_total, dtype=np.int32)
+        degen_plaq = np.ones(num_plaq_total, dtype=np.int32)
+
+    num_plaq_accum = map_plaq.max() + 1
+    assert num_plaq_accum == degen_plaq.size
+    assert np.all(degen_plaq == degen_plaq[0])
+
+    # plaquette definitions
+    plaqs = np.zeros((3, num_plaq_total), dtype=np.int32)  # NOTE: placeholder
+    if geometry == "square" or geometry == "triangular":
+        # Use same plaquette definition as triangular TODO: check correctness
+        for iy in range(Ny):
+            for ix in range(Nx):
+                i = ix + Nx * iy
+                iy1 = (iy + 1) % Ny
+                ix1 = (ix + 1) % Nx
+                plaqs[0, i] = i  # i0 = i
+                plaqs[1, i] = ix1 + Nx * iy  # i1 = i + x
+                plaqs[2, i] = ix + Nx * iy1  # i2 = i + y // counterclockwise
+                plaqs[0, i + Nx * Ny] = ix1 + Nx * iy  # i0 = i + x
+                plaqs[1, i + Nx * Ny] = ix1 + Nx * iy1  # i1 = i + x + y
+                plaqs[2, i + Nx * Ny] = ix + Nx * iy1  # i2 = i + y //counterclockwise
+    elif geometry == "kagome":
+        # plaquette definitions TODO: check correctness
+        for iy in range(Ny):
+            for ix in range(Nx):
+                i = ix + Nx * iy
+                iy1 = (iy + 1) % Ny
+                ix1 = (ix + 1) % Nx
+                plaqs[0, i] = i  # i0 = i(A)
+                plaqs[1, i] = i + Nx * Ny * 2  # i1 = i(C)
+                plaqs[2, i] = i + Nx * Ny * 1  # i2 = i(B) // counterclockwise
+                plaqs[0, i + Nx * Ny] = i  # i0 = i(A)
+                plaqs[1, i + Nx * Ny] = ix1 + Nx * iy + Nx * Ny * 2  # i1 = i+x(C)
+                plaqs[2, i + Nx * Ny] = (
+                    ix + Nx * iy1 + Nx * Ny * 1
+                )  # i2 = i+y(B) //counterclockwise
+    else:
+        print(
+            f"WARN: using placeholder {sys._getframe().f_code.co_name} for {geometry}"
+        )
+
+    return (plaq_per_cell, num_plaq_total, num_plaq_accum), map_plaq, degen_plaq, plaqs
+
+
+def bond_params(
+    geometry: str, Nx: int, Ny: int, tp: float, tpp: float, trans_sym: int
+) -> tuple[tuple[int, int, int], np.ndarray, np.ndarray, np.ndarray]:
+    """Geometry specific 1-bond parameters TODO: triangular, honeycomb, kagome
+    TODO: tpp != 0 for all
+    Probably want to eventually get bond params correct for triangular, honeycomb, kagome
+    Returns:
+        (bps, num_b, num_b_accum), map_b, degen_b, bonds
+    """
+    N = Nx * Ny * Norb_per_cell_dict[geometry]
+    if tpp != 0.0:
+        raise NotImplementedError
+
+    # 1-bonds per site
+    if geometry == "square":
+        bps = 4 if tp != 0.0 else 2  # OK
+    elif geometry == "triangular":
+        bps = 6 if tp != 0.0 else 3  # OK
+    elif geometry == "honeycomb":
+        bps = 6 if tp != 0.0 else 3  # CHECK
+    elif geometry == "kagome":
+        bps = 8 if tp != 0 else 4  # CHECK
+    else:
+        raise NotImplementedError
+    num_b = bps * N  # total bonds in cluster
+
+    # per 1-bond (per SITE) measurement mapping
+    if trans_sym:
+        map_b = np.tile(np.arange(bps, dtype=np.int32), (N, 1)).T.flatten()  # N*bps
+        degen_b = np.full(bps, N, dtype=np.int32)
+    else:
+        map_b = np.arange(num_b, dtype=np.int32)  # N*bps
+        degen_b = np.ones(num_b, dtype=np.int32)  # length N*bps
+    num_b_accum = map_b.max() + 1
+    assert num_b_accum == degen_b.size
+    assert np.all(degen_b == degen_b[0])
+
+    # bond definitions: defined by one hopping step
+    bonds = np.zeros((2, num_b), dtype=np.int32)  # NOTE: placeholder
+    if geometry == "square":
+        for iy in range(Ny):
+            for ix in range(Nx):
+                i = ix + Nx * iy
+                iy1 = (iy + 1) % Ny
+                ix1 = (ix + 1) % Nx
+                bonds[0, i] = i  # i0 = i
+                bonds[1, i] = ix1 + Nx * iy  # i1 = i + x
+                bonds[0, i + N] = i  # i0 = i
+                bonds[1, i + N] = ix + Nx * iy1  # i1 = i + y
+                if bps == 4:
+                    bonds[0, i + 2 * N] = i  # i0 = i
+                    bonds[1, i + 2 * N] = ix1 + Nx * iy1  # i1 = i + x + y
+                    bonds[0, i + 3 * N] = ix1 + Nx * iy  # i0 = i + x
+                    bonds[1, i + 3 * N] = ix + Nx * iy1  # i1 = i + y
+    else:
+        print(
+            f"WARN: using placeholder {sys._getframe().f_code.co_name} for {geometry}"
+        )
+
+    return (bps, num_b, num_b_accum), map_b, degen_b, bonds
+
+
+def bond2_params(
+    geometry: str, Nx: int, Ny: int, tp: float, tpp: float, trans_sym: int
+) -> tuple[tuple[int, int, int], np.ndarray, np.ndarray, np.ndarray]:
+    """Geometry specific 1-bond parameters TODO: triangular, honeycomb, kagome
+    TODO: tpp != 0 for all
+    Returns:
+        (bps, num_b, num_b_accum), map_b, degen_b, bonds
+    """
+    N = Nx * Ny * Norb_per_cell_dict[geometry]
+    if tpp != 0.0:
+        raise NotImplementedError
+
+    # 2-bonds per site
+    if geometry == "square":
+        b2ps = 12 if tp != 0.0 else 4  # OK
+    elif geometry == "triangular":
+        b2ps = 12 if tp != 0.0 else 4  # probably wrong
+    elif geometry == "honeycomb":
+        b2ps = 12 if tp != 0.0 else 4  # probably wrong
+    elif geometry == "kagome":
+        b2ps = 12 if tp != 0.0 else 4  # probably wrong
+    else:
+        raise NotImplementedError
+    num_b2 = b2ps * N  # total 2-bonds in cluster
+
+    # per 2-bond (per SITE) measurement mapping
+    if trans_sym:
+        map_b2 = np.tile(
+            np.arange(b2ps, dtype=np.int32), (N, 1)
+        ).T.flatten()  # length N*b2ps
+        degen_b2 = np.full(b2ps, N, dtype=np.int32)
+    else:
+        map_b2 = np.arange(num_b2, dtype=np.int32)  # length N*b2ps
+        degen_b2 = np.ones(num_b2, dtype=np.int32)  # length N*b2ps
+    num_b2_accum = map_b2.max() + 1
+    assert num_b2_accum == degen_b2.size
+    assert np.all(degen_b2 == degen_b2[0])
+
+    bond2s = np.zeros((2, num_b2), dtype=np.int32)  # NOTE: placeholder
+    if geometry == "square":
+        # 2-bond definition is modified -- NOT consistent with Wen's!
+        # Now only bonds defined by two hopping steps.
+        for iy in range(Ny):
+            for ix in range(Nx):
+                i = ix + Nx * iy
+                iy1 = (iy + 1) % Ny
+                ix1 = (ix + 1) % Nx
+                iy2 = (iy + 2) % Ny
+                ix2 = (ix + 2) % Nx
+                # one t^2 path + two t'^2 paths [0,22,23]
+                bond2s[0, i + 0 * N] = i  # i0 = i
+                bond2s[1, i + 0 * N] = ix2 + Nx * iy  # i1 = i + 2x   -- /\ \/
+                # one t^2 path + two t'^2 paths [1,24,25]
+                bond2s[0, i + 1 * N] = i  # i0 = i       |  /  \
+                bond2s[1, i + 1 * N] = ix + Nx * iy2  # i1 = i + 2y  |  \  /
+                # two t^2 paths [2,3]
+                bond2s[0, i + 2 * N] = i  # i0 = i          _|   _
+                bond2s[1, i + 2 * N] = ix1 + Nx * iy1  # i1 = i + x + y      |
+                # two t^2 paths [4,5]
+                bond2s[0, i + 3 * N] = ix1 + Nx * iy  # i0 = i + x     _
+                bond2s[1, i + 3 * N] = ix + Nx * iy1  # i1 = i + y      |  |_
+                if b2ps == 12:
+                    # two t't paths [6,7]
+                    bond2s[0, i + 4 * N] = i  # i0 = i              _
+                    bond2s[1, i + 4 * N] = ix2 + Nx * iy1  # i1 = i + 2x + y _/ /
+                    # two t't paths [8,9]
+                    bond2s[0, i + 5 * N] = i  # i0 = i           |   /
+                    bond2s[1, i + 5 * N] = ix1 + Nx * iy2  # i1 = i + x + 2y /   |
+                    # two t't paths [10,11]
+                    bond2s[0, i + 6 * N] = ix2 + Nx * iy  # i0 = i + 2x _
+                    bond2s[1, i + 6 * N] = ix + Nx * iy1  # i1 = i + y   \  \_
+                    # two t't paths [12,13]
+                    bond2s[0, i + 7 * N] = ix1 + Nx * iy  # i0 = i + x   |   \
+                    bond2s[1, i + 7 * N] = ix + Nx * iy2  # i1 = i + 2y   \   |
+                    # four t't paths [14,15,16,17]
+                    bond2s[0, i + 8 * N] = i  # i0 = i      _  _   \  /
+                    bond2s[1, i + 8 * N] = ix + Nx * iy1  # i1 = i + y  /  \   -  -
+                    # four t't paths [18,19,20,21]
+                    bond2s[0, i + 9 * N] = i  # i0 = i      |\ /| \| |/
+                    bond2s[1, i + 9 * N] = ix1 + Nx * iy  # i1 = i + x
+                    # one t'^2 path [26]
+                    bond2s[0, i + 10 * N] = i  # i0 = i             /
+                    bond2s[1, i + 10 * N] = ix2 + Nx * iy2  # i1 = i + 2x + 2y  /
+                    # one t'^2 path [27]
+                    bond2s[0, i + 11 * N] = ix2 + Nx * iy  # i0 = i + 2x   \
+                    bond2s[1, i + 11 * N] = ix + Nx * iy2  # i1 = i + 2y    \
+    else:
+        print(
+            f"WARN: using placeholder {sys._getframe().f_code.co_name} for {geometry}"
+        )
+
+    return (
+        (b2ps, num_b2, num_b2_accum),
+        map_b2,
+        degen_b2,
+        bond2s,
+    )
 
 
 def create_1(
@@ -177,32 +401,34 @@ def create_1(
         degen_i = np.ones(N, dtype=np.int32)
     num_i = map_i.max() + 1
     assert num_i == degen_i.size
+    assert np.all(degen_i == degen_i[0])
 
-    # print("num",num_i)
-    # print("degen",degen_i)
-    # print("map",map_i)
-
-    plaq_per_cell = plaq_per_cell_dict[geometry]
-    num_plaq_total = plaq_per_cell * Nx * Ny
-    # plaquette definitions
-    plaqs = np.zeros((3, num_plaq_total), dtype=np.int32)  # NOTE: placeholder
-
+    # ------------------------------------------------------
     # per plaquette (per site) measurement mapping
-    if trans_sym:
-        map_plaq = np.zeros(num_plaq_total, dtype=np.int32)
-        # translation average for each plaquette type
-        for p in range(plaq_per_cell):
-            map_plaq[Ncell * p : Ncell * (p + 1)] = p
-        degen_plaq = np.full(plaq_per_cell, Ncell, dtype=np.int32)
-    else:
-        map_plaq = np.arange(num_plaq_total, dtype=np.int32)
-        degen_plaq = np.ones(num_plaq_total, dtype=np.int32)
+    (
+        (plaq_per_cell, num_plaq_total, num_plaq_accum),
+        map_plaq,
+        degen_plaq,
+        plaqs,
+    ) = plaquette_params(geometry, Nx, Ny, trans_sym)
 
-    num_plaq_accum = map_plaq.max() + 1
-    # print("plaq_per_cell",plaq_per_cell)
-    # print("num_plaq_total",num_plaq_total)
-    # print("degen",degen_plaq)
-    # print("map",map_plaq)
+    # ------------------------------------------------------
+    # per bond (per site) measurement mapping
+    (
+        (bps, num_b, num_b_accum),
+        map_b,
+        degen_b,
+        bonds,
+    ) = bond_params(geometry, Nx, Ny, tp, tpp, trans_sym)
+
+    # ------------------------------------------------------
+    # per 2-bond (per site) measurement mapping
+    (
+        (b2ps, num_b2, num_b2_accum),
+        map_b2,
+        degen_b2,
+        bond2s,
+    ) = bond2_params(geometry, Nx, Ny, tp, tpp, trans_sym)
 
     # placeholder until other boundaries implemented for non square lattices
     if (bc != 1) and (geometry != "square"):
@@ -218,19 +444,6 @@ def create_1(
         trans_sym = 0
 
     if geometry == "square":
-        # Use same plaquette definition as triangular TODO: check correctness
-        for iy in range(Ny):
-            for ix in range(Nx):
-                i = ix + Nx * iy
-                iy1 = (iy + 1) % Ny
-                ix1 = (ix + 1) % Nx
-                plaqs[0, i] = i  # i0 = i
-                plaqs[1, i] = ix1 + Nx * iy  # i1 = i + x
-                plaqs[2, i] = ix + Nx * iy1  # i2 = i + y // counterclockwise
-                plaqs[0, i + Nx * Ny] = ix1 + Nx * iy  # i0 = i + x
-                plaqs[1, i + Nx * Ny] = ix1 + Nx * iy1  # i1 = i + x + y
-                plaqs[2, i + Nx * Ny] = ix + Nx * iy1  # i2 = i + y //counterclockwise
-
         # 2 site mapping: site r = (x,y) has total (column order) index x + Nx * y
         map_ij = np.zeros((N, N), dtype=np.int32)
         num_ij = N if trans_sym else N * N
@@ -247,38 +460,8 @@ def create_1(
                             k = (ix + Nx * iy) + N * (jx + Nx * jy)
                         map_ij[jx + Nx * jy, ix + Nx * iy] = k
                         degen_ij[k] += 1
-        assert num_ij == map_ij.max() + 1
-
-        # bond definitions: defined by one hopping step
-        bps = 4 if tp != 0.0 else 2  # bonds per site
-        num_b = bps * N  # total bonds in cluster
-        bonds = np.zeros((2, num_b), dtype=np.int32)
-        for iy in range(Ny):
-            for ix in range(Nx):
-                i = ix + Nx * iy
-                iy1 = (iy + 1) % Ny
-                ix1 = (ix + 1) % Nx
-                bonds[0, i] = i  # i0 = i
-                bonds[1, i] = ix1 + Nx * iy  # i1 = i + x
-                bonds[0, i + N] = i  # i0 = i
-                bonds[1, i + N] = ix + Nx * iy1  # i1 = i + y
-                if bps == 4:
-                    bonds[0, i + 2 * N] = i  # i0 = i
-                    bonds[1, i + 2 * N] = ix1 + Nx * iy1  # i1 = i + x + y
-                    bonds[0, i + 3 * N] = ix1 + Nx * iy  # i0 = i + x
-                    bonds[1, i + 3 * N] = ix + Nx * iy1  # i1 = i + y
-
-        # 1 bond mapping
-        if trans_sym:
-            # maps bond to degenerate bond type
-            # note that map_b only maps to the first four elements of degen_b, but for
-            # the sake of not having to define a new num_b vairable and allocating different amounts of
-            # memory for degen_b in data.c, I'm making degen_b the same size
-            map_b = np.tile(np.arange(bps, dtype=np.int32), (N, 1)).T.flatten()  # N*bps
-            degen_b = np.ones(num_b, dtype=np.int32) * N  # length N*bps
-        else:
-            map_b = np.arange(num_b, dtype=np.int32)  # N*bps
-            degen_b = np.ones(num_b, dtype=np.int32)  # length N*bps
+        assert num_ij == map_ij.max() + 1 == degen_ij.size
+        assert np.all(degen_ij == degen_ij[0])
 
         # 1 bond 1 site mapping
         # Translated to fortran order: [j,istuff] -> [istuff + num_b * j] -> [istuff,j]
@@ -292,7 +475,8 @@ def create_1(
                     kk = k + num_ij * ib
                     map_bs[j, i + N * ib] = kk
                     degen_bs[kk] += 1
-        assert num_bs == map_bs.max() + 1
+        assert num_bs == map_bs.max() + 1 == degen_bs.size
+        assert np.all(degen_bs == degen_bs[0])
 
         # 1 bond - 1 bond mapping
         # Translated to Fortran order: [jstuff ,istuff] -> [istuff + num_b * jstuff] -> [istuff,jstuff]
@@ -307,71 +491,8 @@ def create_1(
                         kk = k + num_ij * (ib + bps * jb)
                         map_bb[j + N * jb, i + N * ib] = kk
                         degen_bb[kk] += 1
-        assert num_bb == map_bb.max() + 1
+        assert num_bb == map_bb.max() + 1 == degen_bb.size
         assert np.all(degen_bb == degen_bb[0])
-
-        # 2-bond definition is modified -- NOT consistent with Wen's!
-        # Now only bonds defined by two hopping steps.
-        b2ps = 12 if tp != 0.0 else 4  # 2-bonds per site
-        num_b2 = b2ps * N  # total 2-bonds in cluster
-        bond2s = np.zeros((2, num_b2), dtype=np.int32)
-        for iy in range(Ny):
-            for ix in range(Nx):
-                i = ix + Nx * iy
-                iy1 = (iy + 1) % Ny
-                ix1 = (ix + 1) % Nx
-                iy2 = (iy + 2) % Ny
-                ix2 = (ix + 2) % Nx
-                # one t^2 path + two t'^2 paths [0,22,23]
-                bond2s[0, i + 0 * N] = i  # i0 = i
-                bond2s[1, i + 0 * N] = ix2 + Nx * iy  # i1 = i + 2x   -- /\ \/
-                # one t^2 path + two t'^2 paths [1,24,25]
-                bond2s[0, i + 1 * N] = i  # i0 = i       |  /  \
-                bond2s[1, i + 1 * N] = ix + Nx * iy2  # i1 = i + 2y  |  \  /
-                # two t^2 paths [2,3]
-                bond2s[0, i + 2 * N] = i  # i0 = i          _|   _
-                bond2s[1, i + 2 * N] = ix1 + Nx * iy1  # i1 = i + x + y      |
-                # two t^2 paths [4,5]
-                bond2s[0, i + 3 * N] = ix1 + Nx * iy  # i0 = i + x     _
-                bond2s[1, i + 3 * N] = ix + Nx * iy1  # i1 = i + y      |  |_
-                if b2ps == 12:
-                    # two t't paths [6,7]
-                    bond2s[0, i + 4 * N] = i  # i0 = i              _
-                    bond2s[1, i + 4 * N] = ix2 + Nx * iy1  # i1 = i + 2x + y _/ /
-                    # two t't paths [8,9]
-                    bond2s[0, i + 5 * N] = i  # i0 = i           |   /
-                    bond2s[1, i + 5 * N] = ix1 + Nx * iy2  # i1 = i + x + 2y /   |
-                    # two t't paths [10,11]
-                    bond2s[0, i + 6 * N] = ix2 + Nx * iy  # i0 = i + 2x _
-                    bond2s[1, i + 6 * N] = ix + Nx * iy1  # i1 = i + y   \  \_
-                    # two t't paths [12,13]
-                    bond2s[0, i + 7 * N] = ix1 + Nx * iy  # i0 = i + x   |   \
-                    bond2s[1, i + 7 * N] = ix + Nx * iy2  # i1 = i + 2y   \   |
-                    # four t't paths [14,15,16,17]
-                    bond2s[0, i + 8 * N] = i  # i0 = i      _  _   \  /
-                    bond2s[1, i + 8 * N] = ix + Nx * iy1  # i1 = i + y  /  \   -  -
-                    # four t't paths [18,19,20,21]
-                    bond2s[0, i + 9 * N] = i  # i0 = i      |\ /| \| |/
-                    bond2s[1, i + 9 * N] = ix1 + Nx * iy  # i1 = i + x
-                    # one t'^2 path [26]
-                    bond2s[0, i + 10 * N] = i  # i0 = i             /
-                    bond2s[1, i + 10 * N] = ix2 + Nx * iy2  # i1 = i + 2x + 2y  /
-                    # one t'^2 path [27]
-                    bond2s[0, i + 11 * N] = ix2 + Nx * iy  # i0 = i + 2x   \
-                    bond2s[1, i + 11 * N] = ix + Nx * iy2  # i1 = i + 2y    \
-
-        # 2 bond mapping
-        if trans_sym:
-            # note that map_b only maps to the first four elements of degen_b, but for
-            # the sake of not having to define a new num_b vairable and allocating different amounts of
-            # memory for degen_b in data.c, I'm making degen_b the same size
-            map_b2 = np.tile(
-                np.arange(b2ps, dtype=np.int32), (N, 1)
-            ).T.flatten()  # length N*b2ps
-            degen_b2 = np.ones(num_b2, dtype=np.int32) * N  # length N*b2ps
-        else:
-            map_b2 = np.arange(num_b2, dtype=np.int32)  # length N*b2ps
-            degen_b2 = np.ones(num_b2, dtype=np.int32)  # length N*b2ps
 
         # my definition: Bonds defined by two hopping steps
         # Keep track of intermediate point!
@@ -535,7 +656,7 @@ def create_1(
                         kk = k + num_ij * (ib + b2ps * jb)
                         map_b2b2[j + N * jb, i + N * ib] = kk
                         degen_b2b2[kk] += 1
-        assert num_b2b2 == map_b2b2.max() + 1
+        assert num_b2b2 == map_b2b2.max() + 1 == degen_b2b2.size
         # print(map_b2b2.shape, degen_b2b2.shape)
         assert np.all(degen_b2b2 == degen_b2b2[0])
 
@@ -551,7 +672,7 @@ def create_1(
                         kk = k + num_ij * (ib + b2ps * jb)
                         map_bb2[j + N * jb, i + N * ib] = kk
                         degen_bb2[kk] += 1
-        assert num_bb2 == map_bb2.max() + 1
+        assert num_bb2 == map_bb2.max() + 1 == degen_bb2.size
         assert np.all(degen_bb2 == degen_bb2[0])
 
         # 2-bond bond mapping
@@ -566,7 +687,7 @@ def create_1(
                         kk = k + num_ij * (ib + bps * jb)
                         map_b2b[j + N * jb, i + N * ib] = kk
                         degen_b2b[kk] += 1
-        assert num_b2b == map_b2b.max() + 1
+        assert num_b2b == map_b2b.max() + 1 == degen_b2b.size
         assert np.all(degen_b2b == degen_b2b[0])
 
         if bc == 1:
@@ -629,19 +750,6 @@ def create_1(
                 thermal_phases[btype, i] = pp
 
     elif geometry == "triangular":
-        # fill in plaquette definition! TODO: check correctness
-        for iy in range(Ny):
-            for ix in range(Nx):
-                i = ix + Nx * iy
-                iy1 = (iy + 1) % Ny
-                ix1 = (ix + 1) % Nx
-                plaqs[0, i] = i  # i0 = i
-                plaqs[1, i] = ix1 + Nx * iy  # i1 = i + x
-                plaqs[2, i] = ix + Nx * iy1  # i2 = i + y // counterclockwise
-                plaqs[0, i + Nx * Ny] = ix1 + Nx * iy  # i0 = i + x
-                plaqs[1, i + Nx * Ny] = ix1 + Nx * iy1  # i1 = i + x + y
-                plaqs[2, i + Nx * Ny] = ix + Nx * iy1  # i2 = i + y //counterclockwise
-
         # 2 site mapping
         map_ij = np.zeros((N, N), dtype=np.int32)
         num_ij = N if trans_sym else N * N
@@ -658,16 +766,8 @@ def create_1(
                             k = (ix + Nx * iy) + N * (jx + Nx * jy)
                         map_ij[jx + Nx * jy, ix + Nx * iy] = k
                         degen_ij[k] += 1
-        assert num_ij == map_ij.max() + 1
-
-        # bond definitions: defined by one hopping step NOTE: placeholder
-        bps = 6 if tp != 0.0 else 3  # bonds per site
-        num_b = bps * N  # total bonds in cluster
-        bonds = np.zeros((2, num_b), dtype=np.int32)
-
-        # 1 bond mapping NOTE: placeholder
-        map_b = np.zeros(num_b, dtype=np.int32)  # N*bps
-        degen_b = np.zeros(num_b, dtype=np.int32)  # length N*bps
+        assert num_ij == map_ij.max() + 1 == degen_ij.size
+        assert np.all(degen_ij == degen_ij[0])
 
         # 1 bond 1 site mapping NOTE: placeholder
         map_bs = np.zeros((N, num_b), dtype=np.int32)
@@ -678,17 +778,6 @@ def create_1(
         map_bb = np.zeros((num_b, num_b), dtype=np.int32)
         num_bb = bps * bps * N if trans_sym else num_b * num_b
         degen_bb = np.zeros(num_bb, dtype=np.int32)
-
-        # 2-bond definition is modified -- NOT consistent with Wen's!
-        # Now only bonds defined by two hopping steps.
-        # NOTE: placeholder
-        b2ps = 12 if tp != 0.0 else 4  # 2-bonds per site
-        num_b2 = b2ps * N  # total 2-bonds in cluster
-        bond2s = np.zeros((2, num_b2), dtype=np.int32)
-
-        # 2 bond mapping NOTE: placeholder
-        map_b2 = np.zeros(num_b2, dtype=np.int32)  # N*b2ps
-        degen_b2 = np.zeros(num_b2, dtype=np.int32)  # length N*b2ps
 
         # my definition: Bonds defined by two hopping steps
         # NOTE: placeholder
@@ -744,19 +833,11 @@ def create_1(
                                     ix + Nx * iy + Nx * Ny * io,
                                 ] = k
                                 degen_ij[k] += 1
-        assert num_ij == map_ij.max() + 1
+        assert num_ij == map_ij.max() + 1 == degen_ij.size
+        assert np.all(degen_ij == degen_ij[0])
 
         # print("Trans sym = ",trans_sym)
         # print("map",map_ij,map_ij.shape,"degen",degen_ij,degen_ij.shape,"num",num_ij)
-
-        # bond definitions: defined by one hopping step NOTE: placeholder
-        bps = 3 if tp != 0.0 else 9  # bonds per site (not per orbital!)
-        num_b = bps * Nx * Ny  # total bonds in cluster
-        bonds = np.zeros((2, num_b), dtype=np.int32)
-
-        # 1 bond mapping NOTE: placeholder
-        map_b = np.zeros(num_b, dtype=np.int32)  # N*bps
-        degen_b = np.zeros(num_b, dtype=np.int32)  # length N*bps
 
         # 1 bond 1 site mapping NOTE: placeholder
         map_bs = np.zeros((N, num_b), dtype=np.int32)
@@ -767,17 +848,6 @@ def create_1(
         map_bb = np.zeros((num_b, num_b), dtype=np.int32)
         num_bb = bps * bps * N if trans_sym else num_b * num_b
         degen_bb = np.zeros(num_bb, dtype=np.int32)
-
-        # 2-bond definition is modified -- NOT consistent with Wen's!
-        # Now only bonds defined by two hopping steps.
-        # NOTE: placeholder
-        b2ps = 12 if tp != 0.0 else 4  # 2-bonds per site
-        num_b2 = b2ps * N  # total 2-bonds in cluster
-        bond2s = np.zeros((2, num_b2), dtype=np.int32)
-
-        # 2 bond mapping NOTE: placeholder
-        map_b2 = np.zeros(num_b2, dtype=np.int32)  # N*b2ps
-        degen_b2 = np.zeros(num_b2, dtype=np.int32)  # length N*b2ps
 
         # my definition: Bonds defined by two hopping steps
         # NOTE: placeholder
@@ -808,21 +878,6 @@ def create_1(
         thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
 
     elif geometry == "kagome":
-        # plaquette definitions TODO: check correctness
-        for iy in range(Ny):
-            for ix in range(Nx):
-                i = ix + Nx * iy
-                iy1 = (iy + 1) % Ny
-                ix1 = (ix + 1) % Nx
-                plaqs[0, i] = i  # i0 = i(A)
-                plaqs[1, i] = i + Nx * Ny * 2  # i1 = i(C)
-                plaqs[2, i] = i + Nx * Ny * 1  # i2 = i(B) // counterclockwise
-                plaqs[0, i + Nx * Ny] = i  # i0 = i(A)
-                plaqs[1, i + Nx * Ny] = ix1 + Nx * iy + Nx * Ny * 2  # i1 = i+x(C)
-                plaqs[2, i + Nx * Ny] = (
-                    ix + Nx * iy1 + Nx * Ny * 1
-                )  # i2 = i+y(B) //counterclockwise
-
         # 2 site mapping
         map_ij = np.zeros((N, N), dtype=np.int32)
         num_ij = Norb * Norb * Ny * Nx if trans_sym else N * N
@@ -853,16 +908,8 @@ def create_1(
                                     ix + Nx * iy + Nx * Ny * io,
                                 ] = k
                                 degen_ij[k] += 1
-        assert num_ij == map_ij.max() + 1
-
-        # bond definitions: defined by one hopping step NOTE: placeholder
-        bps = 2 if tp != 0.0 else 4  # bonds per site
-        num_b = bps * N  # total bonds in cluster
-        bonds = np.zeros((2, num_b), dtype=np.int32)
-
-        # 1 bond mapping NOTE: placeholder
-        map_b = np.zeros(num_b, dtype=np.int32)  # N*bps
-        degen_b = np.zeros(num_b, dtype=np.int32)  # length N*bps
+        assert num_ij == map_ij.max() + 1 == degen_ij.size
+        assert np.all(degen_ij == degen_ij[0])
 
         # 1 bond 1 site mapping NOTE: placeholder
         map_bs = np.zeros((N, num_b), dtype=np.int32)
@@ -873,17 +920,6 @@ def create_1(
         map_bb = np.zeros((num_b, num_b), dtype=np.int32)
         num_bb = bps * bps * N if trans_sym else num_b * num_b
         degen_bb = np.zeros(num_bb, dtype=np.int32)
-
-        # 2-bond definition is modified -- NOT consistent with Wen's!
-        # Now only bonds defined by two hopping steps.
-        # NOTE: placeholder
-        b2ps = 12 if tp != 0.0 else 4  # 2-bonds per site
-        num_b2 = b2ps * N  # total 2-bonds in cluster
-        bond2s = np.zeros((2, num_b2), dtype=np.int32)
-
-        # 2 bond mapping NOTE: placeholder
-        map_b2 = np.zeros(num_b2, dtype=np.int32)  # N*b2ps
-        degen_b2 = np.zeros(num_b2, dtype=np.int32)  # length N*b2ps
 
         # my definition: Bonds defined by two hopping steps
         # NOTE: placeholder
@@ -1021,6 +1057,8 @@ def create_1(
         f["params"]["num_i"] = num_i
         f["params"]["num_ij"] = num_ij
         f["params"]["num_plaq_accum"] = num_plaq_accum
+        f["params"]["num_b_accum"] = num_b_accum
+        f["params"]["num_b2_accum"] = num_b2_accum
         f["params"]["num_plaq"] = num_plaq_total
         f["params"]["num_b"] = num_b
         f["params"]["num_b2"] = num_b2
@@ -1029,12 +1067,12 @@ def create_1(
         f["params"]["num_b2b"] = num_b2b
         f["params"]["num_bb2"] = num_bb2
         f["params"]["num_b2b2"] = num_b2b2
-        f["params"]["degen_i"] = degen_i
-        f["params"]["degen_ij"] = degen_ij
-        f["params"]["degen_plaq"] = degen_plaq
-        f["params"]["degen_b"] = degen_b
-        f["params"]["degen_b2"] = degen_b2
-        f["params"]["degen_bs"] = degen_bs
+        f["params"]["degen_i"] = degen_i[0]
+        f["params"]["degen_ij"] = degen_ij[0]
+        f["params"]["degen_plaq"] = degen_plaq[0]
+        f["params"]["degen_b"] = degen_b[0]
+        f["params"]["degen_b2"] = degen_b2[0]
+        f["params"]["degen_bs"] = degen_bs[0]
         f["params"]["degen_bb"] = degen_bb[0]
         f["params"]["degen_bb2"] = degen_bb2[0]
         f["params"]["degen_b2b"] = degen_b2b[0]
@@ -1093,6 +1131,7 @@ def create_1(
             f["meas_eqlt"]["vn"] = np.zeros(num_ij, dtype=dtype_num)
 
         if meas_local_JQ:
+            assert trans_sym == 0
             f["meas_eqlt"]["j"] = np.zeros(num_b, dtype=dtype_num)
             f["meas_eqlt"]["jn"] = np.zeros(num_b, dtype=dtype_num)
             f["meas_eqlt"]["j2"] = np.zeros(num_b2, dtype=dtype_num)

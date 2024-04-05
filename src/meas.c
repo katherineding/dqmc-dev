@@ -76,7 +76,7 @@ void measure_eqlt(const struct params *const restrict p, const num phase,
   // 1 site measurements
   for (int i = 0; i < N; i++) {
     const int r = p->map_i[i];
-    const num pre = phase / p->degen_i[r];
+    const num pre = phase / p->degen_i;
     const num guii = gu[i + i * N], gdii = gd[i + i * N];
     // NOTE: density is *sum* of density_u and density_d
     m->density[r] += pre * (2. - guii - gdii);
@@ -90,7 +90,7 @@ void measure_eqlt(const struct params *const restrict p, const num phase,
     for (int i = 0; i < N; i++) {
       const int delta = (i == j);
       const int r = p->map_ij[i + j * N];
-      const num pre = phase / p->degen_ij[r];
+      const num pre = phase / p->degen_ij;
       const num guii = gu[i + i * N], gdii = gd[i + i * N];
       const num guij = gu[i + j * N], gdij = gd[i + j * N];
       const num guji = gu[j + i * N], gdji = gd[j + i * N];
@@ -155,7 +155,7 @@ void measure_eqlt(const struct params *const restrict p, const num phase,
       // printf(stderr,"a=%d\n",a);
       // sleep(1);
       const int r = p->map_plaq[a];
-      const num pre = phase / p->degen_plaq[r];
+      const num pre = phase / p->degen_plaq;
       // this is obtained using edwin's wick script.
       const num x =
           gdi1i1 * gdi2i0 * gui0i2 - gdi0i2 * gdi2i1 * gui1i0 + gdi0i1 * gdi2i2 * gui1i0 -
@@ -205,7 +205,7 @@ void measure_eqlt(const struct params *const restrict p, const num phase,
 
       // map sign prefactor
       const int b = p->map_b[c];
-      const num pre = phase / p->degen_b[b];  // DOUBLE CHECK
+      const num pre = phase / p->degen_b;  // DOUBLE CHECK
 
       // jn measurements
       num _wick_jn = pui0i1 * (1 - gui0i0) * (delta_i0i1 - gdi1i0) +
@@ -241,7 +241,7 @@ void measure_eqlt(const struct params *const restrict p, const num phase,
 
       // map sign prefactor
       const int b2 = p->map_b2[c];
-      const num pre = phase / p->degen_b2[b2];  // DOUBLE CHECK
+      const num pre = phase / p->degen_b2;  // DOUBLE CHECK
 
       // delta functions
       const int delta_i0i2 = (i0 == i2);
@@ -276,7 +276,7 @@ void measure_eqlt(const struct params *const restrict p, const num phase,
       const num pdi1i0 = p->peierlsd[i1 + N * i0];
 #endif
       const int bs = p->map_bs[b + num_b * j];
-      const num pre = phase / p->degen_bs[bs];
+      const num pre = phase / p->degen_bs;
       const int delta_i0i1 = 0;
       const int delta_i0j = (i0 == j);
       const int delta_i1j = (i1 == j);
@@ -325,7 +325,7 @@ void measure_eqlt(const struct params *const restrict p, const num phase,
       const num pdi1i0 = p->peierlsd[i1 + N * i0];
 #endif
       const int bb = p->map_bb[b + c * num_b];
-      const num pre = phase / p->degen_bb[0];
+      const num pre = phase / p->degen_bb;
       const int delta_i0j0 = (i0 == j0);
       const int delta_i1j0 = (i1 == j0);
       const int delta_i0j1 = (i0 == j1);
@@ -402,7 +402,7 @@ void meas_uneqlt_energy(const struct params *const restrict p, const num phase,
         const num pdi1i0 = p->peierlsd[i1 + N * i0];
 #endif
         const int bs = p->map_bs[b + num_b * j];
-        const num pre = phase / p->degen_bs[bs];
+        const num pre = phase / p->degen_bs;
         const int delta_i0i1 = 0;
         const int delta_i0j = delta_t * (i0 == j);
         const int delta_i1j = delta_t * (i1 == j);
@@ -460,7 +460,7 @@ void meas_uneqlt_nematic(const struct params *const restrict p, const num phase,
         const int i0 = p->bonds[b];
         const int i1 = p->bonds[b + num_b];
         const int bb = p->map_bb[b + c * num_b];
-        const num pre = phase / p->degen_bb[0];
+        const num pre = phase / p->degen_bb;
         const num gui0i0 = Gutt_t[i0 + i0 * N];
         const num gui1i0 = Gutt_t[i1 + i0 * N];
         const num gui0i1 = Gutt_t[i0 + i1 * N];
@@ -678,7 +678,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
       for (int i = 0; i < N; i++) {
         const int r = p->map_ij[i + j * N];
         const int delta_tij = delta_t * (i == j);
-        const num pre = phase / p->degen_ij[r];
+        const num pre = phase / p->degen_ij;
         const num guii = Gutt_t[i + N * i];
         const num guij = Gut0_t[i + N * j];
         const num guji = Gu0t_t[j + N * i];
@@ -772,7 +772,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
           const num pdi1i0 = p->peierlsd[i1 + N * i0];
 #endif
           const int bb = p->map_bb[b + c * num_b];
-          const num pre = phase / p->degen_bb[0];
+          const num pre = phase / p->degen_bb;
           const num gui1i0 = Gutt_t[i1 + i0 * N];
           const num gui0i1 = Gutt_t[i0 + i1 * N];
           const num gui0j0 = Gut0_t[i0 + j0 * N];
@@ -965,7 +965,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
           const int i2 = p->bond2s[b + num_b2];
 
           const int bb = p->map_bb2[b + c * num_b2];
-          const num pre = phase / p->degen_bb2[0];
+          const num pre = phase / p->degen_bb2;
 
           // const int delta_i0j0 = 0;
           // const int delta_i2j0 = 0;
@@ -1078,7 +1078,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
             const int i2 = p->bond2s[b + num_b2];
 
             const int bb = p->map_b2b2[b + c * num_b2];
-            const num pre = phase / p->degen_b2b2[0];
+            const num pre = phase / p->degen_b2b2;
 
             // const int delta_i0j0 = 0;
             // const int delta_i2j0 = 0;
@@ -1156,7 +1156,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
           const num pdi1i0 = p->peierlsd[i1 + N * i0];
 #endif
           const int bb = p->map_b2b[b + c * num_b];
-          const num pre = phase / p->degen_b2b[0];
+          const num pre = phase / p->degen_b2b;
           // const int delta_i0j0 = 0;
           // const int delta_i1j0 = 0;
           // const int delta_i0j2 = 0;

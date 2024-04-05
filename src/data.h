@@ -24,15 +24,14 @@ struct params {
 	int checkpoint_every;
 
 	int num_i, num_ij;
-	int num_plaq_accum, num_plaq;
-	int num_b, num_b2, num_bs, num_bb, num_bb2, num_b2b, num_b2b2;
-	int *degen_plaq;
-	int *degen_i, *degen_ij, *degen_bs, *degen_bb, *degen_b2b2, *degen_b2b, *degen_bb2;
+	int num_plaq_accum, num_b_accum, num_b2_accum;
+	int num_plaq, num_b, num_b2, num_bs, num_bb, num_bb2, num_b2b, num_b2b2;
+	int degen_plaq, degen_b, degen_b2; 
+	int degen_i, degen_ij, degen_bs, degen_bb, degen_b2b2, degen_b2b, degen_bb2;
 	num *exp_Ku, *exp_Kd, *inv_exp_Ku, *inv_exp_Kd;
 	num *exp_halfKu, *exp_halfKd, *inv_exp_halfKu, *inv_exp_halfKd;
 	double *exp_lambda, *del;
 	int F, n_sweep;
-	int *degen_b, *degen_b2; 
 };
 
 struct state {
