@@ -13,7 +13,7 @@ CFLAGS = -fast -mp=gpu -gpu=cc80,cuda12.2 -Minfo=mp
 CFLAGS += -DGIT_ID=\"$(shell git rev-parse --short HEAD)\"
 CFLAGS += -DPROFILE_ENABLE 
 CFLAGS += -DGIT_REPO=\"$(shell git config --get remote.origin.url)\"
-CFLAGS += -DOMP_MEAS_NUM_THREADS=32
+CFLAGS += -DOMP_MEAS_NUM_THREADS=2
 CFLAGS += -DGENERIC_LINALG
 CFLAGS += -DUSE_CPLX  # uncomment to use complex numbers
 
