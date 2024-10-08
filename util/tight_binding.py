@@ -508,3 +508,118 @@ def H_periodic_kagome(
 #             mat_ij[ix + Nx*iy, ix2 + Nx*iy] += -1j * txpp * np.exp(1j*np.pi*B*(-2*-iy + (0 if ix2 > ix else -Nx*-iy))) * 0
 
 #     return np.transpose(mat_ij)
+
+
+def H_periodic_3band(
+    Nx: int,
+    Ny: int,
+    t: float,
+    tsp: float,
+    lam: float,
+    g: float,
+    nflux: int = 0,
+    alpha: float = 1 / 2,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Three band model on square lattice.
+    Trivial center band sandwiched by two C = +- 1 Chern bands.
+    The trivial center band has tunable quantum geometry.
+    Allow general applied Hofstadter field set by nflux
+    """
+
+    Norb = 3
+    Ncell = Nx * Ny
+    # Orbitals are labelled by s = 0, px = 1, py = 2
+    tij = np.zeros((Norb * Ncell, Norb * Ncell), dtype=np.complex128)
+    # iterate over all unit cells
+    for jy in range(Ny):
+        for jx in range(Nx):
+            jy1 = (jy + 1) % Ny
+            jx1 = (jx + 1) % Nx
+            jyn1 = (jy - 1) % Ny
+            jxn1 = (jx - 1) % Nx
+
+            # A: Orbital = 0 = s             # B: Orbital = 1 = px
+            # jx      jy    jo                 ix      iy    io
+            # These are b_i^\dagger a_j terms
+            tij[jx + Nx * jy + Ncell * 0, jx1 + Nx * jy + Ncell * 1] += tsp
+            tij[jx + Nx * jy + Ncell * 0, jxn1 + Nx * jy + Ncell * 1] += -tsp
+
+            # B: Orbital = 1 = px            # A: Orbital = 0 = s
+            # ix      iy    io                 jx      jy    jo
+            # These are a_j^\dagger b_i terms
+            tij[jx1 + Nx * jy + Ncell * 1, jx + Nx * jy + Ncell * 0] += tsp
+            tij[jxn1 + Nx * jy + Ncell * 1, jx + Nx * jy + Ncell * 0] += -tsp
+
+            # A: Orbital = 0 = s             # C: Orbital = 2 = py
+            # jx      jy    jo                 ix      iy    io
+            # These are c_i^\dagger a_j terms
+            tij[jx + Nx * jy + Ncell * 0, jx + Nx * jy1 + Ncell * 2] += tsp
+            tij[jx + Nx * jy + Ncell * 0, jx + Nx * jyn1 + Ncell * 2] += -tsp
+
+            # C: Orbital = 2 = py            # A: Orbital = 0 = s
+            # ix      iy    io                 jx      jy    jo
+            # These are a_j^\dagger c_i terms
+            tij[jx + Nx * jy1 + Ncell * 2, jx + Nx * jy + Ncell * 0] += tsp
+            tij[jx + Nx * jyn1 + Ncell * 2, jx + Nx * jy + Ncell * 0] += -tsp
+
+            # --------------------------------------------------------------------
+            # C: Orbital = 2 = py             # B: Orbital = 1 = px
+            # ix      iy    io                  jx      jy    jo
+            # These are b_j^\dagger c_j terms
+            tij[jx + Nx * jy + Ncell * 2, jx + Nx * jy + Ncell * 1] += 1j * lam / 2
+
+            # B: Orbital = 1 = px             # C: Orbital = 2 = py
+            # jx      jy    jo                 ix      iy    io
+            # These are c_j^\dagger b_j terms
+            tij[jx + Nx * jy + Ncell * 1, jx + Nx * jy + Ncell * 2] += -1j * lam / 2
+
+            # --------------------------------------------------------------------
+            # C: Orbital = 2 = py             # B: Orbital = 1 = px
+            # ix      iy    io                  jx      jy    jo
+            # These are b_j^\dagger c_i terms
+            tij[jx1 + Nx * jy1 + Ncell * 2, jx + Nx * jy + Ncell * 1] += 1j * g
+            tij[jxn1 + Nx * jyn1 + Ncell * 2, jx + Nx * jy + Ncell * 1] += 1j * g
+            tij[jx1 + Nx * jyn1 + Ncell * 2, jx + Nx * jy + Ncell * 1] += 1j * g
+            tij[jxn1 + Nx * jy1 + Ncell * 2, jx + Nx * jy + Ncell * 1] += 1j * g
+
+            # B: Orbital = 1 = px             # C: Orbital = 2 = py
+            # jx      jy    jo                 ix      iy    io
+            # These are c_i^\dagger b_j terms
+            tij[jx + Nx * jy + Ncell * 1, jx1 + Nx * jy1 + Ncell * 2] += -1j * g
+            tij[jx + Nx * jy + Ncell * 1, jxn1 + Nx * jyn1 + Ncell * 2] += -1j * g
+            tij[jx + Nx * jy + Ncell * 1, jx1 + Nx * jyn1 + Ncell * 2] += -1j * g
+            tij[jx + Nx * jy + Ncell * 1, jxn1 + Nx * jy1 + Ncell * 2] += -1j * g
+
+            # --------------------------------------------------------------------
+            # Orbital = orb = s,px,py
+            # Same orbital, nearest neighbor hopping
+            # These are a^\dagger_i a_j + a^\dagger_i a_{i+\delta'}  terms
+            for orb in range(Norb):
+                tij[jx1 + Nx * jy + Ncell * orb, jx + Nx * jy + Ncell * orb] += -t
+                tij[jx + Nx * jy + Ncell * orb, jx1 + Nx * jy + Ncell * orb] += -t
+
+                tij[jx + Nx * jy1 + Ncell * orb, jx + Nx * jy + Ncell * orb] += -t
+                tij[jx + Nx * jy + Ncell * orb, jx + Nx * jy1 + Ncell * orb] += -t
+
+    # K = tij.copy()
+    peierls = make_peierls_mat(Nx, Ny, "square", nflux, alpha=alpha)
+    P = np.zeros((Norb * Ncell, Norb * Ncell), dtype=np.complex128)
+
+    P[:Ncell, :Ncell] = peierls
+    P[Ncell : Ncell * 2, Ncell : Ncell * 2] = peierls
+    P[Ncell * 2 :, Ncell * 2 :] = peierls
+
+    P[0:Ncell, Ncell : Ncell * 2] = peierls
+    P[0:Ncell, Ncell * 2 : Ncell * 3] = peierls
+    P[Ncell * 1 : Ncell * 2, Ncell * 2 : Ncell * 3] = peierls
+
+    P[Ncell : Ncell * 2, :Ncell] = peierls.T.conj()
+    P[Ncell * 2 : Ncell * 3, :Ncell] = peierls.T.conj()
+    P[Ncell * 2 : Ncell * 3, Ncell * 1 : Ncell * 2] = peierls.T.conj()
+
+    # P = np.tile(peierls,(Norb,Norb))
+    K = tij * P
+
+    assert np.linalg.norm(K - K.T.conj()) < 1e-10
+
+    return K, P
