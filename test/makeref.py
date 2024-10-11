@@ -1,12 +1,11 @@
-import gen_1band_unified_hub as ghub
-import util
 import numpy as np
-import os
-
-
-# import matplotlib.pyplot as plt
+import os, sys
 
 src = os.environ["DEV"]
+if src + "util/" not in sys.path:
+    sys.path.insert(0, src + "util/")
+import gen_1band_unified_hub as ghub
+import util
 
 geometry_list = ["square", "triangular", "honeycomb", "kagome"]
 seed = 1234
