@@ -311,27 +311,27 @@ def create_1(
     # 1 bond 1 site mapping NOTE: placeholder
     map_bs = np.zeros((N, num_b), dtype=np.int32)
     num_bs = bps * N if trans_sym else num_b * N
-    degen_bs = np.zeros(num_bs, dtype=np.int32)
+    degen_bs = np.ones(num_bs, dtype=np.int32)
 
     # 1 bond - 1 bond mapping NOTE: placeholder
     map_bb = np.zeros((num_b, num_b), dtype=np.int32)
     num_bb = bps * bps * N if trans_sym else num_b * num_b
-    degen_bb = np.zeros(num_bb, dtype=np.int32)
+    degen_bb = np.ones(num_bb, dtype=np.int32)
 
     # 2 2-bond mapping NOTE: placeholder
     num_b2b2 = b2ps * b2ps * N if trans_sym else num_b2 * num_b2
     map_b2b2 = np.zeros((num_b2, num_b2), dtype=np.int32)
-    degen_b2b2 = np.zeros(num_b2b2, dtype=np.int32)
+    degen_b2b2 = np.ones(num_b2b2, dtype=np.int32)
 
     # bond 2-bond mapping NOTE: placeholder
     num_bb2 = bps * b2ps * N if trans_sym else num_b * num_b2
     map_bb2 = np.zeros((num_b, num_b2), dtype=np.int32)
-    degen_bb2 = np.zeros(num_bb2, dtype=np.int32)
+    degen_bb2 = np.ones(num_bb2, dtype=np.int32)
 
     # 2-bond bond mapping NOTE: placeholder
     num_b2b = b2ps * bps * N if trans_sym else num_b2 * num_b
     map_b2b = np.zeros((num_b2, num_b), dtype=np.int32)
-    degen_b2b = np.zeros(num_b2b, dtype=np.int32)
+    degen_b2b = np.ones(num_b2b, dtype=np.int32)
 
     Ku, peierls = tight_binding.H_periodic_3band(Nx, Ny, t, tsp, lam, g)
 

@@ -14,7 +14,7 @@ src = os.environ["DEV"]
 seed = 1234
 
 # TODO: update this
-refhash = "eafbd47"
+refhash = "e14d233"
 
 # @pytest.fixture(scope="session",autouse=True)
 # def setup():
@@ -191,19 +191,18 @@ def compare_eqlt_meas(path1, path2):
             meas_ref = util.load(path1, f"meas_eqlt/{name}")
 
             print("max diff:", np.abs(np.max(meas_ref[0] - meas_c[0])))
-            assert np.allclose(meas_c[0], meas_ref[0], equal_nan=True)
+            assert np.allclose(meas_c[0], meas_ref[0])
 
 
 def compare_uneqlt_meas(path1, path2):
     with h5py.File(path1 + f"{refhash}_{seed}_1.h5", "r") as f:
         param_names = list(f["meas_uneqlt"].keys())
         for name in param_names:
-            print(name)
             meas_c = util.load(path2, f"meas_uneqlt/{name}")
             meas_ref = util.load(path1, f"meas_uneqlt/{name}")
 
             print("max diff:", np.abs(np.max(meas_ref[0] - meas_c[0])))
-            assert np.allclose(meas_c[0], meas_ref[0], equal_nan=True)
+            assert np.allclose(meas_c[0], meas_ref[0])
 
 
 def test_ref():
