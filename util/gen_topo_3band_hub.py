@@ -185,35 +185,35 @@ def bond2_params(
 
 
 def create_1(
-    file_sim=None,
-    file_params=None,
-    init_rng=None,
-    Nx: int = 4,
-    Ny: int = 4,
-    mu: float = 0.0,
-    t: float = 0.0,
-    tsp: float = 1.0,
-    lam: float = 1.0,
-    g: float = 0.5,
-    U: float = 6.0,
-    dt: float = 0.1,
-    L: int = 40,
-    overwrite=0,
-    n_delay: int = 16,
-    n_matmul: int = 8,
-    n_sweep_warm: int = 200,
-    n_sweep_meas: int = 2000,
-    period_eqlt: int = 8,
-    period_uneqlt: int = 0,
-    trans_sym: int = 1,
-    checkpoint_every: int = 10000,
-    meas_bond_corr: int = 0,
-    meas_energy_corr: int = 0,
-    meas_nematic_corr: int = 0,
-    meas_thermal: int = 0,
-    meas_2bond_corr: int = 0,
-    meas_chiral: int = 0,
-    meas_local_JQ: int = 0,
+    file_sim,
+    file_params,
+    init_rng,
+    Nx,
+    Ny,
+    t,
+    tsp,
+    lam,
+    g,
+    U,
+    dt,
+    L,
+    mu,
+    overwrite,
+    n_delay,
+    n_matmul,
+    n_sweep_warm,
+    n_sweep_meas,
+    period_eqlt,
+    period_uneqlt,
+    trans_sym,
+    checkpoint_every,
+    meas_bond_corr,
+    meas_energy_corr,
+    meas_nematic_corr,
+    meas_thermal,
+    meas_2bond_corr,
+    meas_chiral,
+    meas_local_JQ,
 ):
     assert L % n_matmul == 0 and L % period_eqlt == 0
     dtype_num = np.complex128
@@ -548,7 +548,7 @@ def create_1(
                 f["meas_uneqlt"]["nem_ssss"] = np.zeros(num_bb * L, dtype=dtype_num)
 
 
-def create_batch(Nfiles=1, prefix=None, seed=None, **kwargs):
+def create_batch(Nfiles, prefix, seed, **kwargs):
     if seed is None:
         init_rng = rand_seed_urandom()
     else:
@@ -588,45 +588,17 @@ def create_batch(Nfiles=1, prefix=None, seed=None, **kwargs):
     print("parameter file:", file_p)
 
 
-# def main(argv):
-#     kwargs = {}
-#     for arg in argv[1:]:
-#         eq = arg.find("=")
-#         if eq == -1:
-#             print("couldn't find \"=\" in argument " + arg)
-#             return
-#         key = arg[:eq]
-#         val = arg[(eq + 1):]
-#         try:
-#             val = int(val)
-#         except ValueError:
-#             try:
-#                 val = float(val)
-#             except:
-#                 pass
-#         kwargs[key] = val
-#     create_batch(**kwargs)
-
-# if __name__ == "__main__":
-#     main(sys.argv)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Generate .h5 files for dqmc simulation. "
         + "All parameters have defaults. Use arguments of form --name value or --name=value to override.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        argument_default=None,
     )
 
     parser.add_argument("-V", "--version", action="version", version=hash_short)
 
     group1 = parser.add_argument_group("Physics parameters")
-    group1.add_argument(
-        "--geometry",
-        choices=["square", "triangular", "honeycomb", "kagome"],
-        type=str,
-        default="square",
-    )
     group1.add_argument(
         "--Nx",
         type=int,
@@ -642,25 +614,32 @@ if __name__ == "__main__":
         help="Number of lattice sites along y direction",
     )
     group1.add_argument(
-        "--tp",
+        "--t",
         type=float,
         default=0.0,
         metavar="X",
-        help="Next nearest hopping integral",
+        help="Nearest neighbor px-px, py-py, s-s hopping",
     )
     group1.add_argument(
-        "--tpp",
+        "--tsp",
         type=float,
-        default=0.0,
+        default=1.0,
         metavar="X",
-        help="Third nearest hopping integral",
+        help="Next-nearest neighbor px-s and py-s orbital hopping",
     )
     group1.add_argument(
-        "--nflux",
-        type=int,
-        default=0,
+        "--lam",
+        type=float,
+        default=4.0,
         metavar="X",
-        help="Number of flux threading the cluster",
+        help="On-site px-py spin-orbit coupling",
+    )
+    group1.add_argument(
+        "--g",
+        type=float,
+        default=1.0,
+        metavar="X",
+        help="Imaginary nearest-neighbor px-py orbital hopping",
     )
     group1.add_argument(
         "--U",
@@ -668,13 +647,6 @@ if __name__ == "__main__":
         default=6.0,
         metavar="X",
         help="On-site Hubbard repulsion strength",
-    )
-    group1.add_argument(
-        "--bc",
-        type=int,
-        default=1,
-        metavar="X",
-        help="Boundary conditions, 1 for periodic, 2 for open",
     )
     group1.add_argument(
         "--dt",
@@ -689,27 +661,6 @@ if __name__ == "__main__":
 
     group1.add_argument(
         "--mu", type=float, default=0.0, metavar="X", help="Chemical potential"
-    )
-    group1.add_argument(
-        "--h",
-        type=float,
-        default=0.0,
-        metavar="X",
-        help="Zeeman field strength. Down electrons feel net (mu+h) chemical potential",
-    )
-    group1.add_argument(
-        "--twistx",
-        type=float,
-        default=0.0,
-        metavar="X",
-        help="Twist phase per bond along x. Equivalent to total twist Nx * twistx on boundary.",
-    )
-    group1.add_argument(
-        "--twisty",
-        type=float,
-        default=0.0,
-        metavar="X",
-        help="Twist phase per bond along y. Equivalent to total twist Ny * twisty on boundary.",
     )
 
     group2 = parser.add_argument_group("Simulation file settings")
