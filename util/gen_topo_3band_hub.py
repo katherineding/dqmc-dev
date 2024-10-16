@@ -338,7 +338,7 @@ def create_1(
     # NOTE: placeholder
     thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
 
-    Kd = Ku.conj().transpose()
+    Kd = Ku.conj()
     for i in range(N):
         Ku[i, i] -= mu
         Kd[i, i] -= mu
