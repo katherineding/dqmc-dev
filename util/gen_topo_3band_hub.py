@@ -190,10 +190,10 @@ def create_1(
     init_rng,
     Nx,
     Ny,
-    t,
-    tsp,
-    lam,
+    ts,
+    tp,
     g,
+    Delta,
     U,
     dt,
     L,
@@ -297,7 +297,7 @@ def create_1(
         map_b,
         degen_b,
         bonds,
-    ) = bond_params(Nx, Ny, t, trans_sym)
+    ) = bond_params(Nx, Ny, ts, trans_sym)
 
     # ------------------------------------------------------
     # per 2-bond (per site) measurement mapping
@@ -306,7 +306,7 @@ def create_1(
         map_b2,
         degen_b2,
         bond2s,
-    ) = bond2_params(Nx, Ny, t, trans_sym)
+    ) = bond2_params(Nx, Ny, ts, trans_sym)
 
     # 1 bond 1 site mapping NOTE: placeholder
     map_bs = np.zeros((N, num_b), dtype=np.int32)
@@ -333,12 +333,13 @@ def create_1(
     map_b2b = np.zeros((num_b2, num_b), dtype=np.int32)
     degen_b2b = np.ones(num_b2b, dtype=np.int32)
 
-    Ku, peierls = tight_binding.H_periodic_3band(Nx, Ny, t, tsp, lam, g)
+    Ku, peierls = tight_binding.H_periodic_topo_3band(Nx, Ny, ts, tp, g, Delta)
 
     # NOTE: placeholder
     thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
 
-    Kd = Ku.conj()
+    # Same Hamiltonian for spin up and down electrons
+    Kd = Ku
     for i in range(N):
         Ku[i, i] -= mu
         Kd[i, i] -= mu
@@ -365,7 +366,7 @@ def create_1(
         f.create_group("metadata")
         f["metadata"]["commit"] = hash_short
         f["metadata"]["version"] = 0.1
-        f["metadata"]["model"] = "Topo 3-band (complex)"
+        f["metadata"]["model"] = "Topo center 3-band (complex)"
         f["metadata"]["Nx"] = Nx
         f["metadata"]["Ny"] = Ny
         f["metadata"]["Norb"] = Norb
@@ -373,10 +374,10 @@ def create_1(
         f["metadata"]["b2ps"] = b2ps
         f["metadata"]["plaq_per_cell"] = plaq_per_cell
         f["metadata"]["U"] = U
-        f["metadata"]["t"] = t
-        f["metadata"]["tsp"] = tsp
-        f["metadata"]["lam"] = lam
+        f["metadata"]["ts"] = ts
+        f["metadata"]["tp"] = tp
         f["metadata"]["g"] = g
+        f["metadata"]["Delta"] = Delta
         f["metadata"]["mu"] = mu
         f["metadata"]["beta"] = L * dt
         f["metadata"]["trans_sym"] = trans_sym
@@ -614,32 +615,32 @@ if __name__ == "__main__":
         help="Number of lattice sites along y direction",
     )
     group1.add_argument(
-        "--t",
+        "--ts",
         type=float,
         default=0.0,
         metavar="X",
-        help="Nearest neighbor px-px, py-py, s-s hopping",
+        help="Nearest neighbor s-s orbital hopping",
     )
     group1.add_argument(
-        "--tsp",
+        "--tp",
         type=float,
         default=1.0,
         metavar="X",
-        help="Next-nearest neighbor px-s and py-s orbital hopping",
-    )
-    group1.add_argument(
-        "--lam",
-        type=float,
-        default=4.0,
-        metavar="X",
-        help="On-site px-py spin-orbit coupling",
+        help="Nearest neighbor p1-p1 and p2-p2 orbital hopping",
     )
     group1.add_argument(
         "--g",
         type=float,
         default=1.0,
         metavar="X",
-        help="Imaginary nearest-neighbor px-py orbital hopping",
+        help="Nearest-neighbor s-p1 and s-p2 orbital hopping",
+    )
+    group1.add_argument(
+        "--Delta",
+        type=float,
+        default=4.0,
+        metavar="X",
+        help="Local mass: Difference between p1 and p2 orbital potential energies",
     )
     group1.add_argument(
         "--U",

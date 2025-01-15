@@ -365,7 +365,7 @@ def create_1(
         f.create_group("metadata")
         f["metadata"]["commit"] = hash_short
         f["metadata"]["version"] = 0.1
-        f["metadata"]["model"] = "Topo 3-band (complex)"
+        f["metadata"]["model"] = "Trivial center 3-band (complex)"
         f["metadata"]["Nx"] = Nx
         f["metadata"]["Ny"] = Ny
         f["metadata"]["Norb"] = Norb
