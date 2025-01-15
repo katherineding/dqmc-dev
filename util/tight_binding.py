@@ -510,6 +510,107 @@ def H_periodic_kagome(
 #     return np.transpose(mat_ij)
 
 
+def H_periodic_topo_3band(
+    Nx: int,
+    Ny: int,
+    ts: float,
+    tp: float,
+    g: float,
+    Delta: float,
+    nflux: int = 0,
+    alpha: float = 1 / 2,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Three band model on square lattice.
+    C = 2 center band sandwiched by two C = - 1 Chern bands.
+    Matches momentum Hamiltonian set by Martin's note Eq (16) i.e. hk_topo_3band
+    """
+
+    Norb = 3
+    Ncell = Nx * Ny
+    # Orbitals are labelled by s = 0, p1 = 1, p2 = 2
+    tij = np.zeros((Norb * Ncell, Norb * Ncell), dtype=np.complex128)
+    # iterate over all unit cells
+    for jy in range(Ny):
+        for jx in range(Nx):
+            jy1 = (jy + 1) % Ny
+            jx1 = (jx + 1) % Nx
+            jyn1 = (jy - 1) % Ny
+            jxn1 = (jx - 1) % Nx
+
+            # A: Orbital = 0 = s             # B: Orbital = 1 = p1
+            tij[jx + Nx * jy + Ncell * 0, jx1 + Nx * jy + Ncell * 1] += -1j * g
+            tij[jx + Nx * jy + Ncell * 0, jxn1 + Nx * jy + Ncell * 1] += +1j * g
+            tij[jx1 + Nx * jy + Ncell * 1, jx + Nx * jy + Ncell * 0] += +1j * g
+            tij[jxn1 + Nx * jy + Ncell * 1, jx + Nx * jy + Ncell * 0] += -1j * g
+            # A: Orbital = 0 = s             # B: Orbital = 2 = p2
+            tij[jx + Nx * jy + Ncell * 0, jx1 + Nx * jy + Ncell * 2] += -1j * g
+            tij[jx + Nx * jy + Ncell * 0, jxn1 + Nx * jy + Ncell * 2] += +1j * g
+            tij[jx1 + Nx * jy + Ncell * 2, jx + Nx * jy + Ncell * 0] += +1j * g
+            tij[jxn1 + Nx * jy + Ncell * 2, jx + Nx * jy + Ncell * 0] += -1j * g
+
+            # NN along the +y, -y direction
+            # A: Orbital = 0 = s             # B: Orbital = 1 = p1
+            tij[jx + Nx * jy + Ncell * 0, jx + Nx * jy1 + Ncell * 1] += +g
+            tij[jx + Nx * jy + Ncell * 0, jx + Nx * jyn1 + Ncell * 1] += -g
+            tij[jx + Nx * jy1 + Ncell * 1, jx + Nx * jy + Ncell * 0] += +g
+            tij[jx + Nx * jyn1 + Ncell * 1, jx + Nx * jy + Ncell * 0] += -g
+            # A: Orbital = 0 = s             # B: Orbital = 2 = p2
+            tij[jx + Nx * jy + Ncell * 0, jx + Nx * jy1 + Ncell * 2] += +g
+            tij[jx + Nx * jy + Ncell * 0, jx + Nx * jyn1 + Ncell * 2] += -g
+            tij[jx + Nx * jy1 + Ncell * 2, jx + Nx * jy + Ncell * 0] += +g
+            tij[jx + Nx * jyn1 + Ncell * 2, jx + Nx * jy + Ncell * 0] += -g
+
+            # --------------------------------------------------------------------
+            # C: Orbital = 1 = p1             # B: Orbital = 1 = p1
+            # ix      iy    io                  jx      jy    jo
+            # These are b_j^dagger c_j terms
+            tij[jx + Nx * jy + Ncell * 1, jx + Nx * jy + Ncell * 1] += Delta / 2
+
+            # B: Orbital = 2 = p2             # C: Orbital = 2 = p2
+            # jx      jy    jo                 ix      iy    io
+            # These are c_j^dagger b_j terms
+            tij[jx + Nx * jy + Ncell * 2, jx + Nx * jy + Ncell * 2] += -Delta / 2
+
+            # --------------------------------------------------------------------
+            # Orbital = orb = s,p1,p2
+            # Same orbital, nearest neighbor hopping
+            tij[jx1 + Nx * jy + Ncell * 0, jx + Nx * jy + Ncell * 0] += -ts
+            tij[jx + Nx * jy + Ncell * 0, jx1 + Nx * jy + Ncell * 0] += -ts
+
+            tij[jx + Nx * jy1 + Ncell * 0, jx + Nx * jy + Ncell * 0] += -ts
+            tij[jx + Nx * jy + Ncell * 0, jx + Nx * jy1 + Ncell * 0] += -ts
+
+            for orb in range(1, 3):
+                tij[jx1 + Nx * jy + Ncell * orb, jx + Nx * jy + Ncell * orb] += -tp
+                tij[jx + Nx * jy + Ncell * orb, jx1 + Nx * jy + Ncell * orb] += -tp
+
+                tij[jx + Nx * jy1 + Ncell * orb, jx + Nx * jy + Ncell * orb] += -tp
+                tij[jx + Nx * jy + Ncell * orb, jx + Nx * jy1 + Ncell * orb] += -tp
+
+    # K = tij.copy()
+    peierls = make_peierls_mat(Nx, Ny, "square", nflux, alpha=alpha)
+    P = np.zeros((Norb * Ncell, Norb * Ncell), dtype=np.complex128)
+
+    P[:Ncell, :Ncell] = peierls
+    P[Ncell : Ncell * 2, Ncell : Ncell * 2] = peierls
+    P[Ncell * 2 :, Ncell * 2 :] = peierls
+
+    P[0:Ncell, Ncell : Ncell * 2] = peierls
+    P[0:Ncell, Ncell * 2 : Ncell * 3] = peierls
+    P[Ncell * 1 : Ncell * 2, Ncell * 2 : Ncell * 3] = peierls
+
+    P[Ncell : Ncell * 2, :Ncell] = peierls.T.conj()
+    P[Ncell * 2 : Ncell * 3, :Ncell] = peierls.T.conj()
+    P[Ncell * 2 : Ncell * 3, Ncell * 1 : Ncell * 2] = peierls.T.conj()
+
+    # P = np.tile(peierls,(Norb,Norb))
+    K = tij * P
+
+    assert np.linalg.norm(K - K.T.conj()) < 1e-10
+
+    return K, P
+
+
 def H_periodic_3band(
     Nx: int,
     Ny: int,
