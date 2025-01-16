@@ -339,7 +339,7 @@ def create_1(
     thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
 
     # Same Hamiltonian for spin up and down electrons
-    Kd = Ku
+    Kd = Ku.copy()
     for i in range(N):
         Ku[i, i] -= mu
         Kd[i, i] -= mu
