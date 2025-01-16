@@ -333,7 +333,7 @@ def create_1(
     map_b2b = np.zeros((num_b2, num_b), dtype=np.int32)
     degen_b2b = np.ones(num_b2b, dtype=np.int32)
 
-    Ku, peierls = tight_binding.H_periodic_3band(Nx, Ny, t, tsp, lam, g)
+    Ku, peierls = tight_binding.H_periodic_trivial_3band(Nx, Ny, t, tsp, lam, g)
 
     # NOTE: placeholder
     thermal_phases = np.ones((b2ps, N), dtype=np.complex128)

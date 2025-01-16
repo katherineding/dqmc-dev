@@ -611,7 +611,7 @@ def H_periodic_topo_3band(
     return K, P
 
 
-def H_periodic_3band(
+def H_periodic_trivial_3band(
     Nx: int,
     Ny: int,
     t: float,
