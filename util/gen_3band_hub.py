@@ -3,6 +3,7 @@ import shutil
 import sys
 import argparse
 import warnings
+from itertools import product
 
 import h5py
 import numpy as np
@@ -214,6 +215,7 @@ def create_1(
     meas_2bond_corr,
     meas_chiral,
     meas_local_JQ,
+    meas_gen_suscept,
 ):
     assert L % n_matmul == 0 and L % period_eqlt == 0
     dtype_num = np.complex128
@@ -237,6 +239,9 @@ def create_1(
     for l in range(L):
         for i in range(N):
             init_hs[l, i] = rand_uint(rng) >> np.uint64(63)
+
+    if meas_gen_suscept and not trans_sym:
+        raise ValueError("Can't measure generalized susceptibility without trans_sym")
 
     # ------------------measurement maps----------------------
     # per Norb (per site) measurement mapping
@@ -386,6 +391,8 @@ def create_1(
         # model parameters
         f["params"]["N"] = np.array(N, dtype=np.int32)
         f["params"]["L"] = np.array(L, dtype=np.int32)
+        f["params"]["Nx"] = np.array(Nx, dtype=np.int32)
+        f["params"]["Ny"] = np.array(Ny, dtype=np.int32)
         f["params"]["map_i"] = map_i
         f["params"]["map_ij"] = map_ij
         f["params"]["bonds"] = bonds
@@ -424,6 +431,7 @@ def create_1(
         f["params"]["meas_nematic_corr"] = meas_nematic_corr
         f["params"]["meas_chiral"] = meas_chiral
         f["params"]["meas_local_JQ"] = meas_local_JQ
+        f["params"]["meas_gen_suscept"] = meas_gen_suscept
         f["params"]["checkpoint_every"] = checkpoint_every
 
         # precalculated stuff
@@ -493,6 +501,11 @@ def create_1(
         f["meas_eqlt"]["xx"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["zz"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["pair_sw"] = np.zeros(num_ij, dtype=dtype_num)
+        if meas_gen_suscept:
+            f["meas_eqlt"]["uuuu"] = np.zeros(num_ij * num_ij, dtype=dtype_num)
+            f["meas_eqlt"]["dddd"] = np.zeros(num_ij * num_ij, dtype=dtype_num)
+            f["meas_eqlt"]["dduu"] = np.zeros(num_ij * num_ij, dtype=dtype_num)
+            f["meas_eqlt"]["uudd"] = np.zeros(num_ij * num_ij, dtype=dtype_num)
         if meas_chiral:
             f["meas_eqlt"]["chi"] = np.zeros(num_plaq_accum, dtype=dtype_num)
 
@@ -514,6 +527,19 @@ def create_1(
             f["meas_uneqlt"]["xx"] = np.zeros(num_ij * L, dtype=dtype_num)
             f["meas_uneqlt"]["zz"] = np.zeros(num_ij * L, dtype=dtype_num)
             f["meas_uneqlt"]["pair_sw"] = np.zeros(num_ij * L, dtype=dtype_num)
+            if meas_gen_suscept:
+                f["meas_uneqlt"]["uuuu"] = np.zeros(
+                    num_ij * num_ij * L, dtype=dtype_num
+                )
+                f["meas_uneqlt"]["dddd"] = np.zeros(
+                    num_ij * num_ij * L, dtype=dtype_num
+                )
+                f["meas_uneqlt"]["dduu"] = np.zeros(
+                    num_ij * num_ij * L, dtype=dtype_num
+                )
+                f["meas_uneqlt"]["uudd"] = np.zeros(
+                    num_ij * num_ij * L, dtype=dtype_num
+                )
             if meas_bond_corr:
                 f["meas_uneqlt"]["pair_bb"] = np.zeros(num_bb * L, dtype=dtype_num)
                 f["meas_uneqlt"]["jj"] = np.zeros(num_bb * L, dtype=dtype_num)
@@ -806,6 +832,13 @@ if __name__ == "__main__":
         default=0,
         metavar="X",
         help="Whether to measure local JQ for energy magnetization contribution to thermal Hall",
+    )
+    group3.add_argument(
+        "--meas_gen_suscept",
+        type=int,
+        default=0,
+        metavar="X",
+        help="Whether to measure generalized susceptibility",
     )
 
     # parser.add_argument

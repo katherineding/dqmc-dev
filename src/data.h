@@ -6,6 +6,7 @@
 
 struct params {
 	int N, L;
+	int Nx, Ny;
 	int *map_i, *map_ij;
 	int *bonds, *bond2s, *map_bs, *map_bb, *map_b2b, *map_bb2, *map_b2b2;
 	int *plaqs;
@@ -21,6 +22,7 @@ struct params {
 	int meas_bond_corr, meas_thermal, meas_2bond_corr, meas_energy_corr, meas_nematic_corr;
 	int meas_chiral;
 	int meas_local_JQ;
+	int meas_gen_suscept;
 	int checkpoint_every;
 
 	int num_i, num_ij;
@@ -49,6 +51,10 @@ struct meas_eqlt {
 	num *density_d;
 	num *double_occ;
 
+	num *uuuu;
+	num *dddd;
+	num *uudd;
+	num *dduu;
 	num *chi;
 	num *g00;
 	num *g00_u;
@@ -68,6 +74,10 @@ struct meas_uneqlt {
 	num *gt0;
 	num *gt0_u;
 	num *gt0_d;
+	num *uuuu;
+	num *dddd;
+	num *uudd;
+	num *dduu;
 	num *nn;
 	num *xx;
 	num *zz;

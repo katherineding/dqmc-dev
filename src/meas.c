@@ -119,6 +119,43 @@ void measure_eqlt(const struct params *const restrict p, const num phase,
     }
   }
 
+  const int meas_gen_suscept = p->meas_gen_suscept;
+  // Orbital pair measurements
+  // NOTE: Assumes trans_sym = true
+  if (meas_gen_suscept) {
+    const int Nx = p->Nx;
+    const int Ny = p->Ny;
+    const int Norb = N / (Nx * Ny);
+    const int num_ij = p->num_ij;
+
+    for (int j1 = 0; j1 < N; j1++) {
+      for (int i1 = 0; i1 < N; i1++) {
+        for (int j2 = 0; j2 < N; j2++) {
+          for (int i2 = 0; i2 < N; i2++) {
+            const int k1 = p->map_ij[i1 + j2 * N];
+            const int k2 = p->map_ij[i2 + j1 * N];
+
+            // total slot in [0, num_ij * num_ij]
+            const int r = k1 + (num_ij)*k2;
+            const num pre = phase / (Nx * Ny * Nx * Ny);
+            const int delta_i1j2 = (i1 == j2);
+            // all this preamble just to get these elements
+            const num guj2i1 = gu[j2 + i1 * N], gdj2i1 = gd[j2 + i1 * N];
+            const num guj1i2 = gu[j1 + i2 * N], gdj1i2 = gd[j1 + i2 * N];
+            // accumulate product (1-g(j2,i1))*g(i1,j2)
+            m->uuuu[r] += pre * (delta_i1j2 - guj2i1) * guj1i2;
+            m->dddd[r] += pre * (delta_i1j2 - gdj2i1) * gdj1i2;
+            m->uudd[r] += pre * (delta_i1j2 - guj2i1) * gdj1i2;
+            m->dduu[r] += pre * (delta_i1j2 - gdj2i1) * guj1i2;
+          }
+        }
+      }
+    }
+    // printf("uuuu = %f, dddd = %f, uudd = %f , dduu = %f\n",
+    //   creal(m->uuuu[0]), creal(m->dddd[0]),
+    //   creal(m->uudd[0]), creal(m->dduu[0]));
+  }
+
   const int num_plaq = p->num_plaq;
   const int meas_chiral = p->meas_chiral;
 
@@ -434,6 +471,52 @@ void meas_uneqlt_energy(const struct params *const restrict p, const num phase,
   }
 }
 
+void meas_uneqlt_gen_suscept(const struct params *const restrict p, const num phase,
+                             const num *const Gu0t, const num *const Gut0, const num *const Gd0t,
+                             const num *const Gdt0, struct meas_uneqlt *const restrict m) {
+  const int N = p->N;
+  const int Nx = p->Nx;
+  const int Ny = p->Ny;
+  const int Norb = N / (Nx * Ny);
+  const int L = p->L;
+  const int num_ij = p->num_ij;
+
+#pragma omp parallel for num_threads(OMP_MEAS_NUM_THREADS)
+  for (int t = 0; t < L; t++) {
+    const num *const restrict Gu0t_t = Gu0t + N * N * t;
+    const num *const restrict Gut0_t = Gut0 + N * N * t;
+    const num *const restrict Gd0t_t = Gd0t + N * N * t;
+    const num *const restrict Gdt0_t = Gdt0 + N * N * t;
+
+    const int delta_t = (t == 0);
+    for (int j1 = 0; j1 < N; j1++) {
+      for (int i1 = 0; i1 < N; i1++) {
+        for (int j2 = 0; j2 < N; j2++) {
+          for (int i2 = 0; i2 < N; i2++) {
+            const int k1 = p->map_ij[i1 + j2 * N];
+            const int k2 = p->map_ij[i2 + j1 * N];
+
+            // total slot in [0, num_ij * num_ij]
+            const int r = k1 + (num_ij)*k2;
+            const num pre = phase / (Nx * Ny * Nx * Ny);
+            const int delta_i1j2 = (i1 == j2);
+            // all this preamble just to get these elements
+            const num guj2i1 = Gu0t_t[j2 + i1 * N];
+            const num gdj2i1 = Gd0t_t[j2 + i1 * N];
+            const num guj1i2 = Gut0_t[j1 + i2 * N];
+            const num gdj1i2 = Gdt0_t[j1 + i2 * N];
+            // accumulate product (1-g(j2,i1))*g(i1,j2)
+            m->uuuu[r + num_ij * num_ij * t] += pre * (delta_i1j2 * delta_t - guj2i1) * guj1i2;
+            m->dddd[r + num_ij * num_ij * t] += pre * (delta_i1j2 * delta_t - gdj2i1) * gdj1i2;
+            m->uudd[r + num_ij * num_ij * t] += pre * (delta_i1j2 * delta_t - guj2i1) * gdj1i2;
+            m->dduu[r + num_ij * num_ij * t] += pre * (delta_i1j2 * delta_t - gdj2i1) * guj1i2;
+          }
+        }
+      }
+    }
+  }
+}
+
 void meas_uneqlt_nematic(const struct params *const restrict p, const num phase,
                          const num *const Gu0t, const num *const Gutt, const num *const Gut0,
                          const num *const Gd0t, const num *const Gdtt, const num *const Gdt0,
@@ -659,6 +742,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
   const int meas_energy_corr = p->meas_energy_corr;
   const int meas_nematic_corr = p->meas_nematic_corr;
   const int meas_thermal = p->meas_thermal;
+  const int meas_gen_suscept = p->meas_gen_suscept;
 
   const num *const restrict Gu00 = Gutt;
   const num *const restrict Gd00 = Gdtt;
@@ -721,6 +805,11 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
   // kv, kn
   if (meas_energy_corr) {
     meas_uneqlt_energy(p, phase, Gu0t, Gutt, Gut0, Gd0t, Gdtt, Gdt0, m);
+  }
+
+  if (meas_gen_suscept) {
+    // printf("meas_uneqlt_gen_suscept %d, iter %d\n", meas_gen_suscept, m->n_sample);
+    meas_uneqlt_gen_suscept(p, phase, Gu0t, Gut0, Gd0t, Gdt0, m);
   }
 
   /**
