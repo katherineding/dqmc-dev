@@ -357,6 +357,7 @@ def create_1(
     meas_nematic_corr: int = 0,
     meas_thermal: int = 0,
     meas_2bond_corr: int = 0,
+    meas_pair_bb_only: int = 0,
     meas_chiral: int = 0,
     meas_local_JQ: int = 0,
     meas_gen_suscept: int = 0,
@@ -953,6 +954,9 @@ def create_1(
         # phases accumulated by two-hop processes NOTE: placeholder
         thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
 
+    else:
+        raise NotImplementedError("Invalid geometry")
+
     # account for different data type when nflux=0
     thermal_phases = (
         thermal_phases
@@ -1057,6 +1061,7 @@ def create_1(
         f["params"]["meas_nematic_corr"] = meas_nematic_corr
         f["params"]["meas_chiral"] = meas_chiral
         f["params"]["meas_local_JQ"] = meas_local_JQ
+        f["params"]["meas_pair_bb_only"] = meas_pair_bb_only
         f["params"]["meas_gen_suscept"] = meas_gen_suscept
         f["params"]["checkpoint_every"] = checkpoint_every
 
@@ -1172,6 +1177,18 @@ def create_1(
                 f["meas_uneqlt"]["uudd"] = np.zeros(
                     num_ij * num_ij * L, dtype=dtype_num
                 )
+            if meas_pair_bb_only:
+                meas_toggle_list = [
+                    meas_thermal,
+                    meas_bond_corr,
+                    meas_2bond_corr,
+                    meas_energy_corr,
+                    meas_nematic_corr,
+                    meas_gen_suscept,
+                ]
+                assert not any(meas_toggle_list)
+                assert not trans_sym
+                f["meas_uneqlt"]["pair_bb"] = np.zeros(num_bb * L, dtype=dtype_num)
             if meas_bond_corr:
                 f["meas_uneqlt"]["pair_bb"] = np.zeros(num_bb * L, dtype=dtype_num)
                 f["meas_uneqlt"]["jj"] = np.zeros(num_bb * L, dtype=dtype_num)
@@ -1520,6 +1537,14 @@ if __name__ == "__main__":
         default=0,
         metavar="X",
         help="Whether to measure generalized susceptibility",
+    )
+
+    group3.add_argument(
+        "--meas_pair_bb_only",
+        type=int,
+        default=0,
+        metavar="X",
+        help="Whether to, among expensive measurements, to only measure bond singlet pair correlators in order to save on storage",
     )
 
     # parser.add_argument

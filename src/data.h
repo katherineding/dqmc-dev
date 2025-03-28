@@ -20,6 +20,7 @@ struct params {
 	int n_sweep_warm, n_sweep_meas;
 	int period_eqlt, period_uneqlt;
 	int meas_bond_corr, meas_thermal, meas_2bond_corr, meas_energy_corr, meas_nematic_corr;
+	int meas_pair_bb_only;
 	int meas_chiral;
 	int meas_local_JQ;
 	int meas_gen_suscept;

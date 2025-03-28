@@ -3,6 +3,7 @@
 #include <hdf5_hl.h>
 #include <string.h>
 #include "greens.h"
+#include <assert.h>
 
 #include "data.h"
 
@@ -122,6 +123,7 @@ int get_memory_req(const char *file) {
 		num_plaq_accum, num_b_accum, num_b2_accum, num_plaq;
 	int period_uneqlt, meas_bond_corr,meas_thermal,meas_2bond_corr,
 		meas_energy_corr, meas_nematic_corr, meas_chiral, meas_local_JQ, meas_gen_suscept;
+	int meas_pair_bb_only;
 
 	my_read(_int, "/params/N",        &N);
 	my_read(_int, "/params/L",        &L);
@@ -146,7 +148,15 @@ int get_memory_req(const char *file) {
 	my_read(_int, "/params/meas_local_JQ",     &meas_local_JQ);
 	my_read(_int, "/params/meas_gen_suscept",  &meas_gen_suscept);
 	my_read(_int, "/params/meas_nematic_corr", &meas_nematic_corr);
+	my_read(_int, "/params/meas_pair_bb_only", &meas_pair_bb_only);
 	my_read(_int, "/params/meas_chiral",       &meas_chiral);
+
+	assert(meas_thermal==0);
+	assert(meas_bond_corr==0);
+	assert(meas_energy_corr==0);
+	assert(meas_2bond_corr==0);
+	assert(meas_nematic_corr==0);
+	assert(meas_gen_suscept==0);
 
 	size_t sim_alloc_in_bytes = 0;
 	sim_alloc_in_bytes +=
@@ -199,6 +209,10 @@ int get_memory_req(const char *file) {
 	if (period_uneqlt > 0) {
 		sim_alloc_in_bytes +=
 			+ num_ij*L*7 * sizeof(num);
+		if (meas_pair_bb_only) {
+			sim_alloc_in_bytes +=
+			+ num_bb*L*1* sizeof(num);
+		}
 		if (meas_bond_corr) {
 			sim_alloc_in_bytes +=
 			+ num_bb*L*5 * sizeof(num);
@@ -377,6 +391,7 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	my_read(_int, "/params/meas_gen_suscept", &sim->p.meas_gen_suscept);
 	my_read(_int, "/params/meas_energy_corr", &sim->p.meas_energy_corr);
 	my_read(_int, "/params/meas_nematic_corr", &sim->p.meas_nematic_corr);
+	my_read(_int, "/params/meas_pair_bb_only", &sim->p.meas_pair_bb_only);
 	my_read(_int, "/params/meas_chiral", &sim->p.meas_chiral);
 	my_read(_int, "/params/checkpoint_every", &sim->p.checkpoint_every);
 
@@ -469,6 +484,9 @@ int sim_data_read_alloc(struct sim_data *sim) {
 			sim->m_ue.dddd        = my_calloc(num_ij*num_ij*L * sizeof(num));
 			sim->m_ue.dduu        = my_calloc(num_ij*num_ij*L * sizeof(num));
 			sim->m_ue.uudd        = my_calloc(num_ij*num_ij*L * sizeof(num));
+		}
+		if (sim->p.meas_pair_bb_only) {
+			sim->m_ue.pair_bb = my_calloc(num_bb*L * sizeof(num));
 		}
 		if (sim->p.meas_bond_corr) {
 			sim->m_ue.pair_bb = my_calloc(num_bb*L * sizeof(num));
@@ -596,6 +614,9 @@ int sim_data_read_alloc(struct sim_data *sim) {
 			my_read( , "/meas_uneqlt/uudd", num_h5t, sim->m_ue.uudd);
 			my_read( , "/meas_uneqlt/dduu", num_h5t, sim->m_ue.dduu);
 		}
+		if (sim->p.meas_pair_bb_only) {
+			my_read( , "/meas_uneqlt/pair_bb", num_h5t, sim->m_ue.pair_bb);
+		}
 		if (sim->p.meas_bond_corr) {
 			my_read( , "/meas_uneqlt/pair_bb", num_h5t, sim->m_ue.pair_bb);
 			my_read( , "/meas_uneqlt/jj",      num_h5t, sim->m_ue.jj);
@@ -719,6 +740,9 @@ int sim_data_save(const struct sim_data *sim) {
 			my_write("/meas_uneqlt/uudd", num_h5t, sim->m_ue.uudd);
 			my_write("/meas_uneqlt/dduu", num_h5t, sim->m_ue.dduu);
 		}
+		if (sim->p.meas_pair_bb_only) {
+			my_write("/meas_uneqlt/pair_bb", num_h5t, sim->m_ue.pair_bb);
+		}
 		if (sim->p.meas_bond_corr) {
 			my_write("/meas_uneqlt/pair_bb", num_h5t, sim->m_ue.pair_bb);
 			my_write("/meas_uneqlt/jj",      num_h5t, sim->m_ue.jj);
@@ -788,6 +812,9 @@ void sim_data_free(const struct sim_data *sim) {
 			my_free(sim->m_ue.jjn);
 			my_free(sim->m_ue.jnj2);
 			my_free(sim->m_ue.j2jn);
+		}
+		if (sim->p.meas_pair_bb_only) {
+			my_free(sim->m_ue.pair_bb);
 		}
 		if (sim->p.meas_bond_corr) {
 			my_free(sim->m_ue.ksks);

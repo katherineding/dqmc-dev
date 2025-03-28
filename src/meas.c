@@ -738,6 +738,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
   const int num_b2 = p->num_b2, num_b2b2 = p->num_b2b2;
   const int num_b2b = p->num_b2b, num_bb2 = p->num_bb2;
   const int meas_bond_corr = p->meas_bond_corr;
+  const int meas_pair_bb_only = p->meas_pair_bb_only;
   const int meas_2bond_corr = p->meas_2bond_corr;
   const int meas_energy_corr = p->meas_energy_corr;
   const int meas_nematic_corr = p->meas_nematic_corr;
@@ -824,6 +825,40 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
    */
 
   profile_begin(meas_uneq_sub);
+
+  if (meas_pair_bb_only) {
+    for (int t = 0; t < L; t++) {
+      const int delta_t = (t == 0);
+      const num *const restrict Gut0_t = Gut0 + N * N * t;
+      const num *const restrict Gdt0_t = Gdt0 + N * N * t;
+      for (int c = 0; c < num_b; c++) {
+        const int j0 = p->bonds[c];
+        const int j1 = p->bonds[c + num_b];
+        // t <- [0, L):
+        // meas_bond_corr => pair_bb, jj, jsjs, kk, ksks (4 fermion, 2 phases)
+        for (int b = 0; b < num_b; b++) {
+          const int i0 = p->bonds[b];
+          const int i1 = p->bonds[b + num_b];
+          const int bb = p->map_bb[b + c * num_b];
+          const num pre = phase / p->degen_bb;
+
+          const num gui0j0 = Gut0_t[i0 + j0 * N];
+          const num gdi0j0 = Gdt0_t[i0 + j0 * N];
+          const num gui0j1 = Gut0_t[i0 + j1 * N];
+          const num gdi0j1 = Gdt0_t[i0 + j1 * N];
+          const num gui1j0 = Gut0_t[i1 + j0 * N];
+          const num gdi1j0 = Gdt0_t[i1 + j0 * N];
+          const num gui1j1 = Gut0_t[i1 + j1 * N];
+          const num gdi1j1 = Gdt0_t[i1 + j1 * N];
+
+          m->pair_bb[bb + num_bb * t] +=
+              0.5 * pre * (gui0j0 * gdi1j1 + gui1j0 * gdi0j1 + gui0j1 * gdi1j0 + gui1j1 * gdi0j0);
+        }
+      }
+    }
+    profile_end(meas_uneq_sub);
+    return;
+  }
 
   if (meas_bond_corr || meas_thermal || meas_2bond_corr) {
 #pragma omp parallel for num_threads(OMP_MEAS_NUM_THREADS)
