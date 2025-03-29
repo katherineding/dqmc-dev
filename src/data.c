@@ -151,12 +151,14 @@ int get_memory_req(const char *file) {
 	my_read(_int, "/params/meas_pair_bb_only", &meas_pair_bb_only);
 	my_read(_int, "/params/meas_chiral",       &meas_chiral);
 
-	assert(meas_thermal==0);
-	assert(meas_bond_corr==0);
-	assert(meas_energy_corr==0);
-	assert(meas_2bond_corr==0);
-	assert(meas_nematic_corr==0);
-	assert(meas_gen_suscept==0);
+	if (meas_pair_bb_only) {
+		assert(meas_thermal==0);
+		assert(meas_bond_corr==0);
+		assert(meas_energy_corr==0);
+		assert(meas_2bond_corr==0);
+		assert(meas_nematic_corr==0);
+		assert(meas_gen_suscept==0);
+	}
 
 	size_t sim_alloc_in_bytes = 0;
 	sim_alloc_in_bytes +=
