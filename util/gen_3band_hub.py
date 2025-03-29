@@ -209,6 +209,7 @@ def create_1(
     trans_sym,
     checkpoint_every,
     meas_bond_corr,
+    meas_pair_bb_only,
     meas_energy_corr,
     meas_nematic_corr,
     meas_thermal,
@@ -425,6 +426,7 @@ def create_1(
         f["params"]["period_eqlt"] = np.array(period_eqlt, dtype=np.int32)
         f["params"]["period_uneqlt"] = np.array(period_uneqlt, dtype=np.int32)
         f["params"]["meas_bond_corr"] = meas_bond_corr
+        f["params"]["meas_pair_bb_only"] = meas_pair_bb_only
         f["params"]["meas_thermal"] = meas_thermal
         f["params"]["meas_2bond_corr"] = meas_2bond_corr
         f["params"]["meas_energy_corr"] = meas_energy_corr
@@ -540,6 +542,18 @@ def create_1(
                 f["meas_uneqlt"]["uudd"] = np.zeros(
                     num_ij * num_ij * L, dtype=dtype_num
                 )
+            if meas_pair_bb_only:
+                meas_toggle_list = [
+                    meas_thermal,
+                    meas_bond_corr,
+                    meas_2bond_corr,
+                    meas_energy_corr,
+                    meas_nematic_corr,
+                    meas_gen_suscept,
+                ]
+                assert not any(meas_toggle_list)
+                assert not trans_sym
+                f["meas_uneqlt"]["pair_bb"] = np.zeros(num_bb * L, dtype=dtype_num)
             if meas_bond_corr:
                 f["meas_uneqlt"]["pair_bb"] = np.zeros(num_bb * L, dtype=dtype_num)
                 f["meas_uneqlt"]["jj"] = np.zeros(num_bb * L, dtype=dtype_num)
@@ -839,6 +853,13 @@ if __name__ == "__main__":
         default=0,
         metavar="X",
         help="Whether to measure generalized susceptibility",
+    )
+    group3.add_argument(
+        "--meas_pair_bb_only",
+        type=int,
+        default=0,
+        metavar="X",
+        help="Whether to, among expensive measurements, to only measure bond singlet pair correlators in order to save on storage",
     )
 
     # parser.add_argument
