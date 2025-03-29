@@ -1,4 +1,5 @@
 import gen_topo_3band_hub as ghub
+import gen_util_shared as gus
 import h5py
 import util
 import numpy as np
@@ -113,7 +114,7 @@ def test_batch_seed_basic_real():
     assert hs.dtype.type == np.int32
 
     # initial rng based on seed
-    ref_rng = ghub.rand_seed_splitmix64(seed)
+    ref_rng = gus.rand_seed_splitmix64(seed)
     assert np.allclose(init_rng, ref_rng)
 
     run_dqmc()

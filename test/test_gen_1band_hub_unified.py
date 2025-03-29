@@ -1,4 +1,5 @@
 import gen_1band_unified_hub as ghub
+import gen_util_shared as gus
 import util
 import numpy as np
 import os
@@ -137,7 +138,7 @@ def test_batch_seed_basic_real(geometry):
     assert hs.dtype.type == np.int32
 
     # initial rng based on seed
-    ref_rng = ghub.rand_seed_splitmix64(seed)
+    ref_rng = gus.rand_seed_splitmix64(seed)
     assert np.allclose(init_rng, ref_rng)
     assert np.allclose(hs, hs_ref.hs_init[geometry])
 
