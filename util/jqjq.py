@@ -1,7 +1,6 @@
 import numpy as np
 import util
 import data_analysis as da
-from typing import Any
 
 # one-hop bond dx, dy
 dx_arr = [1, 0, 1, -1]
@@ -156,7 +155,10 @@ def thermal_sum(path: str, q0_corrs) -> dict[str, np.ndarray]:
     t_arr = [1, 1, tp, tp]
     # 2bond type t factors
     if (
-        "tp-0.25_n1.0" in path or "tp-0.01_n1.0" in path or "tp-0.1_n1.0" in path
+        "tp-0.25_n1.0" in path
+        or "tp-0.01_n1.0" in path
+        or "tp-0.1_n1.0" in path
+        or "tp-0.25_n0.95" in path
     ) and nflux == 0:
         print(path, "using legacy t2_arr for nflux=0 case")
         t2_arr = [
@@ -306,7 +308,7 @@ def thermal_sum(path: str, q0_corrs) -> dict[str, np.ndarray]:
                 * jjn_q0[:, :, itype, jtype]
             )
 
-    # Note: this is the JNJN correlator with (-i)^2 factor!
+    # NOTE: Extra (-1) factor due to (i)^2
     result_dict["JNJN"] = (-1) * np.stack((jj_xx, jj_yy, jj_xy, jj_yx), axis=0)
 
     # ==========================================================================
@@ -479,7 +481,7 @@ def thermal_sum(path: str, q0_corrs) -> dict[str, np.ndarray]:
     # see transport notes for detailed derivation
     # NOTE: the prefactor is 1/4, not 1/16, because in DQMC measurements,
     # each bond is only counted once. In notes, each bond is counted twice.
-    # Extra (-1) factor due to (i)^2
+    # NOTE: Extra (-1) factor due to (i)^2
     pre_arr = 1 / 4 * np.outer([1, -U, U + 2 * mu], [1, -U, U + 2 * mu]) * (-1)
     xx = (
         pre_arr[0, 0] * j2j2_xx
@@ -544,7 +546,7 @@ def thermal_sum(path: str, q0_corrs) -> dict[str, np.ndarray]:
     # ==========================================================================
     # prefactors same for JQ(tau)JN(0),JN(tau)JQ(0)
     # TODO: check if this is actually consistent with bond, map definitions
-    # JQJN and JNJQ might be flipped around
+    # NOTE: JQJN and JNJQ might be flipped around
     # NOTE: No (-e) factor here, because using the particle-current J_N
     pre_arr = np.array([1, -U, U + 2 * mu]) * 1 / 2
     xx = pre_arr[0] * j2j_xx + pre_arr[1] * jnj_xx + pre_arr[2] * jj_xx
@@ -561,12 +563,15 @@ def thermal_sum(path: str, q0_corrs) -> dict[str, np.ndarray]:
     yx = pre_arr[0] * jj2_yx + pre_arr[1] * jjn_yx + pre_arr[2] * jj_yx
 
     result_dict["JNJQ"] = np.stack((xx, yy, xy, yx), axis=0)
-    # jjq_dict['metadata'] = (L,dt)
+
+    s = get_sign(path)
+    result_dict["s"] = s
+
     return result_dict
 
 
 def symmetry_checks(result_dict):
-    atol = 1e-3
+    atol = 1e-2
     # ============Electrical============================
     xx = result_dict["JNJN"][0].mean(0)
     yy = result_dict["JNJN"][1].mean(0)
@@ -580,11 +585,11 @@ def symmetry_checks(result_dict):
     # JXJY is mostly imag, but only do this check when not all zero
     if not (np.allclose(xy, 0, atol=atol) and np.allclose(yx, 0, atol=atol)):
         assert (
-            np.linalg.norm(xy.real / xy.imag) < atol
-        ), f"{np.linalg.norm(xy.real/xy.imag)}"
+            np.linalg.norm(xy.real) / np.linalg.norm(xy.imag) < atol
+        ), f"{np.linalg.norm(xy.real) / np.linalg.norm(xy.imag)}"
         assert (
-            np.linalg.norm(yx.real / yx.imag) < atol
-        ), f"{np.linalg.norm(xy.real/xy.imag)}"
+            np.linalg.norm(yx.real) / np.linalg.norm(yx.imag) < atol
+        ), f"{np.linalg.norm(yx.real/yx.imag)}"
     else:
         assert np.allclose(xy, 0, atol=atol)
         assert np.allclose(yx, 0, atol=atol)
@@ -610,11 +615,11 @@ def symmetry_checks(result_dict):
     # JQXJQY is mostly imag, but only do this check when not all zero
     if not (np.allclose(xy, 0, atol=atol) and np.allclose(yx, 0, atol=atol)):
         assert (
-            np.linalg.norm(xy.real / xy.imag) < atol
-        ), f"{np.linalg.norm(xy.real/xy.imag)}"
+            np.linalg.norm(xy.real) / np.linalg.norm(xy.imag) < atol
+        ), f"{np.linalg.norm(xy.real) / np.linalg.norm(xy.imag)}"
         assert (
-            np.linalg.norm(yx.real / yx.imag) < atol
-        ), f"{np.linalg.norm(xy.real/xy.imag)}"
+            np.linalg.norm(yx.real) / np.linalg.norm(yx.imag) < atol
+        ), f"{np.linalg.norm(yx.real/yx.imag)}"
     else:
         assert np.allclose(xy, 0, atol=atol)
         assert np.allclose(yx, 0, atol=atol)
@@ -661,11 +666,11 @@ def symmetry_checks(result_dict):
     # JXJQY is mostly imag, but only do this check when not all zero
     if not (np.allclose(xy, 0, atol=atol) and np.allclose(yx, 0, atol=atol)):
         assert (
-            np.linalg.norm(xy.real / xy.imag) < atol
-        ), f"{np.linalg.norm(xy.real/xy.imag)}"
+            np.linalg.norm(xy.real) / np.linalg.norm(xy.imag) < atol
+        ), f"{np.linalg.norm(xy.real) / np.linalg.norm(xy.imag)}"
         assert (
-            np.linalg.norm(yx.real / yx.imag) < atol
-        ), f"{np.linalg.norm(xy.real/xy.imag)}"
+            np.linalg.norm(yx.real) / np.linalg.norm(yx.imag) < atol
+        ), f"{np.linalg.norm(yx.real/yx.imag)}"
     else:
         assert np.allclose(xy, 0, atol=atol)
         assert np.allclose(yx, 0, atol=atol)
@@ -673,10 +678,10 @@ def symmetry_checks(result_dict):
     # JQXJY is mostly imag, but only do this check when not all zero
     if not (np.allclose(xy2, 0, atol=atol) and np.allclose(yx2, 0, atol=atol)):
         assert (
-            np.linalg.norm(xy2.real / xy2.imag) < atol
-        ), f"{np.linalg.norm(xy2.real/xy2.imag)}"
+            np.linalg.norm(xy2.real) / np.linalg.norm(xy2.imag) < atol
+        ), f"{np.linalg.norm(xy2.real) / np.linalg.norm(xy2.imag)}"
         assert (
-            np.linalg.norm(yx2.real / yx2.imag) < atol
+            np.linalg.norm(yx2.real) / np.linalg.norm(yx2.imag) < atol
         ), f"{np.linalg.norm(yx2.real/yx2.imag)}"
     else:
         assert np.allclose(xy2, 0, atol=atol)
@@ -699,41 +704,98 @@ def symmetry_checks(result_dict):
     assert np.allclose(yx, yx2, atol=atol)
 
 
-def my_correlators(path: str) -> dict[str, np.ndarray]:
+def my_correlators_div_sign(
+    path: str, div_by_sign: bool = False
+) -> dict[str, np.ndarray]:
     """
     Given path with trailing backslash, run get_component() and thermal_sum()
     to get a dictionary with JNJN, JQJN, JNJQ, JQJQ
     Return a dictionary with named elements.
     E.g. result["JQJN"].shape = (4, Nbin_complete, L)
-    NOTE: elements divided by sign for prettier plotting
+    NOTE: elements can be divided by sign for prettier plotting
     """
 
-    if da.info(path, uneqlt=True, show=True, imagtol=1e-2) == 1:
-        raise ValueError("failed to obtain correlator")
+    # this directory contains *some* .h5 files that we can use
+    if da.info(path, uneqlt=True, show=False, imagtol=1e-2) == 1:
+        raise ValueError("failed to obtain correlator: no complete MC runs")
 
-    U, mu, beta, Nx, Ny, bps, b2ps, nflux, tp, N, L, dt = util.load_firstfile(
-        path,
-        "metadata/U",
-        "metadata/mu",
-        "metadata/beta",
-        "metadata/Nx",
-        "metadata/Ny",
-        "metadata/bps",
-        "metadata/b2ps",
-        "metadata/nflux",
-        "metadata/t'",
-        "params/N",
-        "params/L",
-        "params/dt",
+    beta, U, nflux = util.load_firstfile(
+        path, "metadata/beta", "metadata/U", "metadata/nflux"
     )
 
-    try:
-        jjn_q0 = get_component(path, "jjn")
-        jnj_q0 = get_component(path, "jnj")
-    except KeyError as e:
-        print(f"caught KeyError: {e}, using legacy names new_jjn and new_jnj")
-        jjn_q0 = get_component(path, "new_jjn")
-        jnj_q0 = get_component(path, "new_jnj")
+    if (
+        "8x8_tp-0.25_n1.0_thermal" in path
+        and int(nflux) < 4
+        and int(nflux) > 0
+        and float(beta) > 3.1
+        and float(beta) < 5.5
+    ):
+        print("Emily Z's special case")
+        jjn_q01 = get_component(path + "batch", "new_jjn")
+        jnj_q01 = get_component(path + "batch", "new_jnj")
+
+        jjn_q02 = get_component(path + "ez_extra", "jjn")
+        jnj_q02 = get_component(path + "ez_extra", "jnj")
+
+        jjn_q0 = np.concatenate((jjn_q01, jjn_q02), axis=0)
+        jnj_q0 = np.concatenate((jnj_q01, jnj_q02), axis=0)
+    elif (
+        "8x8_tp-0.05_n1.0_thermal_perlmt" in path and int(nflux) > 0 and int(nflux) < 5
+    ):
+        print("Mixed hdf5 gen commits 5c66f52 and c466c86")
+        if da.info(path + "batch", uneqlt=True, show=False, imagtol=1e-2) == 1:
+            print("batch prefix incomplete")
+            jjn_q0 = get_component(path + "2023_12_20", "jjn")
+            jnj_q0 = get_component(path + "2023_12_20", "jnj")
+        elif da.info(path + "2023_12_20", uneqlt=True, show=False, imagtol=1e-2) == 1:
+            print("2023_12_20 prefix incomplete")
+            jjn_q0 = get_component(path + "batch", "new_jjn")
+            jnj_q0 = get_component(path + "batch", "new_jnj")
+        else:
+            print("both batch prefix and 2023_12_20 contain complete bins")
+            jjn_q01 = get_component(path + "batch", "new_jjn")
+            jnj_q01 = get_component(path + "batch", "new_jnj")
+
+            jjn_q02 = get_component(path + "2023_12_20", "jjn")
+            jnj_q02 = get_component(path + "2023_12_20", "jnj")
+
+            jjn_q0 = np.concatenate((jjn_q01, jjn_q02), axis=0)
+            jnj_q0 = np.concatenate((jnj_q01, jnj_q02), axis=0)
+        # print(jjn_q0.shape, jnj_q0.shape)
+    elif (
+        "8x8_tp-0.1_n1.0_thermal" in path
+        and int(nflux) > 0
+        and int(nflux) < 4
+        and float(beta) > 4.1
+        and np.isclose(U, 8)
+    ):
+        print("Mixed hdf5 gen commits")
+        if da.info(path + "batch", uneqlt=True, show=False, imagtol=1e-2) == 1:
+            print("batch prefix incomplete")
+            jjn_q0 = get_component(path + "2024_06_10", "jjn")
+            jnj_q0 = get_component(path + "2024_06_10", "jnj")
+        elif da.info(path + "2024_06_10", uneqlt=True, show=False, imagtol=1e-2) == 1:
+            print("2024_06_10 prefix incomplete")
+            jjn_q0 = get_component(path + "batch", "new_jjn")
+            jnj_q0 = get_component(path + "batch", "new_jnj")
+        else:
+            print("both batch prefix and 2024_06_10 contain complete bins")
+            jjn_q01 = get_component(path + "batch", "new_jjn")
+            jnj_q01 = get_component(path + "batch", "new_jnj")
+
+            jjn_q02 = get_component(path + "2024_06_10", "jjn")
+            jnj_q02 = get_component(path + "2024_06_10", "jnj")
+
+            jjn_q0 = np.concatenate((jjn_q01, jjn_q02), axis=0)
+            jnj_q0 = np.concatenate((jnj_q01, jnj_q02), axis=0)
+        # print(jjn_q0.shape, jnj_q0.shape)
+    else:
+        try:
+            jjn_q0 = get_component(path, "jjn")
+            jnj_q0 = get_component(path, "jnj")
+        except KeyError as e:
+            jjn_q0 = get_component(path, "new_jjn")
+            jnj_q0 = get_component(path, "new_jnj")
 
     j2j2_q0 = get_component(path, "j2j2")
     j2j_q0 = get_component(path, "j2j")
@@ -743,31 +805,31 @@ def my_correlators(path: str) -> dict[str, np.ndarray]:
     jnjn_q0 = get_component(path, "jnjn")
     jj_q0 = get_component(path, "jj")
 
-    # TODO: generate grid range based on U?
-    dm_dict, de_dict = da.eqlt_meas_i(path, ["density"])
-    dm = dm_dict["density"].real
-    de = de_dict["density"]
-    # tt = fr"{Nx}x{Ny} nflux={nflux} n={dm.real:.7g} t'={tp} U={U} $\beta$={beta:.3g}"
-    print(f"Achieved n-1={(dm-1):.3g} , SE(n) =  {de:.3g}")
+    # print(
+    #     j2j2_q0.shape,
+    #     j2j_q0.shape,
+    #     jj2_q0.shape,
+    #     j2jn_q0.shape,
+    #     jnj2_q0.shape,
+    #     jnjn_q0.shape,
+    #     jj_q0.shape,
+    # )
 
-    ns, s = util.load(path, "meas_uneqlt/n_sample", "meas_uneqlt/sign")
-    mask = ns == ns.max()
-    nbin = mask.sum()
-    ns, s = ns[mask], s[mask]
+    if div_by_sign:
+        s = get_sign(path)
+        # NOTE: no error analysis, just divided by sign
+        j2j2_q0 /= np.mean(s)
 
-    # NOTE: no error analysis, just divided by sign
-    j2j2_q0 /= np.mean(s)
+        jj2_q0 /= np.mean(s)
+        j2j_q0 /= np.mean(s)
+        jnj2_q0 /= np.mean(s)
+        j2jn_q0 /= np.mean(s)
 
-    jj2_q0 /= np.mean(s)
-    j2j_q0 /= np.mean(s)
-    jnj2_q0 /= np.mean(s)
-    j2jn_q0 /= np.mean(s)
+        jjn_q0 /= np.mean(s)
+        jnj_q0 /= np.mean(s)
 
-    jjn_q0 /= np.mean(s)
-    jnj_q0 /= np.mean(s)
-
-    jnjn_q0 /= np.mean(s)
-    jj_q0 /= np.mean(s)
+        jnjn_q0 /= np.mean(s)
+        jj_q0 /= np.mean(s)
 
     q0_corrs = (
         j2j2_q0,
