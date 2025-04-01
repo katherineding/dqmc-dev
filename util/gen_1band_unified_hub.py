@@ -9,6 +9,7 @@ import numpy as np
 from scipy.linalg import expm
 
 import tight_binding
+import triangle_HH_tb
 import gen_util_shared as gus
 
 np.seterr(over="ignore")
@@ -711,6 +712,31 @@ def create_1(
         assert num_ij == map_ij.max() + 1 == degen_ij.size
         assert np.all(degen_ij == degen_ij[0])
 
+        '''
+        Explanation of above.
+        map_ij makes a matrix that will be our site-site mapping. It ends up encoding which
+        two sites are connected. In the translationally symmetric case, many different site
+        pairs will have the same k, which is fine because of the translational symmetry
+
+        num_ij tells you the number of site-site pairs in the mapping. When there isn't trans
+        symmetry, it is clearly N*N. With trans symmetry, only need to consider all sites' relations
+        to a single one and bin things
+
+        degen_ij saves space by putting all "identical pairs" into the same bin of a long 1d array.
+        The "identical pairs" are identified by their k
+
+        the loop goes over all sites. Each site is identified by an x and y,
+        which leads to there being ix, iy, jx, & jy.
+        
+        If the system is translationally symmetric, it is equivalent to use a k 
+        that is the difference between the sites mod the lattice size
+        If it isn't translationally symmetric, k is then just the 
+        label of i plus N times the label of j
+
+        Then map_ij[j,i] is set to be k
+        this is all same as square, which makes sense
+        '''
+
         # 1 bond 1 site mapping NOTE: placeholder
         map_bs = np.zeros((N, num_b), dtype=np.int32)
         num_bs = bps * N if trans_sym else num_b * N
@@ -720,6 +746,53 @@ def create_1(
         map_bb = np.zeros((num_b, num_b), dtype=np.int32)
         num_bb = bps * bps * N if trans_sym else num_b * num_b
         degen_bb = np.zeros(num_bb, dtype=np.int32)
+        for j in range(N):
+            for i in range(N):
+                k = map_ij[j,i]
+                for jb in range(bps):
+                    for ib in range(bps):
+                        kk = k + num_ij * (ib + bps * jb)
+                        map_bb[j + N * jb, i + N * ib] = kk
+                        degen_bb[kk] += 1
+        assert num_bb == map_bb.max() + 1 == degen_bb.size
+        assert np.all(degen_bb == degen_bb[0])
+
+        '''
+        map_bb makes a matrix that will be our bond-bond mapping
+
+        num_bb tells you the number of bond-bond pairs. w/o trans_sym, the number
+        of bond-bond pairs is clearly num_b * num_b. With it, one would only need to consider
+        the bonds of a single site, bps, paired with all bonds N*bps. This is then the number
+        of bins for the compressed degen case.
+
+        We then loop over all sites and all bonds to make our mapping. In a triangular lattice,
+        each site has 6 connections --> 3 bonds per site. We want to construct the kk that
+        identifies the mapping like the k in the site-site case. For two given sites i and j,
+        we start by taking their k, which identifies the connection between the two sites. Then,
+        we loop over the bond types i and j can have. For each one, we construct kk by using
+        k (the site-site identifier) as a "base" and then adding a specifier about the bond
+        with the same convention as we made site identifiers previously.
+        
+        A point about whether the mapping actually works.
+        k encodes the info about the two involved sites k = (ix + Nx * iy) + N * (jx + Nx * jy)
+        To extract, one could find the part of the number smaller than N, which tells you i,
+        and mod N to get j. 
+        kk takes that number, which uniquely determines the site-site pair, and adds to it
+        the unique identifier of the bond type-bond type combination (0-0, 0-1, etc.)
+        There are 9 bond-bond possibilities, and those just need to be encoded in a way
+        that doesn't interfere with the k, which takes up all numbers up to N-1 + N*(N-1) = N^2 - 1
+        Katherine's takes num_ij, which is N^2 in the trans_sym = false case. This is higher than
+        N^2 - 1, so it is encoded as we want.
+
+        What about the trans_sym case?
+        In the trans_sym case, we consider all pairs from a single site i.e. some number of 
+        steps forward in the lattice. So, k only ranges from 0 to N - 1, which specifies
+        the jump from a site i. Then, in the bond-bond case we consdier all bonds that
+        can be paired with a single site's bonds. To use the same code as the
+        non-translationally symmetric code, we just use the same kk bond type-bond type info
+        encoding to add to the k. This will still do the degen properly, as for any sites that are
+        considered the same, if the bonds are the same too they'll end up in the same bucket
+        '''
 
         # my definition: Bonds defined by two hopping steps
         # NOTE: placeholder
@@ -742,9 +815,14 @@ def create_1(
         map_b2b = np.zeros((num_b2, num_b), dtype=np.int32)
         degen_b2b = np.zeros(num_b2b, dtype=np.int32)
 
-        kij, peierls = tight_binding.H_periodic_triangular(
-            Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
-        )
+        if nflux == N / 2:
+            kij, peierls = triangle_HH_tb.H_periodic_triangular(
+                Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
+            )
+        else:
+            kij, peierls = tight_binding.H_periodic_triangular(
+                Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
+            )
 
         # NOTE: placeholder
         thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
