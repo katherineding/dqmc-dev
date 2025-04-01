@@ -156,6 +156,26 @@ def bond_params(
                     bonds[1, i + 2 * N] = ix1 + Nx * iy1  # i1 = i + x + y
                     bonds[0, i + 3 * N] = ix1 + Nx * iy  # i0 = i + x
                     bonds[1, i + 3 * N] = ix + Nx * iy1  # i1 = i + y
+    elif geometry == "triangular":
+        # Three bonds of lattice are down_left / (0), down right \ (1), and right -- (2)    
+        # Chosen such that bonds only go towards larger Nx and Ny
+        # In the picture of square <--> triangular, which is easier to see the labeling in,
+        # these are down, down right, and right                          
+        for iy in range(Ny):
+            for ix in range(Nx):
+                i = ix + Nx * iy
+                i_down_left_y = (iy + 1) % Ny
+                i_down_right_x = (ix + 1) % Nx
+                i_down_right_y = (iy + 1) % Ny
+                i_right_x = (ix + 1) % Nx
+                bonds[0, i] = i
+                bonds[1, i] = ix + Nx * i_down_left_y
+                bonds[0, i + N] = i
+                bonds[1, i + N] = i_down_right_x + Nx * i_down_right_y
+                bonds[0, i + 2 * N] = i
+                bonds[1, i + 2 * N] = i_right_x + Nx * iy
+                if bps == 6:
+                    raise NotImplementedError
     else:
         print(
             f"WARN: using placeholder {sys._getframe().f_code.co_name} for {geometry}"
