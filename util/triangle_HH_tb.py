@@ -12,12 +12,12 @@ def neighbor_list(Nx: int, Ny: int, N:int):
     x, y = (N % Nx), (N // Nx)
 
     # find all the neighbors
-    right = x_y_to_N((x+1) % Nx, y)
-    up = x_y_to_N(x, (y + Ny - 1) % Ny)
-    up_left = x_y_to_N((x + Nx - 1) % Nx, (y + Ny - 1) % Ny)
-    left = x_y_to_N((x + Nx - 1) % Nx, y)
-    down = x_y_to_N(x, (y + 1) % Ny)
-    down_right = x_y_to_N((x + 1) % Nx, (y + 1) % Ny)
+    right       = x_y_to_N((x+1) % Nx, y)
+    up          = x_y_to_N(x, (y+1) % Ny)
+    up_left     = x_y_to_N((x + Nx - 1) % Nx, (y+1) % Ny)
+    left        = x_y_to_N((x + Nx - 1) % Nx, y)
+    down        = x_y_to_N(x, (y + Ny - 1) % Ny)
+    down_right  = x_y_to_N((x + 1) % Nx, (y + Ny - 1) % Ny)
 
     neighbors = np.array([right, up, up_left, left, down, down_right])
 
@@ -105,15 +105,15 @@ def peierls_triangular(
         x, y = (central_site % Nx), (central_site // Nx)
 
         # identify the positions of the region
-        up_left = x_y_to_N((x-1+Nx) % Nx, (y-1+Ny) % Ny)
-        up = x_y_to_N(x, (y-1+Ny) % Ny)
-        up_right = x_y_to_N((x+1) % Nx, (y-1+Ny) % Ny)
+        up_left = x_y_to_N((x-1+Nx) % Nx, (y+1) % Ny)
+        up = x_y_to_N(x, (y+1) % Ny)
+        up_right = x_y_to_N((x+1) % Nx, (y+1) % Ny)
         left = x_y_to_N((x-1+Nx) % Nx, y)
         middle = central_site
         right = x_y_to_N((x+1) % Nx, y)
-        down_left = x_y_to_N((x-1+Nx) % Nx, (y+1) % Ny)
-        down = x_y_to_N(x, (y+1) % Ny)
-        down_right = x_y_to_N((x+1) % Nx, (y+1) % Ny)
+        down_left = x_y_to_N((x-1+Nx) % Nx, (y-1+Ny) % Ny)
+        down = x_y_to_N(x, (y-1+Ny) % Ny)
+        down_right = x_y_to_N((x+1) % Nx, (y-1+Ny) % Ny)
 
         local_sites = [up_left, up, up_right, left, middle,
                        right, down_left, down, down_right]

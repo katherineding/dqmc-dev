@@ -164,9 +164,9 @@ def bond_params(
         for iy in range(Ny):
             for ix in range(Nx):
                 i = ix + Nx * iy
-                i_down_left_y = (iy + 1) % Ny
+                i_down_left_y = (iy + Ny - 1) % Ny
                 i_down_right_x = (ix + 1) % Nx
-                i_down_right_y = (iy + 1) % Ny
+                i_down_right_y = (iy + Ny - 1) % Ny
                 i_right_x = (ix + 1) % Nx
                 bonds[0, i] = i
                 bonds[1, i] = ix + Nx * i_down_left_y
