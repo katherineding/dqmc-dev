@@ -919,12 +919,7 @@ def create_1(
     exp_halfKd = expm(-dt / 2 * Kd)
     inv_exp_halfKd = expm(dt / 2 * Kd)
 
-    U_i = U * np.ones_like(degen_i, dtype=np.float64)
-    assert U_i.shape[0] == num_i
-
-    exp_lmbd = np.exp(0.5 * U_i * dt) + np.sqrt(np.expm1(U_i * dt))
-    exp_lambda = np.array((exp_lmbd[map_i] ** -1, exp_lmbd[map_i]))
-    delll = np.array((exp_lmbd[map_i] ** 2 - 1, exp_lmbd[map_i] ** -2 - 1))
+    U_i, exp_lambda, delll = gus.set_U(U, dt, num_i, map_i, degen_i)
 
     with h5py.File(file_params, "w" if overwrite else "x") as f:
         # parameters not used by dqmc code, but useful for analysis

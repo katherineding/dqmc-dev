@@ -66,6 +66,26 @@ def rand_jump(rng):
         rng[(np.uint64(j) + rng[16]) & np.uint64(15)] = t[j]
 
 
+def set_U(U, dt, num_i, map_i, degen_i):
+    U_i = U * np.ones_like(degen_i, dtype=np.float64)
+    assert U_i.shape[0] == num_i
+    if U >= 0:
+        # cosh(lmbd) = exp[dt*U/2]
+        # exp(lmbd) = exp[dt*U/2) + sqrt[-1 + exp[dt*U]]
+        exp_lmbd = np.exp(0.5 * U_i * dt) + np.sqrt(np.expm1(U_i * dt))
+        exp_lambda = np.array((exp_lmbd[map_i] ** -1, exp_lmbd[map_i]))
+        delll = np.array((exp_lmbd[map_i] ** 2 - 1, exp_lmbd[map_i] ** -2 - 1))
+    else:
+        # cosh(lmbd) = exp[dt*|U|/2]
+        # exp(lmbd) = exp[dt*|U|/2) + sqrt[-1 + exp[dt*|U|]]
+        # TODO: check me
+        exp_lmbd = np.exp(0.5 * np.abs(U_i) * dt) + np.sqrt(np.expm1(np.abs(U_i) * dt))
+        exp_lambda = np.array((exp_lmbd[map_i] ** -1, exp_lmbd[map_i] ** -1))
+        delll = np.array((exp_lmbd[map_i] ** 2 - 1, exp_lmbd[map_i] ** 2 - 1))
+
+    return U_i, exp_lambda, delll
+
+
 def add_simFile_opts(parser):
     group2 = parser.add_argument_group("Simulation file settings")
     group2.add_argument(
