@@ -8,7 +8,7 @@ import numpy as np
 from typing import Optional
 
 from scipy.interpolate import interp1d
-import misc
+# import misc
 import util  # edwins util file
 
 np.set_printoptions(precision=4)
@@ -647,64 +647,64 @@ def eqlt_meas_i(
     return dm_dict, de_dict
 
 
-def readmu(
-    path: str, fname: str, show: bool = False, nflux_string: str = "?"
-) -> tuple[list[str], list[str], dict[tuple[str, str], float]]:
-    betas_list = []
-    Us_list = []
-    mu_dict = {}
+# def readmu(
+#     path: str, fname: str, show: bool = False, nflux_string: str = "?"
+# ) -> tuple[list[str], list[str], dict[tuple[str, str], float]]:
+#     betas_list = []
+#     Us_list = []
+#     mu_dict = {}
 
-    print(f"mu info source: {path}{fname}")
-    with open(path + fname, "r") as f:
-        c = f.readlines()
-        for i in range(len(c)):
-            if "target n = " in c[i]:
-                nt = float(c[i][10:-1])
-            if "beta" in c[i]:
-                bi = c[i].find("beta")
-                ui = c[i].find("U")
-                bs = c[i][bi + 4 : ui - 1]
-                Us = c[i][ui + 1 : -1]
-                if bs not in betas_list:
-                    betas_list.append(bs)
-                if Us not in Us_list:
-                    Us_list.append(Us)
-                mu = float(c[i - 1][1:-2])
-                mu_dict[(bs, Us)] = mu  # full precision float
+#     print(f"mu info source: {path}{fname}")
+#     with open(path + fname, "r") as f:
+#         c = f.readlines()
+#         for i in range(len(c)):
+#             if "target n = " in c[i]:
+#                 nt = float(c[i][10:-1])
+#             if "beta" in c[i]:
+#                 bi = c[i].find("beta")
+#                 ui = c[i].find("U")
+#                 bs = c[i][bi + 4 : ui - 1]
+#                 Us = c[i][ui + 1 : -1]
+#                 if bs not in betas_list:
+#                     betas_list.append(bs)
+#                 if Us not in Us_list:
+#                     Us_list.append(Us)
+#                 mu = float(c[i - 1][1:-2])
+#                 mu_dict[(bs, Us)] = mu  # full precision float
 
-    beta_arr = np.array(list(map(float, betas_list)))
-    order = np.argsort(beta_arr)
-    U_arr = np.array(list(map(float, Us_list)))
-    Uorder = np.argsort(U_arr)
-    nT = beta_arr.shape[0]
-    nU = U_arr.shape[0]
-    # if want to plot chemical potential as function of temperature for each U
-    if show:
-        print(f"readmu: target filling = {nt}")
-        print(f"readmu: beta list = {betas_list}", len(betas_list))
-        print(f"readmu: U list = {Us_list}", len(Us_list))
-        # colors = plt.cm.viridis(np.linspace(1, 0, nU))
-        for j in Uorder:
-            Us = Us_list[j]
-            mu_arr = np.empty(nT)
-            for i in range(nT):
-                try:
-                    mu_arr[i] = mu_dict[(betas_list[i], Us)]
-                except KeyError as e:
-                    print("KeyError: (beta, U) = ", e)
-                    mu_arr[i] = np.nan
-            plt.plot(
-                1 / beta_arr[order],
-                mu_arr[order],
-                f"{misc.marker_list[j]}-",
-                color=plt.cm.tab10(int(nflux_string)),
-                label=f"U={Us}, nflux={nflux_string}",
-            )
-        plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
-        plt.xlabel(r"temperature $T/t$")
-        plt.ylabel(r"chemical potential $\mu$")
-        plt.grid(True)
-        plt.xscale("log")
-        plt.xlim(np.min(1 / beta_arr) / 2, np.max(1 / beta_arr) * 2)
+#     beta_arr = np.array(list(map(float, betas_list)))
+#     order = np.argsort(beta_arr)
+#     U_arr = np.array(list(map(float, Us_list)))
+#     Uorder = np.argsort(U_arr)
+#     nT = beta_arr.shape[0]
+#     nU = U_arr.shape[0]
+#     # if want to plot chemical potential as function of temperature for each U
+#     if show:
+#         print(f"readmu: target filling = {nt}")
+#         print(f"readmu: beta list = {betas_list}", len(betas_list))
+#         print(f"readmu: U list = {Us_list}", len(Us_list))
+#         # colors = plt.cm.viridis(np.linspace(1, 0, nU))
+#         for j in Uorder:
+#             Us = Us_list[j]
+#             mu_arr = np.empty(nT)
+#             for i in range(nT):
+#                 try:
+#                     mu_arr[i] = mu_dict[(betas_list[i], Us)]
+#                 except KeyError as e:
+#                     print("KeyError: (beta, U) = ", e)
+#                     mu_arr[i] = np.nan
+#             plt.plot(
+#                 1 / beta_arr[order],
+#                 mu_arr[order],
+#                 f"{misc.marker_list[j]}-",
+#                 color=plt.cm.tab10(int(nflux_string)),
+#                 label=f"U={Us}, nflux={nflux_string}",
+#             )
+#         plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
+#         plt.xlabel(r"temperature $T/t$")
+#         plt.ylabel(r"chemical potential $\mu$")
+#         plt.grid(True)
+#         plt.xscale("log")
+#         plt.xlim(np.min(1 / beta_arr) / 2, np.max(1 / beta_arr) * 2)
 
-    return betas_list, Us_list, mu_dict
+#     return betas_list, Us_list, mu_dict
