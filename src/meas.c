@@ -125,7 +125,6 @@ void measure_eqlt(const struct params *const restrict p, const num phase,
   if (meas_gen_suscept) {
     const int Nx = p->Nx;
     const int Ny = p->Ny;
-    const int Norb = N / (Nx * Ny);
     const int num_ij = p->num_ij;
 
     for (int j1 = 0; j1 < N; j1++) {
@@ -477,7 +476,6 @@ void meas_uneqlt_gen_suscept(const struct params *const restrict p, const num ph
   const int N = p->N;
   const int Nx = p->Nx;
   const int Ny = p->Ny;
-  const int Norb = N / (Nx * Ny);
   const int L = p->L;
   const int num_ij = p->num_ij;
 
@@ -828,7 +826,6 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
 
   if (meas_pair_bb_only) {
     for (int t = 0; t < L; t++) {
-      const int delta_t = (t == 0);
       const num *const restrict Gut0_t = Gut0 + N * N * t;
       const num *const restrict Gdt0_t = Gdt0 + N * N * t;
       for (int c = 0; c < num_b; c++) {

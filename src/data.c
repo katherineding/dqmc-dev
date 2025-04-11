@@ -41,8 +41,8 @@ static hid_t num_h5t = 0;
  *          0 on success.
  */
 int set_num_h5t(void){
-	int status;
 #ifdef USE_CPLX
+	int status;
 	num_h5t = H5Tcreate(H5T_COMPOUND, sizeof(num));
 	return_if(num_h5t < 0, -1, "H5Tcreate() failed\n");
 	status = H5Tinsert(num_h5t, "r", 0, H5T_NATIVE_DOUBLE);
@@ -398,8 +398,6 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	my_read(_int, "/params/checkpoint_every", &sim->p.checkpoint_every);
 
 	const int N = sim->p.N, L = sim->p.L;
-	const int Nx = sim->p.Nx, Ny = sim->p.Ny;
-	const int Norb = N / (Nx * Ny);
 	const int num_i = sim->p.num_i, num_ij = sim->p.num_ij;
 	const int num_plaq_accum = sim->p.num_plaq_accum;
 	const int num_b_accum    = sim->p.num_b_accum;
