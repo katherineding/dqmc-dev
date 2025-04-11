@@ -15,8 +15,11 @@
 #include "time_.h"
 
 
-// TODO: hard vs soft link?
-#define USE_HARD_LINK
+// TODO: when to use hard vs soft link?
+#ifdef GDRIVE
+#else
+	#define USE_HARD_LINK
+#endif
 // max allowed number of chars in absolute path string to any *.h5 file
 //   in stack_file
 #define MAX_LEN 512 
