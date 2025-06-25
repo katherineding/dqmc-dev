@@ -58,7 +58,6 @@ def get_mu(targets, paths):
 def main(argv):
     target = float(argv[1])
     paths = argv[2:] #linux system automatic path expansion
-
     data, mus = get_mu([target], paths)
     
     #last col:how much does filling change with each mu?
