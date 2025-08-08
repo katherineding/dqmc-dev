@@ -27,6 +27,29 @@ def load(path, *args):
             a[i, ...] = a_i
     return data
 
+def partial_load(path, start_point, num_files, *args):
+    files = sorted(glob(path + "*.h5"))
+    nbins = len(files)
+    if num_files > nbins:
+        print("tried to access more files than there are available bins")
+    if nbins == 0: 
+        print(f"no files matching: {path}*.h5")
+        return
+
+    # get to starting point by taking off all files before it
+    for i in range(start_point):
+        files.pop()
+
+    data_setup = load_file(files[-1], *args)
+    data = tuple(np.zeros((num_files,) + a.shape, dtype=a.dtype) for a in data_setup)
+
+    for i, f in enumerate(files):
+        if i == num_files:
+            break
+        for a, a_i in zip(data, load_file(f, *args)):
+            a[i, ...] = a_i
+    return data
+
 
 def jackknife(*args, f=lambda s, sx: (sx.T/s.T).T.real):
     '''
