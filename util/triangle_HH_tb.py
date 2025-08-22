@@ -42,7 +42,7 @@ def H_periodic_triangular(
     # as of now, my construction only works for an even Nx and Ny, otherwise
     # the hopping scheme breaks. 
     if (Nx % 2) != 0 or (Ny % 2) != 0:
-        return NotImplementedError  
+        raise NotImplementedError  
       
     # define function for going x,y -> label
     def x_y_to_N(x: int, y: int):
@@ -59,7 +59,7 @@ def H_periodic_triangular(
     # this step finalizes the part of the kinetic matrix with no phase
     kij *= -t
 
-    hopping_phases = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex128)
+    hopping_phases = np.ones((Ny*Nx, Ny*Nx), dtype=np.complex128)
 
     # go from middle of big magnetic cell to middle big magnetic cell.
     # first, make a list of all the centers.
@@ -108,14 +108,9 @@ def H_periodic_triangular(
         for site, signs in zip(local_sites, all_signs):
             neighbors = neighbor_list(Nx=Nx, Ny=Ny, N=site)
             for neighbor, sign in zip(neighbors, signs):
-                hopping_phases[neighbor][site] = sign
+                hopping_phases[neighbor][site] = sign * 1j
 
-    # make all hoppings imaginary
-    hopping_phases = hopping_phases * 1j
-
-    all_ones_matrix = np.ones((Ny*Nx, Ny*Nx), dtype=np.complex128)
-
-    return (kij * hopping_phases), all_ones_matrix.copy() # element wise multiplication with phase
+    return (kij * hopping_phases), hopping_phases # element wise multiplication with phase
 
 def peierls_triangular(
     Nx: int,
