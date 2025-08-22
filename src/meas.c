@@ -97,9 +97,9 @@ void measure_eqlt(const struct params *const restrict p, const num phase,
       const num gujj = gu[j + j * N], gdjj = gd[j + j * N];
 // NOTE: g00 is *average* of g00_u and g00_d
 #ifdef USE_PEIERLS
-      m->g00[r] += 0.5 * pre * (guij * p->peierlsu[j + i * N] + gdij * p->peierlsd[j + i * N]);
-      m->g00_u[r] += pre * (guij * p->peierlsu[j + i * N]);
-      m->g00_d[r] += pre * (gdij * p->peierlsd[j + i * N]);
+      m->g00[r] += 0.5 * pre * (guij + gdij);
+      m->g00_u[r] += pre * guij;
+      m->g00_d[r] += pre * gdij;
 #else
       m->g00[r] += 0.5 * pre * (guij + gdij);
       m->g00_u[r] += pre * guij;
@@ -774,10 +774,9 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
         const num gdjj = Gd00[j + N * j];
         // NOTE: gt0 is *average* of gt0_u and gt0_d
 #ifdef USE_PEIERLS
-        m->gt0[r + num_ij * t] +=
-            0.5 * pre * (guij * p->peierlsu[j + i * N] + gdij * p->peierlsd[j + i * N]);
-        m->gt0_u[r + num_ij * t] += pre * (guij * p->peierlsu[j + i * N]);
-        m->gt0_d[r + num_ij * t] += pre * (gdij * p->peierlsd[j + i * N]);
+        m->gt0[r + num_ij * t] += 0.5 * pre * (guij + gdij);
+        m->gt0_u[r + num_ij * t] += pre * guij;
+        m->gt0_d[r + num_ij * t] += pre * gdij;
 #else
         m->gt0[r + num_ij * t] += 0.5 * pre * (guij + gdij);
         m->gt0_u[r + num_ij * t] += pre * guij;
