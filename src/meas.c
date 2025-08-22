@@ -744,6 +744,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
   const int meas_nematic_corr = p->meas_nematic_corr;
   const int meas_thermal = p->meas_thermal;
   const int meas_gen_suscept = p->meas_gen_suscept;
+  const int meas_local_JQ = p->meas_local_JQ;
 
   const num *const restrict Gu00 = Gutt;
   const num *const restrict Gd00 = Gdtt;
@@ -810,6 +811,37 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
   if (meas_gen_suscept) {
     // printf("meas_uneqlt_gen_suscept %d, iter %d\n", meas_gen_suscept, m->n_sample);
     meas_uneqlt_gen_suscept(p, phase, Gu0t, Gut0, Gd0t, Gdt0, m);
+  }
+
+  if (meas_local_JQ) {
+    for (int t = 0; t < L; t++) {
+      const num *const restrict Gutt_t = Gutt + N * N * t;
+      const num *const restrict Gdtt_t = Gdtt + N * N * t;
+      for (int c = 0; c < num_b; c++) {
+        const int i0 = p->bonds[c];
+        const int i1 = p->bonds[c + num_b];
+#ifdef USE_PEIERLS
+        const num pui0i1 = p->peierlsu[i0 + N * i1];
+        const num pui1i0 = p->peierlsu[i1 + N * i0];
+        const num pdi0i1 = p->peierlsd[i0 + N * i1];
+        const num pdi1i0 = p->peierlsd[i1 + N * i0];
+#endif
+        const num gui1i0 = Gutt_t[i1 + i0 * N];
+        const num gui0i1 = Gutt_t[i0 + i1 * N];
+        const num gdi1i0 = Gdtt_t[i1 + i0 * N];
+        const num gdi0i1 = Gdtt_t[i0 + i1 * N];
+        // delta functions
+        const int delta_i0i1 = (i0 == i1);
+
+        // map sign prefactor
+        const int b = p->map_b[c];
+        const num pre = phase / p->degen_b;
+
+        // j measurements
+        num tt = pui1i0 * gui0i1 + pdi1i0 * gdi0i1 - pui0i1 * gui1i0 - pdi0i1 * gdi1i0;
+        m->j[b + num_b * t] += pre * tt;
+      }
+    }
   }
 
   /**

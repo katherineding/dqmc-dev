@@ -157,10 +157,10 @@ def bond_params(
                     bonds[0, i + 3 * N] = ix1 + Nx * iy  # i0 = i + x
                     bonds[1, i + 3 * N] = ix + Nx * iy1  # i1 = i + y
     elif geometry == "triangular":
-        # Three bonds of lattice are down_left / (0), down right \ (1), and right -- (2)    
+        # Three bonds of lattice are down_left / (0), down right \ (1), and right -- (2)
         # Chosen such that bonds only go towards larger Nx and Ny
         # In the picture of square <--> triangular, which is easier to see the labeling in,
-        # these are down, down right, and right                          
+        # these are down, down right, and right
         for iy in range(Ny):
             for ix in range(Nx):
                 i = ix + Nx * iy
@@ -732,7 +732,7 @@ def create_1(
         assert num_ij == map_ij.max() + 1 == degen_ij.size
         assert np.all(degen_ij == degen_ij[0])
 
-        '''
+        """
         Explanation of above.
         map_ij makes a matrix that will be our site-site mapping. It ends up encoding which
         two sites are connected. In the translationally symmetric case, many different site
@@ -755,7 +755,7 @@ def create_1(
 
         Then map_ij[j,i] is set to be k
         this is all same as square, which makes sense
-        '''
+        """
 
         # 1 bond 1 site mapping NOTE: placeholder
         map_bs = np.zeros((N, num_b), dtype=np.int32)
@@ -768,7 +768,7 @@ def create_1(
         degen_bb = np.zeros(num_bb, dtype=np.int32)
         for j in range(N):
             for i in range(N):
-                k = map_ij[j,i]
+                k = map_ij[j, i]
                 for jb in range(bps):
                     for ib in range(bps):
                         kk = k + num_ij * (ib + bps * jb)
@@ -777,7 +777,7 @@ def create_1(
         assert num_bb == map_bb.max() + 1 == degen_bb.size
         assert np.all(degen_bb == degen_bb[0])
 
-        '''
+        """
         map_bb makes a matrix that will be our bond-bond mapping
 
         num_bb tells you the number of bond-bond pairs. w/o trans_sym, the number
@@ -812,7 +812,7 @@ def create_1(
         non-translationally symmetric code, we just use the same kk bond type-bond type info
         encoding to add to the k. This will still do the degen properly, as for any sites that are
         considered the same, if the bonds are the same too they'll end up in the same bucket
-        '''
+        """
 
         # my definition: Bonds defined by two hopping steps
         # NOTE: placeholder
@@ -1184,9 +1184,9 @@ def create_1(
 
         if meas_local_JQ:
             assert trans_sym == 0
-            f["meas_eqlt"]["j"] = np.zeros(num_b, dtype=dtype_num)
-            f["meas_eqlt"]["jn"] = np.zeros(num_b, dtype=dtype_num)
-            f["meas_eqlt"]["j2"] = np.zeros(num_b2, dtype=dtype_num)
+            f["meas_eqlt"]["j"] = np.zeros(num_b_accum, dtype=dtype_num)
+            f["meas_eqlt"]["jn"] = np.zeros(num_b_accum, dtype=dtype_num)
+            f["meas_eqlt"]["j2"] = np.zeros(num_b2_accum, dtype=dtype_num)
 
         if period_uneqlt > 0:
             f.create_group("meas_uneqlt")
@@ -1212,6 +1212,12 @@ def create_1(
                 f["meas_uneqlt"]["uudd"] = np.zeros(
                     num_ij * num_ij * L, dtype=dtype_num
                 )
+            if meas_local_JQ:
+                assert trans_sym == 0
+                f["meas_uneqlt"]["j"] = np.zeros(num_b_accum * L, dtype=dtype_num)
+                # these are placeholders for now
+                f["meas_uneqlt"]["jn"] = np.zeros(num_b_accum * L, dtype=dtype_num)
+                f["meas_uneqlt"]["j2"] = np.zeros(num_b2_accum * L, dtype=dtype_num)
             if meas_pair_bb_only:
                 meas_toggle_list = [
                     meas_thermal,
@@ -1220,6 +1226,7 @@ def create_1(
                     meas_energy_corr,
                     meas_nematic_corr,
                     meas_gen_suscept,
+                    meas_local_JQ,
                 ]
                 assert not any(meas_toggle_list)
                 assert not trans_sym
