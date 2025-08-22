@@ -212,6 +212,8 @@ int get_memory_req(const char *file) {
 	if (period_uneqlt > 0) {
 		sim_alloc_in_bytes +=
 			+ num_ij*L*7 * sizeof(num);
+		sim_alloc_in_bytes +=
+			+ num_i*L*3 * sizeof(num);
 		if (meas_local_JQ) {
 			sim_alloc_in_bytes +=
 				+ num_b_accum  * L * sizeof(num)
@@ -481,6 +483,9 @@ int sim_data_read_alloc(struct sim_data *sim) {
 		sim->m_eq.j2  = my_calloc(num_b2_accum * sizeof(num));
 	}
 	if (sim->p.period_uneqlt > 0) {
+		sim->m_ue.density     = my_calloc(num_i*L * sizeof(num));
+		sim->m_ue.density_u   = my_calloc(num_i*L * sizeof(num));
+		sim->m_ue.density_d   = my_calloc(num_i*L * sizeof(num));
 		sim->m_ue.gt0     = my_calloc(num_ij*L * sizeof(num));
 		sim->m_ue.gt0_u   = my_calloc(num_ij*L * sizeof(num));
 		sim->m_ue.gt0_d   = my_calloc(num_ij*L * sizeof(num));
@@ -615,6 +620,9 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	if (sim->p.period_uneqlt > 0) {
 		my_read(_int,    "/meas_uneqlt/n_sample", &sim->m_ue.n_sample);
 		my_read( , "/meas_uneqlt/sign",      num_h5t, &sim->m_ue.sign);
+		my_read( , "/meas_uneqlt/density",   num_h5t, sim->m_ue.density);
+		my_read( , "/meas_uneqlt/density_u", num_h5t, sim->m_ue.density_u);
+		my_read( , "/meas_uneqlt/density_d", num_h5t, sim->m_ue.density_d);
 		my_read( , "/meas_uneqlt/gt0",       num_h5t, sim->m_ue.gt0);
 		my_read( , "/meas_uneqlt/gt0_u",     num_h5t, sim->m_ue.gt0_u);
 		my_read( , "/meas_uneqlt/gt0_d",     num_h5t, sim->m_ue.gt0_d);
@@ -746,6 +754,9 @@ int sim_data_save(const struct sim_data *sim) {
 	if (sim->p.period_uneqlt > 0) {
 		my_write("/meas_uneqlt/n_sample", H5T_NATIVE_INT,    &sim->m_ue.n_sample);
 		my_write("/meas_uneqlt/sign",     num_h5t, &sim->m_ue.sign);
+		my_write("/meas_uneqlt/density",  num_h5t,  sim->m_ue.density);
+		my_write("/meas_uneqlt/density_u",num_h5t,  sim->m_ue.density_u);
+		my_write("/meas_uneqlt/density_d",num_h5t,  sim->m_ue.density_d);
 		my_write("/meas_uneqlt/gt0",      num_h5t,  sim->m_ue.gt0);
 		my_write("/meas_uneqlt/gt0_u",    num_h5t,  sim->m_ue.gt0_u);
 		my_write("/meas_uneqlt/gt0_d",    num_h5t,  sim->m_ue.gt0_d);
@@ -868,6 +879,9 @@ void sim_data_free(const struct sim_data *sim) {
 		my_free(sim->m_ue.gt0);
 		my_free(sim->m_ue.gt0_u);
 		my_free(sim->m_ue.gt0_d);
+		my_free(sim->m_ue.density);
+		my_free(sim->m_ue.density_u);
+		my_free(sim->m_ue.density_d);
 	}
 	if (sim->p.meas_energy_corr) {
 		my_free(sim->m_eq.vn);

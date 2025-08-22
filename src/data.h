@@ -72,6 +72,7 @@ struct meas_uneqlt {
 	int n_sample;
 	num sign;
 
+	num *density,*density_u,*density_d;
 	num *gt0;
 	num *gt0_u;
 	num *gt0_d;

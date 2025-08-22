@@ -95,16 +95,10 @@ void measure_eqlt(const struct params *const restrict p, const num phase,
       const num guij = gu[i + j * N], gdij = gd[i + j * N];
       const num guji = gu[j + i * N], gdji = gd[j + i * N];
       const num gujj = gu[j + j * N], gdjj = gd[j + j * N];
-// NOTE: g00 is *average* of g00_u and g00_d
-#ifdef USE_PEIERLS
+      // NOTE: g00 is *average* of g00_u and g00_d
       m->g00[r] += 0.5 * pre * (guij + gdij);
       m->g00_u[r] += pre * guij;
       m->g00_d[r] += pre * gdij;
-#else
-      m->g00[r] += 0.5 * pre * (guij + gdij);
-      m->g00_u[r] += pre * guij;
-      m->g00_d[r] += pre * gdij;
-#endif
       const num x = delta * (guii + gdii) - (guji * guij + gdji * gdij);
       m->nn[r] += pre * ((2. - guii - gdii) * (2. - gujj - gdjj) + x);
       m->xx[r] += 0.25 * pre * (delta * (guii + gdii) - (guji * gdij + gdji * guij));
@@ -733,7 +727,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
                     struct meas_uneqlt *const restrict m) {
   m->n_sample++;
   m->sign += phase;
-  const int N = p->N, L = p->L, num_ij = p->num_ij;
+  const int N = p->N, L = p->L, num_i = p->num_i, num_ij = p->num_ij;
   const int num_b = p->num_b, num_bb = p->num_bb;
   const int num_b2 = p->num_b2, num_b2b2 = p->num_b2b2;
   const int num_b2b = p->num_b2b, num_bb2 = p->num_bb2;
@@ -760,6 +754,18 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
     const num *const restrict Gd0t_t = Gd0t + N * N * t;
     const num *const restrict Gdtt_t = Gdtt + N * N * t;
     const num *const restrict Gdt0_t = Gdt0 + N * N * t;
+
+    for (int i = 0; i < N; i++) {
+      const int r = p->map_i[i];
+      const num pre = phase / p->degen_i;
+      const num guii = Gutt_t[i + N * i];
+      const num gdii = Gdtt_t[i + N * i];
+      // NOTE: density is *sum* of density_u and density_d
+      m->density[r + num_i * t] += pre * (2. - guii - gdii);
+      m->density_u[r + num_i * t] += pre * (1. - guii);
+      m->density_d[r + num_i * t] += pre * (1. - gdii);
+    }
+
     for (int j = 0; j < N; j++) {
       for (int i = 0; i < N; i++) {
         const int r = p->map_ij[i + j * N];
@@ -774,15 +780,9 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
         const num gdji = Gd0t_t[j + N * i];
         const num gdjj = Gd00[j + N * j];
         // NOTE: gt0 is *average* of gt0_u and gt0_d
-#ifdef USE_PEIERLS
         m->gt0[r + num_ij * t] += 0.5 * pre * (guij + gdij);
         m->gt0_u[r + num_ij * t] += pre * guij;
         m->gt0_d[r + num_ij * t] += pre * gdij;
-#else
-        m->gt0[r + num_ij * t] += 0.5 * pre * (guij + gdij);
-        m->gt0_u[r + num_ij * t] += pre * guij;
-        m->gt0_d[r + num_ij * t] += pre * gdij;
-#endif
         const num x = delta_tij * (guii + gdii) - (guji * guij + gdji * gdij);
 
         m->nn[r + num_ij * t] += pre * ((2. - guii - gdii) * (2. - gujj - gdjj) + x);
