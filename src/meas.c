@@ -860,19 +860,23 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
   if (meas_pair_bb_only) {
     for (int t = 0; t < L; t++) {
       const int delta_t = (t == 0);
+      // forward (t,0)
       const num *const restrict Gut0_t = Gut0 + N * N * t;
       const num *const restrict Gdt0_t = Gdt0 + N * N * t;
+      // backward (0,t)
+      const num *const restrict Gu0t_t = Gu0t + N * N * t;
+      const num *const restrict Gd0t_t = Gd0t + N * N * t;
       for (int c = 0; c < num_b; c++) {
         const int j0 = p->bonds[c];
         const int j1 = p->bonds[c + num_b];
         // t <- [0, L):
-        // meas_bond_corr => pair_bb, jj, jsjs, kk, ksks (4 fermion, 2 phases)
         for (int b = 0; b < num_b; b++) {
           const int i0 = p->bonds[b];
           const int i1 = p->bonds[b + num_b];
           const int bb = p->map_bb[b + c * num_b];
           const num pre = phase / p->degen_bb;
 
+          // <Δ(i0,i1) Δ^dag(j0,j1)>
           const num gui0j0 = Gut0_t[i0 + j0 * N];
           const num gdi0j0 = Gdt0_t[i0 + j0 * N];
           const num gui0j1 = Gut0_t[i0 + j1 * N];
@@ -884,6 +888,28 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
 
           m->pair_bb[bb + num_bb * t] +=
               0.5 * pre * (gui0j0 * gdi1j1 + gui1j0 * gdi0j1 + gui0j1 * gdi1j0 + gui1j1 * gdi0j0);
+
+          // <Δ^dag(i0,i1) Δ(j0,j1)>
+          const int delta_j0i0 = delta_t * (i0 == j0);
+          const int delta_j0i1 = delta_t * (i1 == j0);
+          const int delta_j1i0 = delta_t * (i0 == j1);
+          const int delta_j1i1 = delta_t * (i1 == j1);
+
+          const num guj0i0 = Gu0t_t[j0 + i0 * N];
+          const num gdj0i0 = Gd0t_t[j0 + i0 * N];
+          const num guj0i1 = Gu0t_t[j0 + i1 * N];
+          const num gdj0i1 = Gd0t_t[j0 + i1 * N];
+          const num guj1i0 = Gu0t_t[j1 + i0 * N];
+          const num gdj1i0 = Gd0t_t[j1 + i0 * N];
+          const num guj1i1 = Gu0t_t[j1 + i1 * N];
+          const num gdj1i1 = Gd0t_t[j1 + i1 * N];
+
+          const num t1 = (delta_j0i0 - guj0i0) * (delta_j1i1 - gdj1i1);
+          const num t2 = (delta_j1i0 - guj1i0) * (delta_j0i1 - gdj0i1);
+          const num t3 = (delta_j0i1 - guj0i1) * (delta_j1i0 - gdj1i0);
+          const num t4 = (delta_j1i1 - guj1i1) * (delta_j0i0 - gdj0i0);
+
+          m->pair_bb_r[bb + num_bb * t] += 0.5 * pre * (t1 + t2 + t3 + t4);
         }
       }
     }
@@ -914,7 +940,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
         const num pdj1j0 = p->peierlsd[j1 + N * j0];
 #endif
         // t <- [0, L):
-        // meas_bond_corr => pair_bb, jj, jsjs, kk, ksks (4 fermion, 2 phases)
+        // meas_bond_corr => pair_bb, pair_bb_r, jj, jsjs, kk, ksks (4 fermion, 2 phases)
         // meas_thermal   => jnjn                        (8 fermion, 2 phases)
         //                   jjn, jnj                    (6 fermion, 2 phases)
         for (int b = 0; b < num_b; b++) {
@@ -978,8 +1004,16 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
 
           // 1 bond -- 1 bond correlator measurements, t > 0
           if (meas_bond_corr) {
+            // <Δ(i0,i1) Δ^dag(j0,j1)>
             m->pair_bb[bb + num_bb * t] +=
                 0.5 * pre * (gui0j0 * gdi1j1 + gui1j0 * gdi0j1 + gui0j1 * gdi1j0 + gui1j1 * gdi0j0);
+            // <Δ^dag(i0,i1) Δ(j0,j1)>
+            const num t1 = (delta_i0j0 - guj0i0) * (delta_i1j1 - gdj1i1);
+            const num t2 = (delta_i0j1 - guj1i0) * (delta_i1j0 - gdj0i1);
+            const num t3 = (delta_i1j0 - guj0i1) * (delta_i0j1 - gdj1i0);
+            const num t4 = (delta_i1j1 - guj1i1) * (delta_i0j0 - gdj0i0);
+            m->pair_bb_r[bb + num_bb * t] += 0.5 * pre * (t1 + t2 + t3 + t4);
+
             const num x = arrp[0] + arrp[3] + arrp[4] + arrp[7];
             const num y = arrp[1] + arrp[2] + arrp[5] + arrp[6];
             const num tt[8] = {

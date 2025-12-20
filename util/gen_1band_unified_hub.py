@@ -1234,8 +1234,10 @@ def create_1(
                 assert not any(meas_toggle_list)
                 assert not trans_sym
                 f["meas_uneqlt"]["pair_bb"] = np.zeros(num_bb * L, dtype=dtype_num)
+                f["meas_uneqlt"]["pair_bb_r"] = np.zeros(num_bb * L, dtype=dtype_num)
             if meas_bond_corr:
                 f["meas_uneqlt"]["pair_bb"] = np.zeros(num_bb * L, dtype=dtype_num)
+                f["meas_uneqlt"]["pair_bb_r"] = np.zeros(num_bb * L, dtype=dtype_num)
                 f["meas_uneqlt"]["jj"] = np.zeros(num_bb * L, dtype=dtype_num)
                 f["meas_uneqlt"]["jsjs"] = np.zeros(num_bb * L, dtype=dtype_num)
                 f["meas_uneqlt"]["kk"] = np.zeros(num_bb * L, dtype=dtype_num)

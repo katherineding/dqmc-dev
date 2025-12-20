@@ -84,7 +84,7 @@ struct meas_uneqlt {
 	num *xx;
 	num *zz;
 	num *pair_sw;
-	num *pair_bb;
+	num *pair_bb, *pair_bb_r;
 	num *jj, *jsjs;
 	num *kk, *ksks;
 	num *pair_b2b2;
