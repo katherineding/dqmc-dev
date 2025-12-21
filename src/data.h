@@ -63,7 +63,7 @@ struct meas_eqlt {
 	num *nn;
 	num *xx;
 	num *zz;
-	num *pair_sw;
+	num *pair_sw, *pair_sw_r;
 	num *kk, *kv, *kn, *vv, *vn;
 	num *j, *j2, *jn;
 };
@@ -83,7 +83,7 @@ struct meas_uneqlt {
 	num *nn;
 	num *xx;
 	num *zz;
-	num *pair_sw;
+	num *pair_sw, *pair_sw_r;
 	num *pair_bb, *pair_bb_r;
 	num *jj, *jsjs;
 	num *kk, *ksks;

@@ -104,6 +104,7 @@ void measure_eqlt(const struct params *const restrict p, const num phase,
       m->xx[r] += 0.25 * pre * (delta * (guii + gdii) - (guji * gdij + gdji * guij));
       m->zz[r] += 0.25 * pre * ((gdii - guii) * (gdjj - gujj) + x);
       m->pair_sw[r] += pre * guij * gdij;
+      m->pair_sw_r[r] += pre * (delta - guji) * (delta - gdji);
       if (meas_energy_corr) {
         const num nuinuj = (1. - guii) * (1. - gujj) + (delta - guji) * guij;
         const num ndindj = (1. - gdii) * (1. - gdjj) + (delta - gdji) * gdij;
@@ -790,6 +791,7 @@ void measure_uneqlt(const struct params *const restrict p, const num phase, cons
             0.25 * pre * (delta_tij * (guii + gdii) - (guji * gdij + gdji * guij));
         m->zz[r + num_ij * t] += 0.25 * pre * ((gdii - guii) * (gdjj - gujj) + x);
         m->pair_sw[r + num_ij * t] += pre * guij * gdij;
+        m->pair_sw_r[r + num_ij * t] += pre * (delta_tij - guji) * (delta_tij - gdji);
 
         if (meas_energy_corr) {
           const num nuinuj = (1. - guii) * (1. - gujj) + (delta_tij - guji) * guij;

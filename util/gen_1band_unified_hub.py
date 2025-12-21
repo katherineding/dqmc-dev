@@ -1167,6 +1167,7 @@ def create_1(
         f["meas_eqlt"]["xx"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["zz"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["pair_sw"] = np.zeros(num_ij, dtype=dtype_num)
+        f["meas_eqlt"]["pair_sw_r"] = np.zeros(num_ij, dtype=dtype_num)
         if meas_gen_suscept:
             f["meas_eqlt"]["uuuu"] = np.zeros(num_ij * num_ij, dtype=dtype_num)
             f["meas_eqlt"]["dddd"] = np.zeros(num_ij * num_ij, dtype=dtype_num)
@@ -1202,6 +1203,7 @@ def create_1(
             f["meas_uneqlt"]["xx"] = np.zeros(num_ij * L, dtype=dtype_num)
             f["meas_uneqlt"]["zz"] = np.zeros(num_ij * L, dtype=dtype_num)
             f["meas_uneqlt"]["pair_sw"] = np.zeros(num_ij * L, dtype=dtype_num)
+            f["meas_uneqlt"]["pair_sw_r"] = np.zeros(num_ij * L, dtype=dtype_num)
             if meas_gen_suscept:
                 f["meas_uneqlt"]["uuuu"] = np.zeros(
                     num_ij * num_ij * L, dtype=dtype_num

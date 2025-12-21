@@ -187,7 +187,7 @@ int get_memory_req(const char *file) {
 		+ N*2      * sizeof(double)
 		+ N*L      * sizeof(int)
 		+ num_i*4  * sizeof(num)
-		+ num_ij*7 * sizeof(num);
+		+ num_ij*8 * sizeof(num);
 	if (meas_chiral) {
 		sim_alloc_in_bytes += num_plaq_accum * sizeof(num);
 	}
@@ -211,7 +211,7 @@ int get_memory_req(const char *file) {
 	}
 	if (period_uneqlt > 0) {
 		sim_alloc_in_bytes +=
-			+ num_ij*L*7 * sizeof(num);
+			+ num_ij*L*8 * sizeof(num);
 		sim_alloc_in_bytes +=
 			+ num_i*L*3 * sizeof(num);
 		if (meas_local_JQ) {
@@ -460,6 +460,7 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	sim->m_eq.xx         = my_calloc(num_ij   * sizeof(num));
 	sim->m_eq.zz         = my_calloc(num_ij   * sizeof(num));
 	sim->m_eq.pair_sw    = my_calloc(num_ij   * sizeof(num));
+	sim->m_eq.pair_sw_r  = my_calloc(num_ij   * sizeof(num));
 
 	if (sim->p.meas_gen_suscept){
 		sim->m_eq.uuuu        = my_calloc(num_ij*num_ij * sizeof(num));
@@ -493,6 +494,7 @@ int sim_data_read_alloc(struct sim_data *sim) {
 		sim->m_ue.xx      = my_calloc(num_ij*L * sizeof(num));
 		sim->m_ue.zz      = my_calloc(num_ij*L * sizeof(num));
 		sim->m_ue.pair_sw = my_calloc(num_ij*L * sizeof(num));
+		sim->m_ue.pair_sw_r = my_calloc(num_ij*L * sizeof(num));
 		if (sim->p.meas_gen_suscept){
 			sim->m_ue.uuuu        = my_calloc(num_ij*num_ij*L * sizeof(num));
 			sim->m_ue.dddd        = my_calloc(num_ij*num_ij*L * sizeof(num));
@@ -598,6 +600,7 @@ int sim_data_read_alloc(struct sim_data *sim) {
 	my_read( , "/meas_eqlt/xx",          num_h5t, sim->m_eq.xx);
 	my_read( , "/meas_eqlt/zz",          num_h5t, sim->m_eq.zz);
 	my_read( , "/meas_eqlt/pair_sw",     num_h5t, sim->m_eq.pair_sw);
+	my_read( , "/meas_eqlt/pair_sw_r",   num_h5t, sim->m_eq.pair_sw_r);
 	if (sim->p.meas_gen_suscept) {
 		my_read( , "/meas_eqlt/uuuu",    num_h5t, sim->m_eq.uuuu);
 		my_read( , "/meas_eqlt/dddd",    num_h5t, sim->m_eq.dddd);
@@ -632,6 +635,7 @@ int sim_data_read_alloc(struct sim_data *sim) {
 		my_read( , "/meas_uneqlt/xx",        num_h5t, sim->m_ue.xx);
 		my_read( , "/meas_uneqlt/zz",        num_h5t, sim->m_ue.zz);
 		my_read( , "/meas_uneqlt/pair_sw",   num_h5t, sim->m_ue.pair_sw);
+		my_read( , "/meas_uneqlt/pair_sw_r", num_h5t, sim->m_ue.pair_sw_r);
 		if (sim->p.meas_gen_suscept) {
 			my_read( , "/meas_uneqlt/uuuu", num_h5t, sim->m_ue.uuuu);
 			my_read( , "/meas_uneqlt/dddd", num_h5t, sim->m_ue.dddd);
@@ -733,7 +737,7 @@ int sim_data_save(const struct sim_data *sim) {
 	my_write("/meas_eqlt/xx",         num_h5t,  sim->m_eq.xx);
 	my_write("/meas_eqlt/zz",         num_h5t,  sim->m_eq.zz);
 	my_write("/meas_eqlt/pair_sw",    num_h5t,  sim->m_eq.pair_sw);
-
+	my_write("/meas_eqlt/pair_sw_r",  num_h5t,  sim->m_eq.pair_sw_r);
 	if (sim->p.meas_gen_suscept){
 		my_write("/meas_eqlt/uuuu",   num_h5t,  sim->m_eq.uuuu);
 		my_write("/meas_eqlt/dddd",   num_h5t,  sim->m_eq.dddd);
@@ -768,6 +772,7 @@ int sim_data_save(const struct sim_data *sim) {
 		my_write("/meas_uneqlt/xx",       num_h5t,  sim->m_ue.xx);
 		my_write("/meas_uneqlt/zz",       num_h5t,  sim->m_ue.zz);
 		my_write("/meas_uneqlt/pair_sw",  num_h5t,  sim->m_ue.pair_sw);
+		my_write("/meas_uneqlt/pair_sw_r",num_h5t,  sim->m_ue.pair_sw_r);
 		if (sim->p.meas_gen_suscept) {
 			my_write("/meas_uneqlt/uuuu", num_h5t, sim->m_ue.uuuu);
 			my_write("/meas_uneqlt/dddd", num_h5t, sim->m_ue.dddd);
@@ -881,6 +886,7 @@ void sim_data_free(const struct sim_data *sim) {
 			my_free(sim->m_ue.pair_b2b2);
 		}
 		my_free(sim->m_ue.pair_sw);
+		my_free(sim->m_ue.pair_sw_r);
 		my_free(sim->m_ue.zz);
 		my_free(sim->m_ue.xx);
 		my_free(sim->m_ue.nn);
@@ -913,6 +919,7 @@ void sim_data_free(const struct sim_data *sim) {
 		my_free(sim->m_eq.dduu);
 	}
 	my_free(sim->m_eq.pair_sw);
+	my_free(sim->m_eq.pair_sw_r);
 	my_free(sim->m_eq.zz);
 	my_free(sim->m_eq.xx);
 	my_free(sim->m_eq.nn);
