@@ -393,18 +393,17 @@ def create_1(
         bond2s,
     ) = bond2_params(geometry, Nx, Ny, tp, tpp, trans_sym)
 
-    # placeholder until other boundaries implemented for non square lattices
-    if (bc != 1) and (geometry != "square"):
+    # Open boundaries only implemented for limited cases
+    if (bc != 1) and (geometry != "square" or geometry != "triangular"):
         raise NotImplementedError(
-            "Non-periodic boundaries only implemented for square lattice"
+            "Non-periodic boundaries only implemented for square or triangular lattice"
         )
 
-    # if non-periodic and trans_sym on, warn user that trans_sym will turn off
+    # if non-periodic and trans_sym=1, this is an invalid configuration
     if (bc != 1) and trans_sym:
-        warnings.warn(
-            "Non-periodic boundaries not translationally symmetric: turning off trans_sym"
+        raise NotImplementedError(
+            "Non-periodic boundaries are not translationally symmetric"
         )
-        trans_sym = 0
 
     if geometry == "square":
         # 2 site mapping: site r = (x,y) has total (column order) index x + Nx * y
@@ -836,13 +835,35 @@ def create_1(
         degen_b2b = np.zeros(num_b2b, dtype=np.int32)
 
         if nflux == N / 2:
-            kij, peierls = triangle_HH_tb.H_periodic_triangular(
-                Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
-            )
+            if bc == 1:
+                kij, peierls = triangle_HH_tb.H_periodic_triangular(
+                    Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
+                )
+            elif bc == 2:
+                raise NotImplementedError(
+                    "Fully open boundary conditions not implemented"
+                )
+            elif bc == 3:
+                kij, peierls = triangle_HH_tb.H_yperiodic_triangular(
+                    Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
+                )
+            elif bc == 4:
+                kij, peierls = triangle_HH_tb.H_xperiodic_triangular(
+                    Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
+                )
+            else:
+                raise NotImplementedError(
+                    "Invalid bc choice. Must be 1 for periodic, 3 for y-periodic, or 4 for x-periodic"
+                )
         else:
-            kij, peierls = tight_binding.H_periodic_triangular(
-                Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
-            )
+            if bc == 1:
+                kij, peierls = tight_binding.H_periodic_triangular(
+                    Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
+                )
+            else:
+                raise NotImplementedError(
+                    "Only periodic boundary conditions implemented for triangular nflux != N/2"
+                )
 
         # NOTE: placeholder
         thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
@@ -1398,7 +1419,7 @@ if __name__ == "__main__":
         type=int,
         default=1,
         metavar="X",
-        help="Boundary conditions, 1 for periodic, 2 for open",
+        help="Boundary conditions. 1 for periodic; 2 for fully open; 3 for periodic in y, open in x; 4 for periodic in x, open in y",
     )
     group1.add_argument(
         "--dt",
