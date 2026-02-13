@@ -394,7 +394,7 @@ def create_1(
     ) = bond2_params(geometry, Nx, Ny, tp, tpp, trans_sym)
 
     # Open boundaries only implemented for limited cases
-    if (bc != 1) and (geometry != "square" or geometry != "triangular"):
+    if (bc != 1) and (geometry != "square" and geometry != "triangular"):
         raise NotImplementedError(
             "Non-periodic boundaries only implemented for square or triangular lattice"
         )
