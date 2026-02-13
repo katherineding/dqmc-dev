@@ -1,5 +1,7 @@
 import numpy as np
 
+
+
 # given a label within the triangular lattice, returns the vector of neighbors
 # from the square lattice with extra \ perspective, the order is:
 # right, up, up left, left, down, down right
@@ -194,3 +196,118 @@ def peierls_triangular(
     # previously was actualy making a peierls matrix only for NN,
     # now just returning a matrix of all 1s because of a measurement workaround
     return peierls_mat
+
+
+# returns the neighbors and signs
+def xperiodic_neighbor_hopping_list(Nx:int, Ny:int, N:int):
+    def x_y_to_N(x: int, y: int):
+        return (x + y * Nx)
+
+    x, y = (N % Nx), (N // Nx)
+    right = x_y_to_N((x+1) % Nx, y)
+    up_right = None
+    up_left = None
+    if y != (Ny-1):
+        up_right = x_y_to_N(x, y+1)
+        up_left = x_y_to_N((x + Nx - 1) % Nx, y+1)
+    left = x_y_to_N((x + Nx - 1) % Nx, y)
+    down_left = None
+    down_right = None
+    if y != 0:
+        down_left = x_y_to_N(x, y-1)
+        down_right = x_y_to_N((x+1) % Nx, y-1)
+
+    if y % 2 == 0: # if an A site:
+        hoppings = [-1, 1, -1j, -1, 1, -1j]
+    else:
+        hoppings = [1, 1, 1j, 1, 1, 1j]
+
+    neighbors = [right, up_right, up_left, left, down_left, down_right]
+    return neighbors, hoppings
+
+def yperiodic_neighbor_hopping_list(Nx:int, Ny:int, N:int):
+    def x_y_to_N(x: int, y: int):
+        return (x + y * Nx)
+    x, y = (N % Nx), (N // Nx)
+    down_right = None
+    right = None
+    if x != (Nx-1):
+        down_right = x_y_to_N(x+1, (y + Ny - 1) % Ny)
+        right = x_y_to_N(x+1, y)
+    up_right = x_y_to_N(x, (y+1) % Ny)
+    up_left = None
+    left = None
+    if x != 0:
+        up_left = x_y_to_N(x-1, (y+1) % Ny)
+        left = x_y_to_N(x-1, y)
+    down_left = x_y_to_N(x, (y-1+Ny) % Ny)
+
+    if x % 2 == 0:
+        hoppings = [1, -1, 1j, 1, -1, 1j]
+    else:
+        hoppings = [1, 1, -1j, 1, 1, -1j]
+
+    neighbors = [right, up_right, up_left, left, down_left, down_right]
+    return neighbors, hoppings
+
+def H_xperiodic_triangular(
+    Nx: int,
+    Ny: int,
+    t: float = 1.0,
+    tp: float = 0.0,
+    tpp: float = 0.0,
+    nflux: float = 0.0,
+    alpha: float = 1 / 2
+) -> tuple[np.ndarray, np.ndarray]:
+    
+    if tp != 0 or tpp != 0:
+        raise NotImplementedError
+    
+    # this construction only works for an even Ny and any Nx
+    if (Ny % 2) != 0:
+        raise NotImplementedError  
+
+    # begin by initializing the kinetic matrix
+    kij = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex128)
+
+    for site in range(Nx*Ny):
+        neighbors, hoppings = xperiodic_neighbor_hopping_list(Nx=Nx, Ny=Ny, N=site)
+
+        for neighbor, hopping in zip(neighbors, hoppings):
+            if neighbor == None:
+                continue
+            kij[neighbor][site] = hopping
+    kij *= -t
+    ones_matrix = np.ones((Ny*Nx, Ny*Nx), dtype=np.complex128)
+    return kij, ones_matrix # element wise multiplication with phase
+
+def H_yperiodic_triangular(
+    Nx: int,
+    Ny: int,
+    t: float = 1.0,
+    tp: float = 0.0,
+    tpp: float = 0.0,
+    nflux: float = 0.0,
+    alpha: float = 1 / 2
+) -> tuple[np.ndarray, np.ndarray]:
+    
+    if tp != 0 or tpp != 0:
+        raise NotImplementedError
+    
+    # this construction only works for an even Nx and any Ny
+    if (Nx % 2) != 0:
+        raise NotImplementedError  
+
+    # begin by initializing the kinetic matrix
+    kij = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex128)
+
+    for site in range(Nx*Ny):
+        neighbors, hoppings = yperiodic_neighbor_hopping_list(Nx=Nx, Ny=Ny, N=site)
+
+        for neighbor, hopping in zip(neighbors, hoppings):
+            if neighbor == None:
+                continue
+            kij[neighbor][site] = hopping
+    kij *= -t
+    ones_matrix = np.ones((Ny*Nx, Ny*Nx), dtype=np.complex128)
+    return kij, ones_matrix # element wise multiplication with phase
