@@ -321,6 +321,7 @@ def create_1(
     meas_gen_suscept: int = 0,
     twistx: float = 0,
     twisty: float = 0,
+    sublattice_M: float = 0,
 ):
     assert L % n_matmul == 0 and L % period_eqlt == 0
     if nflux != 0 or twistx != 0 or twisty != 0:
@@ -845,11 +846,27 @@ def create_1(
                 )
             elif bc == 3:
                 kij, peierls = triangle_HH_tb.H_yperiodic_triangular(
-                    Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
+                    Nx,
+                    Ny,
+                    t=1,
+                    tp=tp,
+                    tpp=tpp,
+                    nflux=nflux,
+                    sublattice_M=sublattice_M,
+                    twisty=twisty,
+                    alpha=1 / 2,
                 )
             elif bc == 4:
                 kij, peierls = triangle_HH_tb.H_xperiodic_triangular(
-                    Nx, Ny, t=1, tp=tp, tpp=tpp, nflux=nflux, alpha=1 / 2
+                    Nx,
+                    Ny,
+                    t=1,
+                    tp=tp,
+                    tpp=tpp,
+                    nflux=nflux,
+                    sublattice_M=sublattice_M,
+                    twistx=twistx,
+                    alpha=1 / 2,
                 )
             else:
                 raise NotImplementedError(
@@ -1413,6 +1430,13 @@ if __name__ == "__main__":
         default=6.0,
         metavar="X",
         help="On-site Hubbard repulsion strength",
+    )
+    group1.add_argument(
+        "--sublattice_M",
+        type=float,
+        default=0.0,
+        metavar="X",
+        help="Sublattice/Orbital mass imbalance for triangular HH model",
     )
     group1.add_argument(
         "--bc",
