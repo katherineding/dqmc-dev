@@ -1,6 +1,25 @@
 import numpy as np
 
-
+# Assumes periodicity for the bond types
+def site_site_to_bond_type(Nx: int, Ny: int, site1:int, site2:int):
+    def x_y_to_N(x: int, y: int):
+        return (x + y * Nx)
+    x = site1 % Nx
+    y = site1 // Nx
+    if x_y_to_N((x+1) % Nx, y) == site2:
+        return 2
+    elif x_y_to_N(x, (y+1) % Ny) == site2:
+        return 3
+    elif x_y_to_N((x + Nx - 1) % Nx, (y + 1) % Ny) == site2:
+        return 4
+    elif x_y_to_N((x + Nx - 1) % Nx, y) == site2:
+        return 5
+    elif x_y_to_N(x, (y + Ny - 1) % Ny) == site2:
+        return 0
+    elif x_y_to_N((x+1) % Nx, (y + Ny - 1) % Ny) == site2:
+        return 1
+    else:
+        return None
 
 # given a label within the triangular lattice, returns the vector of neighbors
 # from the square lattice with extra \ perspective, the order is:
@@ -257,6 +276,8 @@ def H_xperiodic_triangular(
     tp: float = 0.0,
     tpp: float = 0.0,
     nflux: float = 0.0,
+    sublattice_M: float = 0.0,
+    twistx: float = 0.0,
     alpha: float = 1 / 2
 ) -> tuple[np.ndarray, np.ndarray]:
     
@@ -270,13 +291,41 @@ def H_xperiodic_triangular(
     # begin by initializing the kinetic matrix
     kij = np.zeros((Ny*Nx, Ny*Nx), dtype=np.complex128)
 
+    full_arrow_forward = np.exp(1j * twistx / Nx)
+    half_arrow_forward = np.exp(1j * twistx / (2*Nx))
+    full_arrow_backward = np.exp(-1j * twistx / Nx)
+    half_arrow_backward = np.exp(-1j * twistx / (2*Nx))
+
     for site in range(Nx*Ny):
+        site_y = site // Nx
+
+        if sublattice_M != 0:
+            if site_y % 2 == 0:
+                kij[site][site] = -sublattice_M
+            else:
+                kij[site][site] = sublattice_M
+                
         neighbors, hoppings = xperiodic_neighbor_hopping_list(Nx=Nx, Ny=Ny, N=site)
 
         for neighbor, hopping in zip(neighbors, hoppings):
             if neighbor == None:
                 continue
             kij[neighbor][site] = hopping
+
+            if twistx != 0:
+                bond_type = site_site_to_bond_type(Nx, Ny, neighbor, site)
+                if bond_type == 0:
+                    kij[neighbor][site] *= half_arrow_backward
+                elif bond_type == 1:
+                    kij[neighbor][site] *= half_arrow_forward
+                elif bond_type == 2:
+                    kij[neighbor][site] *= full_arrow_forward
+                elif bond_type == 3:
+                    kij[neighbor][site] *= half_arrow_forward
+                elif bond_type == 4:
+                    kij[neighbor][site] *= half_arrow_backward
+                elif bond_type == 5:
+                    kij[neighbor][site] *= full_arrow_backward
     kij *= -t
     ones_matrix = np.ones((Ny*Nx, Ny*Nx), dtype=np.complex128)
     return kij, ones_matrix # element wise multiplication with phase
