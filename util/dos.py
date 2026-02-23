@@ -130,6 +130,292 @@ def local_dos(
 
     return np.nanmean(A_bs, axis=0), dos_bs
 
+def k_resolved_dos(
+    path: str,
+    k: float,
+    geometry: str,
+    omega: np.ndarray,
+    domega: np.ndarray,
+    bs: int,
+    method: str = "BT",
+    anneal_arr: Optional[np.ndarray] = None,
+    checks: bool = False,
+    phs: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
+    nw = omega.shape[0]
+    Nx, Ny, U, tp, beta, L, dt = util.load_firstfile(
+        path,
+        "metadata/Nx",
+        "metadata/Ny",
+        "metadata/U",
+        "metadata/t'",
+        "metadata/beta",
+        "params/L",
+        "params/dt",
+    )
+    ns, s, gt0 = util.load(
+        path, "meas_uneqlt/n_sample", "meas_uneqlt/sign", "meas_uneqlt/gt0"
+    )
+    # reshape jj into more intuitive shape
+    gt0 = np.reshape(gt0, (-1, Nx*Ny, Ny*Nx, L), order="F")
+    gt0 = np.transpose(gt0, (0, 3, 2, 1))
+
+
+    # use only completed bins
+    mask = ns == ns.max()
+    nbin = mask.sum()
+    ns, s, gt0 = ns[mask], s[mask], gt0[mask]
+
+    gt0_ii = np.zeros((nbin, L), dtype=np.complex128)
+    for strip in range(Ny):
+        strip_constant = Nx * strip
+        for x in range(Nx):
+            for x_prime in range(Nx):
+                exp_factor = np.exp(1j * k * (x_prime - x))
+                gt0_ii += exp_factor * gt0[:, :, x_prime + strip_constant, x + strip_constant]
+    gt0_ii /= (Nx * Ny)
+
+    A_bs = np.full((bs, nw), np.nan, dtype=float)
+    dos_bs = np.full((bs, nw), np.nan, dtype=float)
+
+    for i in range(bs):
+        print("bs rep #", i)
+        resample = np.random.randint(nbin, size=nbin)  # sample with replacement
+        gt0_ii_bs = (gt0_ii[resample] / np.mean(s[resample])).real  # divide by sign
+
+        pre = my_maxent.Preprocess(
+            gt0_ii_bs,
+            dt,
+            beta,
+            grid_info=(omega, domega),
+            op_type="fermion",
+            sym=phs,
+            model_arr=anneal_arr,
+        )
+
+        A = my_maxent.MaxEnt(pre, method=method, printout=checks, inspect=checks)
+        A_bs[i, :] = A
+        dos_bs[i, :] = (A / domega) * pre["norm"]
+
+    if checks:
+        my_maxent.plot_bs_results(
+            omega, gt0_ii / np.mean(s), L, dt, "DOS", pre, A_bs, dos_bs
+        )
+
+    return np.nanmean(A_bs, axis=0), dos_bs
+
+def site_resolved_local_dos(
+    path: str,
+    site: int,
+    geometry: str,
+    omega: np.ndarray,
+    domega: np.ndarray,
+    bs: int,
+    method: str = "BT",
+    anneal_arr: Optional[np.ndarray] = None,
+    checks: bool = False,
+    phs: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
+    nw = omega.shape[0]
+
+    Nx, Ny, U, tp, beta, L, dt = util.load_firstfile(
+        path,
+        "metadata/Nx",
+        "metadata/Ny",
+        "metadata/U",
+        "metadata/t'",
+        "metadata/beta",
+        "params/L",
+        "params/dt",
+    )
+    ns, s, gt0 = util.load(
+        path, "meas_uneqlt/n_sample", "meas_uneqlt/sign", "meas_uneqlt/gt0"
+    )
+    # reshape jj into more intuitive shape
+    gt0 = np.reshape(gt0, (-1, Nx*Ny, Ny*Nx, L), order="F")
+    gt0 = np.transpose(gt0, (0, 3, 2, 1))
+
+    # use only completed bins
+    mask = ns == ns.max()
+    nbin = mask.sum()
+    ns, s, gt0 = ns[mask], s[mask], gt0[mask]
+
+    gt0_ii = np.zeros((nbin, L), dtype=np.complex128)
+    gt0_ii += gt0[:, :, site, site]
+
+    A_bs = np.full((bs, nw), np.nan, dtype=float)
+    dos_bs = np.full((bs, nw), np.nan, dtype=float)
+
+    for i in range(bs):
+        print("bs rep #", i)
+        resample = np.random.randint(nbin, size=nbin)  # sample with replacement
+        gt0_ii_bs = (gt0_ii[resample] / np.mean(s[resample])).real  # divide by sign
+
+        pre = my_maxent.Preprocess(
+            gt0_ii_bs,
+            dt,
+            beta,
+            grid_info=(omega, domega),
+            op_type="fermion",
+            sym=phs,
+            model_arr=anneal_arr,
+        )
+
+        A = my_maxent.MaxEnt(pre, method=method, printout=checks, inspect=checks)
+        A_bs[i, :] = A
+        dos_bs[i, :] = (A / domega) * pre["norm"]
+
+    if checks:
+        my_maxent.plot_bs_results(
+            omega, gt0_ii / np.mean(s), L, dt, "DOS", pre, A_bs, dos_bs
+        )
+
+    return np.nanmean(A_bs, axis=0), dos_bs
+
+def strip_resolved_local_dos(
+    path: str,
+    strip: int,
+    geometry: str,
+    omega: np.ndarray,
+    domega: np.ndarray,
+    bs: int,
+    method: str = "BT",
+    anneal_arr: Optional[np.ndarray] = None,
+    checks: bool = False,
+    phs: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
+    nw = omega.shape[0]
+    Nx, Ny, U, tp, beta, L, dt = util.load_firstfile(
+        path,
+        "metadata/Nx",
+        "metadata/Ny",
+        "metadata/U",
+        "metadata/t'",
+        "metadata/beta",
+        "params/L",
+        "params/dt",
+    )
+    ns, s, gt0 = util.load(
+        path, "meas_uneqlt/n_sample", "meas_uneqlt/sign", "meas_uneqlt/gt0"
+    )
+    # reshape jj into more intuitive shape
+    gt0 = np.reshape(gt0, (-1, Nx*Ny, Ny*Nx, L), order="F")
+    gt0 = np.transpose(gt0, (0, 3, 2, 1))
+
+    strip_constant = Nx * strip
+
+    # use only completed bins
+    mask = ns == ns.max()
+    nbin = mask.sum()
+    ns, s, gt0 = ns[mask], s[mask], gt0[mask]
+
+    gt0_ii = np.zeros((nbin, L), dtype=np.complex128)
+    for x in range(Nx):
+        gt0_ii += gt0[:, :, x + strip_constant, x + strip_constant]
+    gt0_ii /= (Nx)
+
+    A_bs = np.full((bs, nw), np.nan, dtype=float)
+    dos_bs = np.full((bs, nw), np.nan, dtype=float)
+
+    for i in range(bs):
+        print("bs rep #", i)
+        resample = np.random.randint(nbin, size=nbin)  # sample with replacement
+        gt0_ii_bs = (gt0_ii[resample] / np.mean(s[resample])).real  # divide by sign
+
+        pre = my_maxent.Preprocess(
+            gt0_ii_bs,
+            dt,
+            beta,
+            grid_info=(omega, domega),
+            op_type="fermion",
+            sym=phs,
+            model_arr=anneal_arr,
+        )
+
+        A = my_maxent.MaxEnt(pre, method=method, printout=checks, inspect=checks)
+        A_bs[i, :] = A
+        dos_bs[i, :] = (A / domega) * pre["norm"]
+
+    if checks:
+        my_maxent.plot_bs_results(
+            omega, gt0_ii / np.mean(s), L, dt, "DOS", pre, A_bs, dos_bs
+        )
+
+    return np.nanmean(A_bs, axis=0), dos_bs
+
+def strip_k_resolved_local_dos(
+    path: str,
+    strip: int,
+    k: float,
+    geometry: str,
+    omega: np.ndarray,
+    domega: np.ndarray,
+    bs: int,
+    method: str = "BT",
+    anneal_arr: Optional[np.ndarray] = None,
+    checks: bool = False,
+    phs: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
+    nw = omega.shape[0]
+    Nx, Ny, U, tp, beta, L, dt = util.load_firstfile(
+        path,
+        "metadata/Nx",
+        "metadata/Ny",
+        "metadata/U",
+        "metadata/t'",
+        "metadata/beta",
+        "params/L",
+        "params/dt",
+    )
+    ns, s, gt0 = util.load(
+        path, "meas_uneqlt/n_sample", "meas_uneqlt/sign", "meas_uneqlt/gt0"
+    )
+    # reshape jj into more intuitive shape
+    gt0 = np.reshape(gt0, (-1, Nx*Ny, Ny*Nx, L), order="F")
+    gt0 = np.transpose(gt0, (0, 3, 2, 1))
+
+    strip_constant = Nx * strip
+
+    # use only completed bins
+    mask = ns == ns.max()
+    nbin = mask.sum()
+    ns, s, gt0 = ns[mask], s[mask], gt0[mask]
+
+    gt0_ii = np.zeros((nbin, L), dtype=np.complex128)
+    for x in range(Nx):
+        for x_prime in range(Nx):
+            exp_factor = np.exp(1j * k * (x_prime - x))
+            gt0_ii += exp_factor * gt0[:, :, x_prime + strip_constant, x + strip_constant]
+    gt0_ii /= (Nx)
+
+    A_bs = np.full((bs, nw), np.nan, dtype=float)
+    dos_bs = np.full((bs, nw), np.nan, dtype=float)
+
+    for i in range(bs):
+        print("bs rep #", i)
+        resample = np.random.randint(nbin, size=nbin)  # sample with replacement
+        gt0_ii_bs = (gt0_ii[resample] / np.mean(s[resample])).real  # divide by sign
+
+        pre = my_maxent.Preprocess(
+            gt0_ii_bs,
+            dt,
+            beta,
+            grid_info=(omega, domega),
+            op_type="fermion",
+            sym=phs,
+            model_arr=anneal_arr,
+        )
+
+        A = my_maxent.MaxEnt(pre, method=method, printout=checks, inspect=checks)
+        A_bs[i, :] = A
+        dos_bs[i, :] = (A / domega) * pre["norm"]
+
+    if checks:
+        my_maxent.plot_bs_results(
+            omega, gt0_ii / np.mean(s), L, dt, "DOS", pre, A_bs, dos_bs
+        )
+
+    return np.nanmean(A_bs, axis=0), dos_bs
 
 def pair_local_dos(
     path: str,
@@ -483,3 +769,143 @@ def q_resolved_bond_bond(
         )
 
     return np.nanmean(A_bs, axis=0), pair_dos_bs
+
+def local_zz_dos(
+    path: str,
+    geometry: str,
+    omega: np.ndarray,
+    domega: np.ndarray,
+    bs: int,
+    method: str = "BT",
+    anneal_arr: Optional[np.ndarray] = None,
+    checks: bool = False,
+    phs: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
+    nw = omega.shape[0]
+
+    Nx, Ny, U, tp, beta, L, dt = util.load_firstfile(
+        path,
+        "metadata/Nx",
+        "metadata/Ny",
+        "metadata/U",
+        "metadata/t'",
+        "metadata/beta",
+        "params/L",
+        "params/dt",
+    )
+    ns, s, zz = util.load(
+        path, "meas_uneqlt/n_sample", "meas_uneqlt/sign", "meas_uneqlt/zz"
+    )
+    # reshape jj into more intuitive shape
+    zz = np.reshape(zz, (-1, Nx*Ny, Ny*Nx, L), order="F")
+    zz = np.transpose(zz, (0, 3, 2, 1))
+
+    # use only completed bins
+    mask = ns == ns.max()
+    nbin = mask.sum()
+    ns, s, zz = ns[mask], s[mask], zz[mask]
+
+    zz_ii = np.zeros((nbin, L), dtype=np.complex128)
+    for i in range(Nx*Ny):
+        zz_ii += zz[:,:,i,i]
+    zz_ii /= (Nx * Ny)
+
+    A_bs = np.full((bs, nw), np.nan, dtype=float)
+    dos_bs = np.full((bs, nw), np.nan, dtype=float)
+
+    for i in range(bs):
+        print("bs rep #", i)
+        resample = np.random.randint(nbin, size=nbin)  # sample with replacement
+        zz_ii_bs = (zz_ii[resample] / np.mean(s[resample])).real  # divide by sign
+
+        pre = my_maxent.Preprocess(
+            zz_ii_bs,
+            dt,
+            beta,
+            grid_info=(omega, domega),
+            op_type="boson",
+            sym=phs,
+            model_arr=anneal_arr,
+        )
+
+        A = my_maxent.MaxEnt(pre, method=method, printout=checks, inspect=checks)
+        A_bs[i, :] = A
+        dos_bs[i, :] = (A / domega) * pre["norm"] * omega * (1/(1-np.exp(-beta * omega)))
+
+    if checks:
+        my_maxent.plot_bs_results(
+            omega, zz_ii / np.mean(s), L, dt, "DOS", pre, A_bs, dos_bs
+        )
+
+    return np.nanmean(A_bs, axis=0), dos_bs
+
+def local_strip_zz_dos(
+    path: str,
+    strip: int,
+    geometry: str,
+    omega: np.ndarray,
+    domega: np.ndarray,
+    bs: int,
+    method: str = "BT",
+    anneal_arr: Optional[np.ndarray] = None,
+    checks: bool = False,
+    phs: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
+    nw = omega.shape[0]
+
+    Nx, Ny, U, tp, beta, L, dt = util.load_firstfile(
+        path,
+        "metadata/Nx",
+        "metadata/Ny",
+        "metadata/U",
+        "metadata/t'",
+        "metadata/beta",
+        "params/L",
+        "params/dt",
+    )
+    ns, s, zz = util.load(
+        path, "meas_uneqlt/n_sample", "meas_uneqlt/sign", "meas_uneqlt/zz"
+    )
+    # reshape jj into more intuitive shape
+    zz = np.reshape(zz, (-1, Nx*Ny, Ny*Nx, L), order="F")
+    zz = np.transpose(zz, (0, 3, 2, 1))
+
+    # use only completed bins
+    mask = ns == ns.max()
+    nbin = mask.sum()
+    ns, s, zz = ns[mask], s[mask], zz[mask]
+    strip_constant = Nx * strip
+
+    zz_ii = np.zeros((nbin, L), dtype=np.complex128)
+    for i in range(Nx):
+        zz_ii += zz[:,:,i + strip_constant,i + strip_constant]
+    zz_ii /= (Nx)
+
+    A_bs = np.full((bs, nw), np.nan, dtype=float)
+    dos_bs = np.full((bs, nw), np.nan, dtype=float)
+
+    for i in range(bs):
+        print("bs rep #", i)
+        resample = np.random.randint(nbin, size=nbin)  # sample with replacement
+        zz_ii_bs = (zz_ii[resample] / np.mean(s[resample])).real  # divide by sign
+
+        pre = my_maxent.Preprocess(
+            zz_ii_bs,
+            dt,
+            beta,
+            grid_info=(omega, domega),
+            op_type="boson",
+            sym=phs,
+            model_arr=anneal_arr,
+        )
+
+        A = my_maxent.MaxEnt(pre, method=method, printout=checks, inspect=checks)
+        A_bs[i, :] = A
+        dos_bs[i, :] = (A / domega) * pre["norm"] * omega * (1/(1-np.exp(-beta * omega)))
+
+    if checks:
+        my_maxent.plot_bs_results(
+            omega, zz_ii / np.mean(s), L, dt, "DOS", pre, A_bs, dos_bs
+        )
+
+    return np.nanmean(A_bs, axis=0), dos_bs
