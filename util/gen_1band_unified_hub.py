@@ -393,18 +393,17 @@ def create_1(
         bond2s,
     ) = bond2_params(geometry, Nx, Ny, tp, tpp, trans_sym)
 
-    # placeholder until other boundaries implemented for non square lattices
-    if (bc != 1) and (geometry != "square"):
+    # Open boundaries only implemented for limited cases
+    if (bc != 1) and (geometry != "square" and geometry != "triangular"):
         raise NotImplementedError(
-            "Non-periodic boundaries only implemented for square lattice"
+            "Non-periodic boundaries only implemented for square or triangular lattice"
         )
 
-    # if non-periodic and trans_sym on, warn user that trans_sym will turn off
+    # if non-periodic and trans_sym=1, this is an invalid configuration
     if (bc != 1) and trans_sym:
-        warnings.warn(
-            "Non-periodic boundaries not translationally symmetric: turning off trans_sym"
+        raise NotImplementedError(
+            "Non-periodic boundaries are not translationally symmetric"
         )
-        trans_sym = 0
 
     if geometry == "square":
         # 2 site mapping: site r = (x,y) has total (column order) index x + Nx * y
@@ -1398,7 +1397,7 @@ if __name__ == "__main__":
         type=int,
         default=1,
         metavar="X",
-        help="Boundary conditions, 1 for periodic, 2 for open",
+        help="Boundary conditions. 1 for periodic; 2 for fully open; 3 for periodic in y, open in x; 4 for periodic in x, open in y",
     )
     group1.add_argument(
         "--dt",
