@@ -637,7 +637,7 @@ def create_1(
 
         # my definition: Bonds defined by two hopping steps
         # NOTE: placeholder
-        hop2ps = 28 if tp != 0.0 else 6  # 2-hop-bonds per site
+        hop2ps = 28 if tpA != 0.0 else 6  # 2-hop-bonds per site
         num_hop2 = hop2ps * N  # total 2-hop-bonds in cluster
         hop2s = np.zeros((3, num_hop2), dtype=np.int32)
 
