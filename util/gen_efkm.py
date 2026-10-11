@@ -9,7 +9,6 @@ import numpy as np
 from scipy.linalg import expm
 
 import tight_binding
-import triangle_HH_tb
 import gen_util_shared as gus
 
 np.seterr(over="ignore")
@@ -291,9 +290,9 @@ def create_1(
     Nx: int = 4,
     Ny: int = 4,
     mu: float = 0.0,
-    tA: float = 0.0,
+    tA: float = 1.0,
     tpA: float = 0.0,
-    tB: float = 0.0,
+    tB: float = 1.0,
     tpB: float = 0.0,
     # Careful: tpp will add more bonds to transport or other measurements. These parts are not included in this code.
     # adding tpp, currently, the measurments are not enough to get whole bond-anything correlations.
@@ -394,7 +393,6 @@ def create_1(
         degen_b2,
         bond2s,
     ) = bond2_params(geometry, Nx, Ny, tpA, 0, trans_sym)
-
 
     if geometry == "square":
         # 2 site mapping: site r = (x,y) has total (column order) index x + Nx * y
@@ -530,10 +528,11 @@ def create_1(
         # non-zero tpp case is not considered yet.
         thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
 
-
     elif geometry == "triangular":
-        if twistx !=0 or twisty !=0:
-            raise NotImplementedError("Twisted BC not implemented for triangular lattice")
+        if twistx != 0 or twisty != 0:
+            raise NotImplementedError(
+                "Twisted BC not implemented for triangular lattice"
+            )
         # 2 site mapping
         map_ij = np.zeros((N, N), dtype=np.int32)
         num_ij = N if trans_sym else N * N
@@ -656,19 +655,20 @@ def create_1(
         map_b2b = np.zeros((num_b2, num_b), dtype=np.int32)
         degen_b2b = np.zeros(num_b2b, dtype=np.int32)
 
-        kijA, peierlsA = triangle_HH_tb.H_periodic_triangular(
+        kijA, peierlsA = tight_binding.H_periodic_triangular(
             Nx, Ny, t=tA, tp=tpA, nflux=nfluxA, alpha=1 / 2
         )
-        kijB, peierlsB = triangle_HH_tb.H_periodic_triangular(
+        kijB, peierlsB = tight_binding.H_periodic_triangular(
             Nx, Ny, t=tB, tp=tpB, nflux=nfluxB, alpha=1 / 2
         )
 
         # NOTE: placeholder
         thermal_phases = np.ones((b2ps, N), dtype=np.complex128)
 
-
     else:
-        raise NotImplementedError("Invalid geometry, only square and triangular supported")
+        raise NotImplementedError(
+            "Invalid geometry, only square and triangular supported"
+        )
 
     # account for different data type when nflux=0
     thermal_phases = (
@@ -676,10 +676,26 @@ def create_1(
         if (nfluxA != 0 or twistx != 0 or twisty != 0)
         else thermal_phases.real
     )
-    Ku = kijA if (nfluxA != 0 or nfluxB != 0 or twistx != 0 or twisty != 0) else kijA.real
-    Kd = kijA if (nfluxB != 0 or nfluxB != 0 or twistx != 0 or twisty != 0) else kijA.real
-    peierlsu = peierlsA if (nfluxA != 0 or nfluxB !=0 or twistx != 0 or twisty != 0) else peierlsA.real
-    peierlsd = peierlsB if (nfluxA != 0 or nfluxB !=0 or twistx != 0 or twisty != 0) else peierlsB.real
+    Ku = (
+        kijA
+        if (nfluxA != 0 or nfluxB != 0 or twistx != 0 or twisty != 0)
+        else kijA.real
+    )
+    Kd = (
+        kijB
+        if (nfluxB != 0 or nfluxB != 0 or twistx != 0 or twisty != 0)
+        else kijB.real
+    )
+    peierlsu = (
+        peierlsA
+        if (nfluxA != 0 or nfluxB != 0 or twistx != 0 or twisty != 0)
+        else peierlsA.real
+    )
+    peierlsd = (
+        peierlsB
+        if (nfluxA != 0 or nfluxB != 0 or twistx != 0 or twisty != 0)
+        else peierlsB.real
+    )
 
     # Zeeman interaction
     for i in range(N):
@@ -847,7 +863,9 @@ def create_1(
         f["meas_eqlt"]["g00_u"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["g00_d"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["nn"] = np.zeros(num_ij, dtype=dtype_num)
-        f["meas_eqlt"]["xx"] = np.zeros(num_ij, dtype=dtype_num) # this is basically "exciton" correlation
+        f["meas_eqlt"]["xx"] = np.zeros(
+            num_ij, dtype=dtype_num
+        )  # this is basically "exciton" correlation
         f["meas_eqlt"]["zz"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["pair_sw"] = np.zeros(num_ij, dtype=dtype_num)
         f["meas_eqlt"]["pair_sw_r"] = np.zeros(num_ij, dtype=dtype_num)
@@ -993,7 +1011,6 @@ def create_batch(Nfiles=1, prefix=None, seed=None, **kwargs):
         file_0 if Nfiles == 1 else "{} ... {}".format(file_0, file_i),
     )
     print("parameter file:", file_p)
-
 
 
 if __name__ == "__main__":
