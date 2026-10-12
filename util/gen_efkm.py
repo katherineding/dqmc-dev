@@ -699,8 +699,8 @@ def create_1(
 
     # Zeeman interaction
     for i in range(N):
-        Ku[i, i] -= mu - h
-        Kd[i, i] -= mu + h
+        Ku[i, i] -= mu + h
+        Kd[i, i] -= mu - h
 
     exp_Ku = expm(-dt * Ku)
     inv_exp_Ku = expm(dt * Ku)
